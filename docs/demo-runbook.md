@@ -61,4 +61,22 @@ Start the chat UI (http://localhost:8501). Use the Run monitor button for `/tick
 Agent spend for the take is ₱100,500 against the ₱150,000 daily cap. If you retake on the same UTC day,
 use a smaller beat 2 amount.
 
+### Beat 6: negotiation (console, `?view=negotiate`)
+
+Before recording: set Lumen's mandate in its supplier console (opening ₱150, lowest ₱110, stock 450, minimum order
+200, minimum deposit 15%, 400+ units 20%) and register the simulator for Mabuhay (README, Supplier negotiation).
+
+| Step | What to point out |
+| --- | --- |
+| Start: Lumen, supplier agent, 500 m cotton, minimum 300, open ₱100, at most ₱60,000, keep ₱100,000 free | The mode chip says live model or scripted, never blurred |
+| Offers alternate (about 5) | Each offer's change from the last one; your checks; "Locks the full amount now"; 50 units not covered |
+| Agreement review, then "Recheck and prepare escrow" | Supplier acceptance is not your payment approval; card from the normal pipeline |
+| Yes, create the escrow | Deal and deposit tx linked to the negotiation |
+| Supplier console: "Pause agent and take over" | Human takeover; agent's moves become stale |
+| Mabuhay on the simulator: send `okay`, then the override text from `reports/negotiation/neg_injection.txt` | `okay` asks for the code; injection flagged, limits and payee unchanged |
+
+Needs a working model for the Checker (escrow fails closed without one) and, for a live AI supplier agent,
+`TIWALA_SUPPLIER_AGENT=model`. Say "simulator" whenever WhatsApp is on screen. If no live model is available,
+record with `TIWALA_SUPPLIER_AGENT=scripted` and say so.
+
 After recording, save the terminal output to `reports/live/video-*.txt` and add the new tx links to the README table.

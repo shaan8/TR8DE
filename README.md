@@ -18,8 +18,8 @@ Source: https://github.com/shaan8/TR8DE
 | `script/` | `Deploy.s.sol` (deploy + seed network history), `Finish.s.sol` (close the 2 late deals) |
 | `scripts/` | `deploy-sepolia.sh` (one-command deploy), `evidence_table.py` (builds the evidence report from broadcasts) |
 | `agent/tiwala_agent/` | Agent core (Python) |
-| `agent/tests/` | 74 tests: deterministic layer + end-to-end red-team on anvil |
-| `reports/` | Test, coverage and Slither output; `live/` holds live agent transcripts and the audit log |
+| `agent/tests/` | 122 tests: deterministic layer, negotiation, WhatsApp adapter, end-to-end red-team on anvil |
+| `reports/` | Test, coverage and Slither output; `live/` holds live agent transcripts and the audit log; `negotiation/` holds recorded negotiation demos |
 
 ## Agent core
 
@@ -36,6 +36,11 @@ Source: https://github.com/shaan8/TR8DE
 | `forecast.py` | Liquidity forecast H(t) and candidate fixes | no |
 | `chain.py` | Indexer (factory wallets only), simulator, scoped agent signer, owner console | no |
 | `audit.py` | Hash-chained, redacted JSONL audit log | no |
+| `payee.py` | Payee checks before an owner-key `addSupplier` | no |
+| `negotiation.py` | Versioned proposals, terms hashes, state machine, buyer checks and strategy | suggests only |
+| `supplier_agent.py` | Supplier mandate and agent (live model or scripted), checked in code | optional |
+| `whatsapp.py` | WhatsApp Cloud API adapter (webhook, signature, dedup, window, opt-in) and local simulator | no |
+| `negotiation_service.py` | Fresh buyer views from chain, idempotent escrow handoff | no |
 
 Guarantees enforced in code: the Coordinator can only draft; execution needs a Gate authorization minted after the
 policy engine allows it; Tier 2 confirmation is matched on the owner's own next message; owner-tier actions
@@ -111,6 +116,24 @@ Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in 
 Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
 Deadlines accept `YYYY-MM-DD` (23:59) or `YYYY-MM-DD HH:MM` in the device timezone (`TIWALA_TZ` overrides).
+
+### Supplier negotiation
+
+Open `http://127.0.0.1:8000/?view=negotiate`. Tiwala negotiates quantity, price, deposit and delivery with a supplier
+on WhatsApp (or the local simulator) or with the supplier's agent, then carries the exact agreed terms into escrow
+through the same policy, Checker, Gate and your own yes. Replays: `?view=negotiate&fixture=neg_success` (also
+`neg_ready`, `neg_escrow`, `neg_impossible`, `neg_injection`) and `?view=supplier&fixture=neg_success`.
+Design, trust model, WhatsApp policy notes and limitations: [`docs/negotiation.md`](docs/negotiation.md).
+
+For a local demo without Meta credentials:
+
+```bash
+curl -s -X POST 127.0.0.1:8000/api/sim/whatsapp/contact -H 'Content-Type: application/json' -d '{"supplier":"<payee address>","text":""}'
+```
+
+registers the simulator as that supplier's WhatsApp (labelled "simulator" everywhere) and returns its supplier-console
+link. `TIWALA_SUPPLIER_AGENT=scripted` uses the deterministic supplier agent (labelled "scripted, not AI");
+`TIWALA_NEGOTIATOR=rules` turns off buyer-side model calls.
 
 ### LLM providers
 

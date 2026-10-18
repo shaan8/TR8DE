@@ -10,6 +10,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | Escrowed funds | Compromised or misled agent key | Contract limits the agent key (below); owner-only actions need the owner key |
 | Owner intent | Prompt injection via PO notes, supplier names, chat | Input guard wraps chain text as data; intent verifier compares actions to the owner's own words |
 | Payee list | Injected, poisoned or mistyped payout addresses | Payee checks in code (`payee.py`): the address must be in the owner's own words, EIP-55 checksum, no lookalike of a saved address or name, no wallet roles or blocklist; owner types its last 4 characters; owner key signs `addSupplier`; contract waits `supplierDelay` |
+| Negotiated terms | Supplier text injection, stale or ambiguous acceptance, duplicate webhooks, human and agent answering at once | Supplier text never reaches the owner path; acceptance must name the open version and terms hash; counters supersede; lock plus version check; message-ID dedup; escrow handoff idempotent by on-chain reference; agreement rechecked on fresh chain data and confirmed by the owner ([`docs/negotiation.md`](docs/negotiation.md)) |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
 | Audit trail | Tampering after the fact | Hash-chained JSONL; `/verify` recomputes the chain |
 
@@ -36,7 +37,7 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 | Check | Result |
 | --- | --- |
 | Foundry: 38 unit, 1 fuzz, 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) | 42 pass, 256 runs x 64 depth, 0 reverts ([`reports/tests.txt`](reports/tests.txt)) |
-| Agent: deterministic layer + red-team on anvil | 74 pass |
+| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, red-team on anvil | 122 pass ([`reports/agent-tests.txt`](reports/agent-tests.txt)) |
 | Slither 0.11.6 on `src/` | 0 high, 0 medium; 14 informational, triaged in [`reports/slither-triage.md`](reports/slither-triage.md) |
 | Live red-team on Sepolia | Injection, unknown payee, forced revert, social engineering: all held ([`README.md`](README.md#live-agent-run-on-sepolia)) |
 
@@ -54,4 +55,7 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 - **LLM provider sees conversation content.** The audit log is redacted; prompts sent to the provider are not.
 - **Timestamps.** Deadlines use `block.timestamp`; drift of seconds does not matter at hour and day granularity.
 - **Single chain, test token, no upgrade path.** Contracts are not upgradeable; a fix means a new deployment.
+- **WhatsApp live integration is untested.** No Meta credentials were available. Eligibility of an escrow-linked
+  use case under the WhatsApp Business Messaging Policy is unresolved ([`docs/negotiation.md`](docs/negotiation.md)).
+- **Supplier console auth is a per-supplier token**, and in the local demo the supplier agent runs on the buyer's server.
 - **Novelty and prior art** have not been formally checked.

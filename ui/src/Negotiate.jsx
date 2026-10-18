@@ -44,8 +44,8 @@ export function ModeChips({ n }) {
   return (
     <span className="flex flex-wrap gap-1.5">
       {n.mode === "whatsapp"
-        ? <Chip tone={sim ? "warn" : "ok"} icon={Phone}>{sim ? "WhatsApp simulator (local, not WhatsApp)" : "Live WhatsApp"}</Chip>
-        : <Chip tone="accent" icon={Bot}>{n.agent_kind?.startsWith("live_model") ? `Supplier agent: live model ${n.agent_kind.split(":").slice(1).join(":")}` : "Supplier agent: scripted (not AI)"}</Chip>}
+        ? <Chip tone={sim ? "warn" : "ok"} icon={Phone} wrap>{sim ? "WhatsApp simulator (local, not WhatsApp)" : "Live WhatsApp"}</Chip>
+        : <Chip tone="accent" icon={Bot} wrap>{n.agent_kind?.startsWith("live_model") ? `Supplier agent: live model ${n.agent_kind.split(":").slice(1).join(":")}` : "Supplier agent: scripted (not AI)"}</Chip>}
       {n.mode === "agent" && <Chip tone={n.controller === "human" ? "warn" : "muted"} icon={n.controller === "human" ? User : Bot}>
         {n.controller === "human" ? "Supplier's person answering" : "Agent answering"}</Chip>}
     </span>
@@ -123,7 +123,7 @@ function Checks({ n }) {
     <Panel title="Your checks on the current offer">
       <ul className="space-y-1.5 text-sm">
         {n.checks.map((x) => (
-          <li key={x.rule} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+          <li key={x.rule} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
             {x.ok ? <Chip tone="ok" icon={CheckCircle2}>Pass</Chip> : x.severity === "flag" ? <Chip tone="warn">Check</Chip> : <Chip tone="bad" icon={XCircle}>Fail</Chip>}
             <span className="text-ink-2">{x.detail}</span>
           </li>
@@ -285,9 +285,9 @@ export default function Negotiate() {
           <p className="text-sm text-ink-2">Negotiate supplier terms, then lock the exact agreement in escrow · Sepolia testnet</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {fixture && <Chip tone="accent" icon={FileWarning}>Replayed: {data.fixture?.title}</Chip>}
-          {fixture && data.fixture?.validation && <Chip tone="muted">{data.fixture.validation}</Chip>}
-          {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive ? "ok" : "muted"} icon={Phone}>{data.whatsapp.receive ? "WhatsApp webhook configured" : "WhatsApp: simulator only (no credentials)"}</Chip>}
+          {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}
+          {fixture && data.fixture?.validation && <Chip tone="muted" wrap>{data.fixture.validation}</Chip>}
+          {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : "WhatsApp: simulator only (no credentials)"}</Chip>}
           <ViewNav active="negotiate" />
         </div>
       </header>
@@ -333,7 +333,7 @@ export default function Negotiate() {
             <Checks n={n} />
             <Panel title="Timeline">
               <ol className="space-y-1 text-sm">{n.timeline.slice(-12).map((e, i) => (
-                <li key={i} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2"><span className="font-mono text-cap text-ink-2">{when(e.ts).slice(5)}</span><span>{e.detail || e.event}</span></li>))}</ol>
+                <li key={i} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2"><span className="font-mono text-cap text-ink-2">{when(e.ts).slice(5)}</span><span>{STATE[e.detail]?.[0] || e.detail || e.event}</span></li>))}</ol>
             </Panel>
           </aside>
         )}
