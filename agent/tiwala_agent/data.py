@@ -1,5 +1,5 @@
-"""Off-chain inputs: supplier directory, account balances (see connectors.py), user plans,
-and the sanctions/blocklist. All read-only; the agent never moves fiat."""
+"""Off-chain inputs: supplier directory, user plans and the sanctions/blocklist. All read-only;
+the agent never moves fiat."""
 from __future__ import annotations
 
 import json
@@ -10,16 +10,6 @@ from web3 import Web3
 
 from .forecast import Flow
 from .models import SupplierEntry
-
-
-@dataclass
-class AccountBalance:
-    """One off-chain balance in PHP units, built only by connectors.py from a provider API response."""
-    provider: str
-    balance: int  # units
-    currency: str
-    as_of: int
-    detail: str = ""
 
 
 @dataclass

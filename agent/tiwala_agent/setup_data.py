@@ -1,6 +1,5 @@
 """Write the demo data directory from a deployment file:
 suppliers.json (registered payout addresses), plans.json (receivables and planned POs), blocklist.json.
-Off-chain balances are not seeded: they come only from accounts linked in the UI (connectors.py).
 
     python -m tiwala_agent.setup_data ../deployments/11155111.json data/
 """

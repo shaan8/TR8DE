@@ -1,6 +1,6 @@
-"""Liquidity forecast across off-chain accounts and on-chain free balance. Pure, deterministic.
+"""Liquidity forecast over the wallet's free balance, expected receivables and planned POs. Pure, deterministic.
 
-    H(t) = B_off + B_free + I(<=t) - O(<=t) - buffer
+    H(t) = B_free + I(<=t) - O(<=t) - buffer
 
 Open escrow is already excluded from B_free (the full PO is locked at creation), so
 open deals need no further subtraction.
@@ -37,10 +37,10 @@ class Option:
 
 
 def project(
-    b_off: int, b_free: int, inflows: list[Flow], outflows: list[Flow], buffer: int, today: int
+    b_free: int, inflows: list[Flow], outflows: list[Flow], buffer: int, today: int
 ) -> Forecast:
     days = sorted({today} | {f.date for f in inflows} | {f.date for f in outflows})
-    h0 = b_off + b_free - buffer
+    h0 = b_free - buffer
     points, short_day, short = [], None, 0
     for d in days:
         h = (
@@ -55,7 +55,6 @@ def project(
 
 
 def with_new_deal(
-    b_off: int,
     b_free: int,
     inflows: list[Flow],
     planned: list[Flow],
@@ -65,11 +64,10 @@ def with_new_deal(
     new_day: int,
     label: str = "new PO",
 ) -> Forecast:
-    return project(b_off, b_free, inflows, planned + [Flow(new_day, new_total, label)], buffer, today)
+    return project(b_free, inflows, planned + [Flow(new_day, new_total, label)], buffer, today)
 
 
 def options(
-    b_off: int,
     b_free: int,
     inflows: list[Flow],
     planned: list[Flow],
@@ -79,7 +77,7 @@ def options(
     new_day: int,
 ) -> list[Option]:
     """Deterministic candidate fixes for a shortfall. The Treasury planner ranks and explains them."""
-    base = with_new_deal(b_off, b_free, inflows, planned, buffer, today, new_total, new_day)
+    base = with_new_deal(b_free, inflows, planned, buffer, today, new_total, new_day)
     if base.ok:
         return []
     out: list[Option] = []
@@ -87,7 +85,7 @@ def options(
     for f in sorted(inflows, key=lambda x: x.date):
         if f.date <= new_day:
             continue
-        if with_new_deal(b_off, b_free, inflows, planned, buffer, today, new_total, f.date).ok:
+        if with_new_deal(b_free, inflows, planned, buffer, today, new_total, f.date).ok:
             out.append(Option("delay", f"Place the PO on day {f.date} after '{f.label}' arrives", {"day": f.date}))
             break
     # 2. split: half now, half after the first inflow that covers it
@@ -96,7 +94,6 @@ def options(
         if f.date <= new_day:
             continue
         trial = project(
-            b_off,
             b_free,
             inflows,
             planned + [Flow(new_day, half, "split 1"), Flow(f.date, new_total - half, "split 2")],

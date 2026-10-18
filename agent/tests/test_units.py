@@ -1,5 +1,5 @@
 """Unit tests for the deterministic layer: reputation, DP cap, forecast, intent, guard,
-policy, Checker parsing, Gate, audit chain, account connector."""
+policy, Checker parsing, Gate, audit chain."""
 import json
 
 import pytest
@@ -106,9 +106,9 @@ def test_value_weighting_caps_large_deals():
 def test_forecast_finds_first_shortfall_and_fixes():
     inflows = [fc.Flow(124, 90_000, "receivable")]
     planned = [fc.Flow(107, 150_000, "holiday"), fc.Flow(114, 80_000, "packaging")]
-    f = fc.with_new_deal(160_000, 150_000, inflows, planned, 20_000, 100, 120_000, 100)
+    f = fc.with_new_deal(310_000, inflows, planned, 20_000, 100, 120_000, 100)
     assert f.shortfall_day == 114 and f.shortfall == 60_000
-    opts = fc.options(160_000, 150_000, inflows, planned, 20_000, 100, 120_000, 100)
+    opts = fc.options(310_000, inflows, planned, 20_000, 100, 120_000, 100)
     assert [o.kind for o in opts] == ["delay", "split", "top_up"]
     assert opts[2].params["amount"] == 60_000
 
@@ -266,7 +266,7 @@ def test_policy_blocklist_and_exposure():
     assert not decide(a, _ctx(a, open_exposure=250_000_00)).allowed
 
 
-# ------------------------------------------------------------------ Checker, Gate, audit, connectors
+# ------------------------------------------------------------------ Checker, Gate, audit
 
 
 @pytest.mark.parametrize("text", ["sure, looks fine", '{"approve": "yes"}', "{broken", ""])

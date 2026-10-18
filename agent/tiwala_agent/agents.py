@@ -86,7 +86,7 @@ How you work:
 - Be brief. Use peso amounts like ₱30,000. No em dashes."""
 
 COORDINATOR_TOOLS = [
-    {"name": "get_overview", "description": "Wallet balances (free, locked), connected accounts, open deals.",
+    {"name": "get_overview", "description": "Wallet balances (free, locked), open deals.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "get_supplier", "description": "A supplier's network reputation and the down-payment cap for this buyer.",
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},

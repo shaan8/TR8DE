@@ -30,7 +30,6 @@ from . import forecast as fc
 from .agents import COORDINATOR_SYSTEM, COORDINATOR_TOOLS, checker_review, treasury_plan
 from .audit import AuditLog
 from .chain import Chain, OwnerConsole
-from .connectors import Registry
 from .data import Plans, load_blocklist, load_directory, load_plans
 from .guard import as_data, tag_contract, tag_user
 from .intent import verify as verify_intent
@@ -170,7 +169,6 @@ class Tiwala:
         self.pending: Optional[Pending] = None
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
-        self.registry = Registry(self.data)
 
     # ------------------------------------------------------------ data
 
@@ -183,10 +181,6 @@ class Tiwala:
 
     def plans(self) -> Plans:
         return load_plans(self.data / "plans.json")
-
-    def accounts(self):
-        """Off-chain balances in PHP units, fetched read-only from Plaid, PayPal and Stripe. Never carries a secret."""
-        return self.registry.balances()
 
     def _supplier_by_name(self, name: str) -> Optional[str]:
         n = (name or "").strip().lower()
@@ -221,7 +215,7 @@ class Tiwala:
         short = None
         if action.kind == ActionKind.CREATE_DEAL and action.total:
             p, today = self.plans(), ws.now // 86400
-            f = fc.with_new_deal(sum(a.balance for a in self.accounts()), ws.free, p.inflows, p.planned,
+            f = fc.with_new_deal(ws.free, p.inflows, p.planned,
                                  p.buffer, today, action.total, today)
             if not f.ok:
                 short = (f.shortfall_day, f.shortfall)
@@ -467,7 +461,6 @@ class Tiwala:
                               "po_ref": as_data(ref, f"contract:deal{d.id}.ref")})
             return {"free_php": ws.free / PHP, "locked_php": ws.locked / PHP, "underfunded": ws.underfunded,
                     "paused": ws.paused, "agent_daily_remaining_php": ws.daily_remaining / PHP,
-                    "accounts": [{"provider": x.provider, "balance_php": x.balance / PHP} for x in self.accounts()],
                     "open_deals": deals}
         if name == "get_supplier":
             addr = self._supplier_by_name(a.get("name", ""))
@@ -487,12 +480,11 @@ class Tiwala:
             p, today = self.plans(), ws.now // 86400
             total = round(float(a["total_php"]) * PHP)
             day = _parse_deadline(a["date"]) // 86400 if a.get("date") else today
-            b_off = sum(x.balance for x in self.accounts())
-            f = fc.with_new_deal(b_off, ws.free, p.inflows, p.planned, p.buffer, today, total, day)
-            opts = [o.__dict__ for o in fc.options(b_off, ws.free, p.inflows, p.planned, p.buffer, today, total, day)]
+            f = fc.with_new_deal(ws.free, p.inflows, p.planned, p.buffer, today, total, day)
+            opts = [o.__dict__ for o in fc.options(ws.free, p.inflows, p.planned, p.buffer, today, total, day)]
             summary = {"ok": f.ok, "shortfall_php": f.shortfall / PHP,
                        "shortfall_date": _date(f.shortfall_day * 86400) if f.shortfall_day else None,
-                       "free_php": ws.free / PHP, "accounts_php": b_off / PHP, "buffer_php": p.buffer / PHP}
+                       "free_php": ws.free / PHP, "buffer_php": p.buffer / PHP}
             plan = treasury_plan(self.llms.get("treasury"), summary, opts)
             return {**summary, "fixes": [opts[i] for i in plan["ranked"]], "treasury_note": plan["explanation"]}
         if name == "draft_create_deal":
@@ -564,7 +556,7 @@ class Tiwala:
                 notes.append(self._monitor_note(f"Deal {d.id} with {who} was attested", out))
         p = self.plans()
         today = ws.now // 86400
-        f = fc.project(sum(a.balance for a in self.accounts()), ws.free, p.inflows, p.planned, p.buffer, today)
+        f = fc.project(ws.free, p.inflows, p.planned, p.buffer, today)
         if not f.ok:
             notes.append(f"Heads up: planned POs leave you {php(f.shortfall)} short on {_date(f.shortfall_day * 86400)}.")
         self._log("monitor_tick", notes=notes)
