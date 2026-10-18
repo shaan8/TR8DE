@@ -36,7 +36,8 @@ from .data import Plans, load_blocklist, load_directory, load_plans, save_direct
 from .guard import as_data, tag_contract, tag_user
 from .intent import parse as parse_intent, verify as verify_intent
 from .llm import LLM
-from .models import (PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier, Verdict, php)
+from .models import (MONEY_MOVING, PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier,
+                     Verdict, php)
 from .payee import PayeeVerdict, check_payee, chunk
 from .policy import PolicyContext, PolicySettings, decide
 from .reputation import DpPolicy, dp_cap, score
@@ -81,6 +82,8 @@ GUIDE = "\n".join([
     '- /approve N: approve a deal above your approval threshold',
     '- /dispute N: freeze deal N',
     '- /resolve N release or /resolve N refund: settle a dispute',
+    '- /freeze: stop the agent and pause the wallet on-chain; /unfreeze to resume',
+    '- /anchor: record the audit log head on Sepolia so deleting entries is detectable',
     '- Run monitor: check deadlines, attestations and balances now',
     '- /guide: show this list',
     '',
@@ -92,6 +95,7 @@ GUIDE = "\n".join([
 ])
 PAYEE_CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm|oo|sige)\s+([0-9a-f]{4})\s*[.!]*\s*$", re.I)
 PENDING_TTL_S = 600
+BREAKER_REFUSALS, BREAKER_WINDOW_S = 3, 600  # refused payment requests from chat before the agent freezes itself
 MAX_TOOL_STEPS = 8
 
 
@@ -125,13 +129,15 @@ class Authorization:
     tier: int
     expires: float
     mac: str
+    nonce: str = ""
 
 
 class Gate:
-    """Mints and checks authorizations. The secret never leaves this object."""
+    """Mints and checks authorizations. The secret never leaves this object. Each authorization is single-use."""
 
     def __init__(self):
         self._key = secrets.token_bytes(32)
+        self._used: dict[str, float] = {}  # nonce -> expiry, pruned as they lapse
 
     @staticmethod
     def digest(action: Action) -> str:
@@ -142,15 +148,24 @@ class Gate:
             raise PermissionError("policy refused")
         if verdict.needs_confirmation and not confirmed:
             raise PermissionError("needs owner confirmation")
-        dg, exp = self.digest(action), time.time() + 60
-        mac = hmac.new(self._key, f"{dg}|{int(verdict.tier)}|{exp}".encode(), "sha256").hexdigest()
-        return Authorization(dg, int(verdict.tier), exp, mac)
+        dg, exp, nonce = self.digest(action), time.time() + 60, secrets.token_hex(16)
+        mac = hmac.new(self._key, f"{dg}|{int(verdict.tier)}|{exp}|{nonce}".encode(), "sha256").hexdigest()
+        return Authorization(dg, int(verdict.tier), exp, mac, nonce)
 
     def check(self, action: Action, auth: Optional[Authorization]) -> bool:
-        if auth is None or time.time() > auth.expires or auth.digest != self.digest(action):
+        if auth is None or time.time() > auth.expires or auth.digest != self.digest(action) or auth.nonce in self._used:
             return False
-        want = hmac.new(self._key, f"{auth.digest}|{auth.tier}|{auth.expires}".encode(), "sha256").hexdigest()
+        want = hmac.new(self._key, f"{auth.digest}|{auth.tier}|{auth.expires}|{auth.nonce}".encode(), "sha256").hexdigest()
         return hmac.compare_digest(want, auth.mac)
+
+    def consume(self, action: Action, auth: Optional[Authorization]) -> bool:
+        """check() and mark the authorization used, so it can sign at most one transaction."""
+        if not self.check(action, auth):
+            return False
+        now = time.time()
+        self._used = {n: e for n, e in self._used.items() if e > now}
+        self._used[auth.nonce] = auth.expires
+        return True
 
 
 class Executor:
@@ -158,8 +173,8 @@ class Executor:
         self.chain, self.wallet, self.gate = chain, wallet, gate
 
     def execute(self, action: Action, auth: Optional[Authorization]):
-        if not self.gate.check(action, auth):
-            raise PermissionError("executor: missing or invalid authorization")
+        if not self.gate.consume(action, auth):
+            raise PermissionError("executor: missing, invalid or already used authorization")
         return self.chain.send(self.wallet, action)
 
 
@@ -329,7 +344,31 @@ class Tiwala:
             return verify_intent(a, texts, self.names(), deal)
         return verify_intent(a, [], {}, deal, self.agreements.get(a.origin.detail))
 
+    # ------------------------------------------------------------ circuit breaker
+
+    def frozen(self) -> Optional[dict]:
+        p = self.data / "frozen.json"
+        try:
+            return json.loads(p.read_text()) if p.exists() else None
+        except (OSError, ValueError):
+            return {"reason": "freeze file unreadable; treated as frozen"}  # fail closed
+
+    def _freeze(self, reason: str) -> None:
+        (self.data / "frozen.json").write_text(json.dumps({"reason": reason, "at": int(time.time())}))
+        self._log("agent_frozen", reason=reason)
+
+    def _note_refusal(self, a: Action) -> Optional[str]:
+        """Repeated refused payment requests from chat look like an attack or a confused model: stop the agent."""
+        now = time.time()
+        self._refusals = [t for t in getattr(self, "_refusals", []) if now - t < BREAKER_WINDOW_S] + [now]
+        if len(self._refusals) >= BREAKER_REFUSALS and not self.frozen():
+            self._freeze(f"{len(self._refusals)} refused payment requests within {BREAKER_WINDOW_S // 60} minutes")
+            return "Circuit breaker tripped: the agent is now frozen until the owner types /unfreeze."
+        return None
+
     def propose(self, a: Action, then_release_down: bool = False, system_note: str = "") -> dict:
+        if (f := self.frozen()) and a.kind in MONEY_MOVING:
+            return {"status": "refused", "reasons": [f"The agent is frozen ({f['reason']}). Type /unfreeze to resume."]}
         ctx, deal = self._context(a)
         intent = self._intent(a, self.ledger[-6:], deal)
         ctx.intent_mismatches = intent.mismatches
@@ -341,7 +380,10 @@ class Tiwala:
         self._log("verdict", action=a.to_dict(), view=view, intent=intent.__dict__,
                   checker={"approve": ok, "reason": reason}, verdict=verdict.to_dict())
         if not verdict.allowed:
-            return {"status": "refused", "reasons": verdict.reasons, "flags": verdict.flags}
+            out = {"status": "refused", "reasons": verdict.reasons, "flags": verdict.flags}
+            if a.origin.kind == "user" and (b := self._note_refusal(a)):
+                out["reasons"] = out["reasons"] + [b]
+            return out
         if verdict.needs_confirmation:
             card = self._card(a, ctx, deal, verdict, intent.agent_filled, then_release_down)
             self.pending = Pending(a, request, list(self.ledger), (ok, reason), card, time.time(), then_release_down)
@@ -504,6 +546,9 @@ class Tiwala:
             reply = "I could not finish that safely in one go. Nothing was paid. Could you say it more simply?"
         if any(e["event"] == "executed" for e in self._events):
             self.ledger = []
+        if any(e["event"] == "agent_frozen" for e in self._events):  # shown by code, not left to the model
+            cards.append("Circuit breaker: I have frozen myself after repeated refused payment requests. Nothing "
+                         "moves until you type /unfreeze. Type /freeze to also pause the wallet on-chain.")
         return TurnResult("\n\n".join([reply] + cards).strip(), self._events)
 
     def _render_result(self, out: dict) -> str:
@@ -742,6 +787,8 @@ class Tiwala:
             return "Owner commands need the owner key configured on this device."
         parts = cmd.split()
         op = parts[0].lower()
+        if op in ("/freeze", "/unfreeze", "/anchor"):
+            return self._safety_command(op)
         try:
             n = int(parts[1])
         except (IndexError, ValueError):
@@ -765,6 +812,42 @@ class Tiwala:
             if notes:
                 msg += "\n" + "\n".join(notes)
         return msg
+
+    def anchor_audit(self) -> str:
+        from .audit import anchor_payload
+        count, head = self.audit.count, self.audit._prev
+        if not count:
+            return "The audit log is empty; nothing to anchor."
+        r = self.owner.anchor(anchor_payload(count, head))
+        if not r.ok:
+            return f"Anchoring failed: {r.error}"
+        rec = {"tx": r.tx_hash, "count": count, "head": head, "chain_id": self.chain.w3.eth.chain_id,
+               "owner": self.owner.acct.address, "ts": int(time.time())}
+        with (Path(self.audit.path).parent / "anchors.jsonl").open("a") as f:
+            f.write(json.dumps(rec) + "\n")
+        self._log("audit_anchored", **rec)
+        return (f"Audit log anchored on-chain at entry {count}. Signed by you. Tx {r.tx_hash}\n"
+                "Deleting or rewriting any entry up to here is now detectable: scripts/verify_audit.py.")
+
+    def _safety_command(self, op: str) -> str:
+        if op == "/anchor":
+            return self.anchor_audit()
+        if op == "/freeze":
+            if not self.frozen():
+                self._freeze("frozen by the owner")
+            r = self.owner.set_paused(True)
+            self._log("owner_command", command=op, ok=r.ok, tx=r.tx_hash, error=r.error)
+            return ("Agent frozen and wallet paused on-chain. Signed by you. Tx " + r.tx_hash if r.ok else
+                    f"Agent frozen off-chain; the on-chain pause failed ({r.error}).")
+        (self.data / "frozen.json").unlink(missing_ok=True)
+        self._refusals = []
+        self._log("agent_unfrozen")
+        if not self.chain.wallet_state(self.wallet).paused:
+            return "Agent unfrozen. The wallet was not paused."
+        r = self.owner.set_paused(False)
+        self._log("owner_command", command=op, ok=r.ok, tx=r.tx_hash, error=r.error)
+        return ("Agent unfrozen and wallet unpaused. Signed by you. Tx " + r.tx_hash if r.ok else
+                f"Agent unfrozen, but unpausing the wallet failed ({r.error}).")
 
     # ------------------------------------------------------------ monitor
 

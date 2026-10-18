@@ -1,7 +1,8 @@
 """Append-only, hash-chained audit log (JSONL). Each entry commits to the previous one,
 so editing or removing any entry but the last breaks `verify()`. Deleting the tail (or the
-whole file) is not detected without an external checkpoint. Secrets and raw account
-identifiers are redacted before writing.
+whole file) is caught only against an external checkpoint: `/anchor` writes the entry count
+and head hash to Sepolia (see `anchor_payload`), and `scripts/verify_audit.py` checks the log
+against those anchors. Secrets and raw account identifiers are redacted before writing.
 """
 from __future__ import annotations
 
@@ -9,6 +10,31 @@ import hashlib
 import json
 import time
 from pathlib import Path
+
+ANCHOR_PREFIX = b"TIWALA-AUDIT-v1"
+
+
+def anchor_payload(count: int, head: str) -> bytes:
+    """Calldata of an anchor transaction: prefix, entry count (8 bytes, big-endian), head hash (32 bytes)."""
+    return ANCHOR_PREFIX + count.to_bytes(8, "big") + bytes.fromhex(head)
+
+
+def parse_anchor(data: bytes):
+    """(count, head) from anchor calldata, or None if it is not an anchor."""
+    if not data.startswith(ANCHOR_PREFIX) or len(data) != len(ANCHOR_PREFIX) + 40:
+        return None
+    rest = data[len(ANCHOR_PREFIX):]
+    return int.from_bytes(rest[:8], "big"), rest[8:].hex()
+
+
+def check_anchor(entries: list[dict], count: int, head: str) -> str:
+    """'' if the log still holds entry `count` with hash `head`, else what is wrong."""
+    if len(entries) < count:
+        return f"log has {len(entries)} entries but an anchor recorded {count}: entries were deleted"
+    if entries[count - 1].get("hash") != head:
+        return f"entry {count} does not match its anchor: the log was rewritten"
+    return ""
+
 
 _REDACT_KEYS = {"private_key", "key", "account_number", "token", "password", "salt"}
 

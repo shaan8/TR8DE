@@ -296,6 +296,7 @@ def test_gate_rejects_forged_or_stale_authorization():
     assert g.check(a, auth)
     assert not g.check(_create(down_bps=5000), auth)  # different action
     assert not Gate().check(a, auth)  # another gate's key
+    assert g.consume(a, auth) and not g.consume(a, auth) and not g.check(a, auth)  # single use
 
     class Boom:
         def send(self, *_):

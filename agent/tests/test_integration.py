@@ -575,3 +575,53 @@ def test_audit_f3_wrong_deal_id_is_refused(env):
     v = verdict_of(ask_down(env, other, f"Release the down payment for Lumen deal {wanted} only."))
     assert not v["allowed"] and any(f"you named deal {wanted}" in x for x in v["reasons"]), v
     assert env["chain"].deal(env["wallet"], other).status == Status.LOCKED
+
+
+# ------------------------------------------------------------------ circuit breaker, freeze, audit anchors
+
+
+def test_circuit_breaker_freezes_after_repeated_refusals_until_unfreeze(env):
+    deal_id = locked_deal(env, env["lumen"])
+    blocklist(env, env["lumen"])
+    steps = []
+    for _ in range(4):
+        steps += [("tool", "draft_release_down_payment", {"deal_id": deal_id}), ("text", "ok")]
+    t = env["make"](coord(*steps), checker=approve_all())
+    for i in range(3):
+        r = t.handle(f"Release the 10% down payment for Lumen deal {deal_id}")
+    assert t.frozen() and "Circuit breaker" in r.reply, r.reply
+    (env["data"] / "blocklist.json").write_text("[]")
+    r = t.handle(f"Release the 10% down payment for Lumen deal {deal_id}")
+    assert "agent is frozen" in t.history[-2]["content"][0]["content"]  # the tool result the model saw
+    assert env["chain"].deal(env["wallet"], deal_id).status == Status.LOCKED
+    assert "unfrozen" in t.handle("/unfreeze").reply.lower() and not t.frozen()
+    assert verdict_of(ask_down(env, deal_id))["allowed"]
+
+
+def test_freeze_pauses_wallet_and_unfreeze_restores(env):
+    t, deal_id = open_lumen_deal(env)
+    r = t.handle("/freeze")
+    assert "paused on-chain" in r.reply and env["chain"].wallet_state(env["wallet"]).paused, r.reply
+    r = t.handle(f"/attest {deal_id}")  # attestation is the owner's own act; the frozen monitor pays nothing
+    assert "frozen" in r.reply.lower() and env["chain"].deal(env["wallet"], deal_id).status == Status.DELIVERED
+    r = t.handle("/unfreeze")
+    assert "unpaused" in r.reply and not env["chain"].wallet_state(env["wallet"]).paused, r.reply
+    assert any("done at Tier 1" in n for n in t.tick())
+
+
+def test_audit_anchor_detects_tail_deletion_offline_and_on_chain(env):
+    import subprocess, sys
+    t, _ = open_lumen_deal(env)
+    r = t.handle("/anchor")
+    assert "anchored on-chain" in r.reply, r.reply
+    log, anchors = env["audit"].path, env["audit"].path.parent / "anchors.jsonl"
+    root = __import__("pathlib").Path(__file__).resolve().parents[2]
+    cmd = [sys.executable, str(root / "scripts" / "verify_audit.py"), str(log), "--anchors", str(anchors),
+           "--rpc", env["c"]["rpc"]]
+    ok = subprocess.run(cmd, capture_output=True, text=True)
+    assert ok.returncode == 0 and "on-chain): ok" in ok.stdout, ok.stdout
+    lines = log.read_text().splitlines()
+    log.write_text("\n".join(lines[:-3]) + "\n")  # drop the tail: the chain itself still verifies
+    bad = subprocess.run(cmd, capture_output=True, text=True)
+    assert "hash chain:" in bad.stdout and "intact" in bad.stdout and bad.returncode == 1, bad.stdout
+    assert "entries deleted" in bad.stdout

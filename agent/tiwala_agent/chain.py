@@ -280,6 +280,23 @@ class OwnerConsole:
     def resolve(self, deal_id: int, release: bool) -> TxResult:
         return self._send(self.chain.wallet(self.wallet).functions.resolveDispute(deal_id, release))
 
+    def anchor(self, payload: bytes) -> TxResult:
+        """A zero-value transaction from the owner to itself carrying the audit anchor. Public and immutable."""
+        w3 = self.chain.w3
+        tx = {"from": self.acct.address, "to": self.acct.address, "value": 0, "data": payload,
+              "chainId": w3.eth.chain_id, "nonce": w3.eth.get_transaction_count(self.acct.address, "pending")}
+        tx["gas"] = w3.eth.estimate_gas(tx)
+        fees = w3.eth.fee_history(1, "latest", [50])
+        base = fees["baseFeePerGas"][-1]
+        tx["maxPriorityFeePerGas"] = w3.to_wei(1, "gwei")
+        tx["maxFeePerGas"] = base * 2 + tx["maxPriorityFeePerGas"]
+        h = w3.eth.send_raw_transaction(self.acct.sign_transaction(tx).raw_transaction)
+        r = w3.eth.wait_for_transaction_receipt(h, timeout=180)
+        return TxResult(r["status"] == 1, "0x" + h.hex().removeprefix("0x"), None, r["blockNumber"])
+
+    def set_paused(self, paused: bool) -> TxResult:
+        return self._send(self.chain.wallet(self.wallet).functions.setPaused(paused))
+
     def add_supplier(self, supplier: str) -> TxResult:
         return self._send(self.chain.wallet(self.wallet).functions.addSupplier(Web3.to_checksum_address(supplier)))
 
