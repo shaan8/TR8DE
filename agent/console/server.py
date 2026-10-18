@@ -35,6 +35,10 @@ class Msg(BaseModel):
     text: str
 
 
+class Confirm(BaseModel):
+    code: Optional[str] = None  # last 4 characters of a payee address
+
+
 # ---------------------------------------------------------------- live agent
 
 _live = None
@@ -88,13 +92,20 @@ def _live_state() -> dict:
                       "ref_flags": list(tag.flags), "total_php": d.total / PHP, "down_pct": d.down_bps / 100,
                       "deadline": d.deadline, "stage": STAGE[d.status.name]})
     pending = {"card": fx.parse_card(t.pending.card)} if t.pending else None
+    payees = []
+    for addr, e in t.directory.items():
+        listed, active_at = t.chain.supplier_onchain(t.wallet, addr)
+        payees.append({"name": e.name, "address": addr, "listed": listed, "active_at": active_at,
+                       "changed_at": e.address_changed_at})
+    pp = t.pending_payee
     return {
         "fixture": None, "title": "Live", "synthetic": False,
         "wallet": {"free": ws.free / PHP, "locked": ws.locked / PHP, "balance": ws.balance / PHP,
                    "daily_left": ws.daily_remaining / PHP, "daily_cap": ws.daily_cap / PHP,
                    "per_deal_cap": ws.per_deal_cap / PHP, "paused": ws.paused, "underfunded": ws.underfunded,
                    "source": "Sepolia, live"},
-        "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
+        "payees": payees, "pending_payee": {**pp.verdict.to_dict(), "card_text": pp.card} if pp else None,
+        "now": ws.now, "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
         "turns": [], "pending": pending, "explorer": "https://sepolia.etherscan.io",
     }
 
@@ -187,13 +198,16 @@ async def message(m: Msg, fixture: Optional[str] = Query(None)):
 
 
 @app.post("/api/confirm")
-def confirm(fixture: Optional[str] = Query(None)):
-    """The owner's Confirm button sends their own "yes": the core matches it deterministically."""
+def confirm(body: Optional[Confirm] = None, fixture: Optional[str] = Query(None)):
+    """The owner's Confirm button sends their own "yes" (plus the 4 characters they typed, for a payee):
+    the core matches it deterministically."""
+    code = (body.code or "").strip() if body else ""
+    text = f"yes {code}" if code else "yes"
     if fixture:
-        f = _fixture("executed" if fixture in ("approval", "correction") else fixture)
-        return {"turn": f["turns"][-1]}
-    res = live().handle("yes")
-    return {"turn": {"user": "yes", "reply": fx.strip_card(res.reply), "events": res.events}}
+        f = _fixture(fx.CONFIRMS_TO.get(fixture, fixture))
+        return {"turn": {**f["turns"][-1], "user": text}}
+    res = live().handle(text)
+    return {"turn": {"user": text, "reply": fx.strip_card(res.reply), "events": res.events}}
 
 
 @app.post("/api/tick")

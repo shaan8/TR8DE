@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FileWarning, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Composer, EmptyChat, Turn } from "./components/Chat.jsx";
 import { Feed, NeedsYou } from "./components/Feed.jsx";
-import { DailyLimit, Deals, Suppliers, Wallet } from "./components/Sidebar.jsx";
+import { DailyLimit, Deals, Payees, Suppliers, Wallet } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
 import { getJSON, postJSON, query, sendMessage } from "./lib.js";
 
@@ -27,6 +27,7 @@ export default function App() {
   const [turns, setTurns] = useState([]);
   const [activity, setActivity] = useState([]);
   const [pendingLine, setPendingLine] = useState(null);
+  const [pendingPayeeLine, setPendingPayeeLine] = useState(null);
   const [confirmedLines, setConfirmed] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
@@ -39,7 +40,7 @@ export default function App() {
     try {
       const s = await getJSON("/api/state", fixture);
       setState(s); setActivity(s.activity);
-      if (initial) { setTurns(s.turns); setPendingLine(s.pending?.line ?? null); }
+      if (initial) { setTurns(s.turns); setPendingLine(s.pending?.line ?? null); setPendingPayeeLine(s.pending_payee_line ?? null); }
     } catch (e) { setError(String(e.message || e)); }
   };
   useEffect(() => {
@@ -59,9 +60,11 @@ export default function App() {
 
   const halted = state.wallet.underfunded || state.wallet.paused;
   const ownerWords = turns.map((t) => t.user).filter((u) => u && !u.startsWith("/"));
+  const savedPayees = new Set(turns.flatMap((t) => t.events.filter((e) => e.event === "payee_saved").map((e) => e.address)));
+  const payeeDraft = pendingPayeeLine != null && turns.flatMap((t) => t.events).find((e) => e.line === pendingPayeeLine);
 
   const send = async (text) => {
-    setBusy(true); setDraft("");
+    setBusy(true); setDraft(""); setPendingPayeeLine(null);  // any other message drops a drafted payee
     const idx = turns.length;
     setTurns((ts) => [...ts, { user: text, reply: "", events: [], inflight: true }]);
     try {
@@ -71,6 +74,8 @@ export default function App() {
       setTurns((ts) => ts.map((x, i) => (i === idx ? t : x)));
       const v = t.events.filter((e) => e.event === "verdict" && e.verdict.allowed && e.verdict.needs_confirmation).pop();
       setPendingLine(v ? v.line : null);
+      const p = t.events.filter((e) => e.event === "payee_check" && e.allowed).pop();
+      setPendingPayeeLine(p ? p.line : null);
       if (!fixture) load();
     } catch (e) {
       setTurns((ts) => ts.map((t, i) => (i === idx ? { ...t, inflight: false, reply: `Could not reach the agent: ${e.message}. Nothing was sent.` } : t)));
@@ -88,6 +93,16 @@ export default function App() {
     } finally { setBusy(false); }
   };
 
+  const confirmPayee = async (code) => {
+    setBusy(true);
+    try {
+      const { turn } = await postJSON("/api/confirm", fixture, { code });
+      setPendingPayeeLine(null);
+      setTurns((ts) => [...ts, turn]);
+      if (!fixture) load();
+    } finally { setBusy(false); }
+  };
+
   const tick = async () => {
     setBusy(true);
     try {
@@ -97,8 +112,8 @@ export default function App() {
   };
 
   const ctx = {
-    pendingLine, confirmedLines, halted, busy, ownerWords,
-    onConfirm: confirm,
+    pendingLine, confirmedLines, halted, busy, ownerWords, pendingPayeeLine, savedPayees, now: state.now,
+    onConfirm: confirm, onConfirmPayee: confirmPayee,
     onEdit: () => { setDraft("Change it to "); inputRef.current?.focus(); },
     onRetry: (text) => text && send(text),
   };
@@ -131,8 +146,8 @@ export default function App() {
 
       <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_340px]">
         <main className="order-1 space-y-4 lg:order-2 lg:col-start-2 lg:row-start-1">
-          <NeedsYou pending={pendingCard} alerts={state.alerts} highlight={state.highlight === "needs"}
-            onReview={() => document.getElementById("pending-card")?.scrollIntoView({ behavior: "smooth", block: "center" })} />
+          <NeedsYou pending={pendingCard} payee={payeeDraft || null} alerts={state.alerts} highlight={state.highlight === "needs"}
+            onReview={(id = "pending-card") => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" })} />
           <section aria-label="Conversation" className="space-y-4">
             {turns.length ? turns.map((t, i) => <Turn key={i} turn={t} ctx={ctx} />) : <EmptyChat />}
           </section>
@@ -142,6 +157,7 @@ export default function App() {
         <aside aria-label="Wallet and deals" className="order-2 space-y-4 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 xl:row-span-1">
           <Wallet w={state.wallet} />
           <DailyLimit w={state.wallet} />
+          <Payees list={state.payees} now={state.now} highlight={state.highlight === "payees"} />
           {state.suppliers && state.fixture === "reputation" && <Suppliers list={state.suppliers} />}
           <Deals deals={state.deals} />
         </aside>

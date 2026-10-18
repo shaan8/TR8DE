@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Send, Timer, User } from "lucide-react";
-import { ActionCard, ModelDown, OwnerReceipt, QuestionCard, RefusalCard, TxReceipt, UntrustedBlock } from "./Cards.jsx";
+import { ActionCard, ModelDown, OwnerReceipt, PayeeCard, PayeeNotSaved, PayeeReceipt, QuestionCard, RefusalCard, TxReceipt, UntrustedBlock } from "./Cards.jsx";
 import { Trace } from "./Trace.jsx";
 import { Button, Chip, Prose } from "./ui.jsx";
 
@@ -24,6 +24,13 @@ function cardsFor(turn, ctx) {
       out.push(<TxReceipt key={key} e={e} autonomous={isMonitor(e)} />);
     } else if (e.event === "owner_command") {
       out.push(<OwnerReceipt key={key} e={e} />);
+    } else if (e.event === "payee_check") {
+      out.push(<PayeeCard key={key} e={e} pending={ctx.pendingPayeeLine != null && ctx.pendingPayeeLine === e.line}
+        saved={ctx.savedPayees.has(e.address)} disabled={ctx.halted || ctx.busy} onConfirm={ctx.onConfirmPayee} />);
+    } else if (e.event === "payee_saved") {
+      out.push(<PayeeReceipt key={key} e={e} now={ctx.now} />);
+    } else if (e.event === "payee_confirm_failed") {
+      out.push(<PayeeNotSaved key={key} e={e} />);
     } else if (e.event === "coordinator_error") {
       out.push(<ModelDown key={key} e={e} disabled={ctx.halted || ctx.busy} onRetry={() => ctx.onRetry(turn.user)} />);
     }

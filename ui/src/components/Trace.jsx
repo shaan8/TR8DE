@@ -40,6 +40,17 @@ export function steps(events) {
       out.push(["chain", "Contract", <>{bad("reverted")} {e.error} {tx(e.tx)}</>]);
     } else if (k === "owner_command") {
       out.push(["owner", "Owner key", <>{e.command} {e.ok ? ok("sent") : bad(e.error)} {tx(e.tx)}</>]);
+    } else if (k === "payee_check") {
+      const failed = (e.checks || []).filter((c) => !c.ok && c.severity === "refuse").map((c) => c.rule);
+      out.push(["llm", "Coordinator", <>drafted <strong>save payee · {e.name}</strong></>]);
+      out.push(["code", "Payee checks", e.allowed ? <>{ok(`${(e.checks || []).filter((c) => c.ok).length} passed`)}{e.flags?.length ? muted(` · flags: ${e.flags.join(", ")}`) : null}</>
+        : bad(`refused: ${failed.join(", ")}`)]);
+    } else if (k === "payee_confirmed") {
+      out.push(["owner", "Owner", <>typed the last 4 characters; checks re-run: {e.allowed ? ok("pass") : bad("refused")}</>]);
+    } else if (k === "payee_confirm_failed") {
+      out.push(["owner", "Owner", bad(`not saved: ${e.reason}`)]);
+    } else if (k === "payee_saved") {
+      out.push(["owner", "Owner key", <>addSupplier {ok("signed")} {tx(e.tx)}{e.remove_tx ? <> · removeSupplier {tx(e.remove_tx)}</> : null}</>]);
     } else if (k === "coordinator_error") {
       out.push(["llm", "Coordinator", <>{bad("unavailable")} {muted(String(e.error).slice(0, 90) + "…")}</>]);
     } else if (k === "monitor_tick") {

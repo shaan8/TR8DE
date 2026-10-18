@@ -119,6 +119,32 @@ DEALS = {
     4: dict(supplier=BAYANI, ref="PO-310", total_php=5000, down_pct=10, deadline=1792321489, stage="Locked", born=34),
     5: dict(supplier=BAYANI, ref="PO-320", total_php=5000, down_pct=10, deadline=1792325280, stage="Locked", born=54),
 }
+# The four onboarded suppliers (deployments/11155111.json), active since onboarding; payee_saved events add more.
+BASE_PAYEES = [{"name": n, "address": a, "listed": True, "active_at": 0, "changed_at": 0} for n, a in
+               json.loads((ROOT / "deployments" / "11155111.json").read_text())["suppliers"].items()]
+
+
+def payees_at(end: int) -> list[dict]:
+    out = [dict(p) for p in BASE_PAYEES]
+    for i in range(min(end, len(audit()))):
+        e = ev(i)
+        if e["event"] == "payee_saved":
+            out = [p for p in out if p["address"] != e.get("replaces")]
+            out.append({"name": e["name"], "address": e["address"], "listed": True, "active_at": e["active_at"],
+                        "changed_at": e["ts"] if e.get("replaces") else 0})
+    return out
+
+
+def _pending_payee(turns: list[dict]) -> int | None:
+    evs_ = [e for t in turns for e in t["events"]]
+    for i in range(len(evs_) - 1, -1, -1):
+        if evs_[i]["event"] in ("payee_saved", "payee_confirm_failed", "payee_dropped"):
+            return None
+        if evs_[i]["event"] == "payee_check" and evs_[i]["allowed"]:
+            return evs_[i]["line"]
+    return None
+
+
 STAGE_BY_KIND = {"release_down_payment": "DP paid", "release_balance": "Completed", "cancel_deal": "Refunded"}
 
 
@@ -168,6 +194,9 @@ def activity_at(end: int) -> list[dict]:
             out.append({"type": "autonomous", "status": "refused", "rule": origin["detail"].split(":")[0],
                         "kind": e["action"]["kind"], "deal_id": e["action"]["deal_id"], "tier": e["verdict"]["tier"],
                         "reasons": e["verdict"]["reasons"], "ts": e["ts"], "line": e["line"], "events": [e]})
+        elif k == "payee_saved":
+            out.append({"type": "owner", "status": "executed", "command": f"addSupplier {e['name']}",
+                        "tx": e["tx"], "ts": e["ts"], "line": e["line"]})
         elif k == "owner_command":
             out.append({"type": "owner", "status": "executed" if e["ok"] else "failed", "command": e["command"],
                         "tx": e.get("tx"), "error": e.get("error"), "ts": e["ts"], "line": e["line"]})
@@ -273,7 +302,19 @@ SPECS: dict[str, dict] = {
                    turns=lambda: [{"user": "/tick", "reply": "HALTED: escrow holds ₱5,000.00 but open deals need "
                                    "₱10,000.00 (likely an issuer clawback). I will not move any funds until this is "
                                    "resolved.", "events": [SYNTH_HALT], "source": "synthetic, text from core.tick()"}]),
+    "payee": dict(title="New payee from your words", n=17, beat="6", end=79, wallet="now", highlight="payees",
+                  turns=lambda: [turn("beat6-save-payee", 0, 76, 79)]),
+    "payee_saved": dict(title="Payee signed by owner key", n=18, beat="6", end=82, wallet="now", highlight="payees",
+                        turns=lambda: [turn("beat6-save-payee", 0, 76, 79), turn("beat6-save-payee", 1, 79, 82)]),
+    "too_soon": dict(title="Payee in waiting period", n=19, beat="6", end=87, wallet="now",
+                     turns=lambda: [turn("beat7-pay-too-soon", 0, 82, 87)]),
+    "lookalike": dict(title="Lookalike address refused", n=20, beat="6", end=91, wallet="now",
+                      turns=lambda: [turn("beat8-lookalike-payee", 0, 87, 91)]),
+    "payee_chain": dict(title="Address from chain text", n=21, beat="6", end=93, wallet="now",
+                        turns=lambda: [turn("beat9-payee-from-chain", 0, 91, 92),
+                                       turn("beat9-payee-from-chain", 1, 92, 93)]),
 }
+CONFIRMS_TO = {"approval": "executed", "correction": "executed", "payee": "payee_saved"}
 
 
 def _pending(turns: list[dict]) -> dict | None:
@@ -301,7 +342,8 @@ def build(name: str) -> dict:
     return {
         "fixture": name, "title": s["title"], "state_no": s["n"], "beat": s["beat"],
         "synthetic": s.get("synthetic", False), "highlight": s.get("highlight"),
-        "wallet": WALLETS[s["wallet"]],
+        "wallet": WALLETS[s["wallet"]], "payees": payees_at(s["end"]),
+        "pending_payee_line": _pending_payee(turns), "now": audit()[min(s["end"], len(audit())) - 1]["ts"],
         "deals": deals_at(s["end"]), "activity": activity_at(s["end"]), "alerts": alerts,
         "suppliers": SUPPLIERS.get(s.get("suppliers", "before")), "turns": turns, "pending": _pending(turns),
         "explorer": "https://sepolia.etherscan.io", "wallet_link": CONTRACT_LINK, "audit_source": str(AUDIT.relative_to(ROOT)),

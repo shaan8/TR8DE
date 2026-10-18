@@ -26,6 +26,7 @@ class AuditLog:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.count = 0  # entries written so far; the last entry's 1-based line number
         self._prev = self._last_hash()
 
     def _last_hash(self) -> str:
@@ -36,6 +37,7 @@ class AuditLog:
             for line in f:
                 if line.strip():
                     last = line
+                    self.count += 1
         return json.loads(last)["hash"] if last else "0" * 64
 
     def write(self, event: str, **data) -> dict:
@@ -45,6 +47,7 @@ class AuditLog:
         with self.path.open("a") as f:
             f.write(json.dumps(entry, sort_keys=True, default=str) + "\n")
         self._prev = entry["hash"]
+        self.count += 1
         return entry
 
     def entries(self) -> list[dict]:

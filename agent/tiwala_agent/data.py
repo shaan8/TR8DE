@@ -1,5 +1,5 @@
-"""Off-chain inputs: supplier directory, user plans and the sanctions/blocklist. All read-only;
-the agent never moves fiat."""
+"""Off-chain inputs: supplier directory, user plans and the sanctions/blocklist. Read-only except the
+directory, which only an owner-confirmed payee save writes. The agent never moves fiat."""
 from __future__ import annotations
 
 import json
@@ -37,6 +37,13 @@ def load_directory(path: Path) -> dict[str, SupplierEntry]:
         addr = Web3.to_checksum_address(e["address"])
         out[addr] = SupplierEntry(e["name"], addr, int(e.get("address_changed_at", 0)))
     return out
+
+
+def save_directory(path: Path, directory: dict[str, SupplierEntry]) -> None:
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps([{"name": e.name, "address": e.address, "address_changed_at": e.address_changed_at}
+                               for e in directory.values()], indent=2))
+    tmp.replace(path)
 
 
 def load_blocklist(path: Path) -> set[str]:

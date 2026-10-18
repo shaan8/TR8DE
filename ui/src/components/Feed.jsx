@@ -44,15 +44,24 @@ export function Feed({ items, highlight }) {
   );
 }
 
-export function NeedsYou({ pending, alerts, highlight, onReview }) {
+export function NeedsYou({ pending, payee, alerts, highlight, onReview }) {
   const items = [];
+  if (payee) {
+    items.push(
+      <li key="payee" className="flex flex-wrap items-center gap-3 rounded bg-raised p-3">
+        <Chip tone="warn" icon={KeyRound}>{payee.kind === "address_change" ? "Payout change" : "New payee"}</Chip>
+        <span className="flex-1 text-sm">{payee.name} · <span className="font-mono">{payee.address.slice(0, 6)}…{payee.address.slice(-4)}</span></span>
+        <Button variant="ghost" className="min-h-[36px]" onClick={() => onReview("pending-payee")}>Review</Button>
+      </li>,
+    );
+  }
   if (pending) {
     const c = pending.card || {};
     items.push(
       <li key="p" className="flex flex-wrap items-center gap-3 rounded bg-raised p-3">
         <Chip tone="warn" icon={AlertTriangle}>Approval</Chip>
         <span className="flex-1 text-sm">{c.supplier} · {c.po} · <span className="font-mono">{peso(c.total_php)}</span>, {c.down_pct}% down</span>
-        <Button variant="ghost" className="min-h-[36px]" onClick={onReview}>Review</Button>
+        <Button variant="ghost" className="min-h-[36px]" onClick={() => onReview()}>Review</Button>
       </li>,
     );
   }

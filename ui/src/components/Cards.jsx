@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { AlertTriangle, ArrowRight, Ban, CheckCircle2, CircleHelp, ExternalLink, FileWarning, KeyRound, Pencil, RotateCcw, ShieldAlert, XCircle } from "lucide-react";
 import { Button, Card, Chip, Row } from "./ui.jsx";
-import { KIND, parseMismatch, peso, short, txUrl } from "../lib.js";
+import { KIND, addrUrl, chunk, parseMismatch, peso, short, txUrl, when } from "../lib.js";
 
 const TIER_TONE = { 1: "ok", 2: "warn", 3: "bad" };
 export const TierChip = ({ tier }) => <Chip tone={TIER_TONE[tier] || "muted"}>Tier {tier}</Chip>;
@@ -224,6 +225,102 @@ export function ModelDown({ e, onRetry, disabled }) {
       <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={16} className="text-warn" aria-hidden="true" />The assistant model is unavailable{code ? ` (rate limit ${code})` : ""}.</p>
       <p className="mt-1 text-sm text-ink-2">Nothing was drafted, nothing moved. The monitor and your owner commands still work.</p>
       <Button variant="ghost" className="mt-3" onClick={onRetry} disabled={disabled}><RotateCcw size={16} aria-hidden="true" />Retry</Button>
+    </div>
+  );
+}
+
+const SEV = (c) => (c.ok ? { tone: "ok", Icon: CheckCircle2, word: "Pass" } : c.severity === "flag"
+  ? { tone: "warn", Icon: AlertTriangle, word: "Check" } : { tone: "bad", Icon: XCircle, word: "Fail" });
+const RULE_LABEL = {
+  format: "Address format", checksum: "Checksum", provenance: "You typed it", address_also_in_chain_text: "Also in chain text",
+  name_filled_by_tiwala: "Name source", reserved: "Not a wallet role", blocklist: "Blocklist", duplicate: "Not saved yet",
+  payout_address_change: "Payout change", lookalike_address: "Lookalike address", lookalike_name: "Lookalike name",
+  similar_name: "Similar name",
+};
+
+function Address({ a }) {
+  return (
+    <a href={addrUrl(a)} target="_blank" rel="noreferrer" className="inline-flex flex-wrap items-center gap-x-2 font-mono text-base" title={a}>
+      {chunk(a)} <ExternalLink size={14} aria-hidden="true" /><span className="sr-only">(opens Etherscan)</span>
+    </a>
+  );
+}
+
+/** A drafted payee: every check, then the owner types the last 4 characters and their key signs. */
+export function PayeeCard({ e, pending, saved, disabled, onConfirm }) {
+  const [code, setCode] = useState("");
+  const ok = /^[0-9a-f]{4}$/i.test(code);
+  const change = e.kind === "address_change";
+  const hours = e.delay_s ? (e.delay_s >= 3600 ? `${e.delay_s / 3600}-hour` : `${e.delay_s}-second`) : "";
+  return (
+    <Card tone={e.allowed ? "warn" : "bad"} id={pending ? "pending-payee" : undefined} aria-label={e.allowed ? "Payee approval needed" : "Payee refused"}>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {!e.allowed ? <Chip tone="bad" icon={Ban}>Refused</Chip> : saved ? <Chip tone="accent" icon={KeyRound}>Signed by owner key</Chip>
+          : <Chip tone="warn" icon={KeyRound}>Owner key needed</Chip>}
+        <Chip tone={change ? "warn" : "accent"}>{change ? "Payout address change" : "New payee"}</Chip>
+        {saved && <Chip tone="ok" icon={CheckCircle2}>Saved</Chip>}
+        {e.allowed && !pending && !saved && <Chip tone="muted">Not confirmed</Chip>}
+      </div>
+      <h3 className="mb-1 text-title font-semibold">{change ? "Change payout address" : "Save payee"} · {e.name || "unnamed"}</h3>
+      <p className="mb-4 text-sm text-ink-2">{saved ? "Saved after you typed the last 4 characters and your key signed it."
+        : e.allowed ? "Nothing is saved yet. Code ran every check below; the agent cannot save a payee, only your key can."
+        : "Not saved. There is no Confirm: a failed payee check cannot be overridden from chat."}</p>
+      <dl className="divide-y divide-subtle/60">
+        <Row label="Address">{/^0x[0-9a-fA-F]{40}$/.test(e.address) ? <Address a={e.address} /> : <span className="font-mono">{e.address}</span>}</Row>
+        {e.replaces && <Row label="Replaces"><span className="font-mono text-ink-2 line-through">{chunk(e.replaces)}</span></Row>}
+        <Row label="Checks">
+          <ul className="space-y-1.5">
+            {e.checks.map((c) => {
+              const s = SEV(c);
+              return (
+                <li key={c.rule} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
+                  <Chip tone={s.tone} icon={s.Icon} className="mt-0.5">{s.word}</Chip>
+                  <span><span className="font-semibold">{RULE_LABEL[c.rule] || c.rule}</span> <span className={c.ok ? "text-ink-2" : ""}>{c.detail}</span></span>
+                </li>
+              );
+            })}
+          </ul>
+        </Row>
+        {e.allowed && <Row label="After you sign">Payable after the wallet's {hours} waiting period, enforced by the contract.</Row>}
+      </dl>
+      {pending && (
+        <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={(ev) => { ev.preventDefault(); if (ok) onConfirm(code); }}>
+          <label className="text-sm">
+            <span className="mb-1 block text-ink-2">Check the address against the supplier's invoice, then type its last 4 characters</span>
+            <input value={code} onChange={(ev) => setCode(ev.target.value.trim().slice(0, 4))} maxLength={4} autoComplete="off" spellCheck={false}
+              className="w-28 rounded border border-subtle bg-canvas px-3 py-2 font-mono text-base text-ink" aria-label="Last 4 characters of the address" />
+          </label>
+          <Button type="submit" disabled={disabled || !ok}><KeyRound size={16} aria-hidden="true" />Sign with owner key</Button>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+export function PayeeReceipt({ e, now }) {
+  const waiting = e.active_at && now && e.active_at > now;
+  return (
+    <Card tone="ok" aria-label="Payee saved">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Chip tone="accent" icon={KeyRound}>Owner key</Chip><Chip tone="ok" icon={CheckCircle2}>Saved on-chain</Chip>
+        {waiting && <Chip tone="warn">Waiting period</Chip>}
+      </div>
+      <dl>
+        <Row label="Payee">{e.name}</Row>
+        <Row label="Address"><Address a={e.address} /></Row>
+        <Row label="Tx"><TxLink hash={e.tx} /></Row>
+        {e.remove_tx && <Row label="Old address removed"><TxLink hash={e.remove_tx} /></Row>}
+        <Row label="Payable from"><span className="font-mono">{when(e.active_at)}</span> <span className="text-ink-2">(Manila time; the contract refuses deals before this)</span></Row>
+      </dl>
+    </Card>
+  );
+}
+
+export function PayeeNotSaved({ e }) {
+  return (
+    <div role="status" className="rounded border border-bad bg-raised p-4 text-sm">
+      <p className="flex items-center gap-2 font-semibold"><XCircle size={16} className="text-bad" aria-hidden="true" />Not saved: {e.reason}.</p>
+      <p className="mt-1 text-ink-2">Nothing was signed. Ask again to start over.</p>
     </div>
   );
 }

@@ -1,0 +1,11 @@
+
+you> Create escrow for Kalinaw Crafts, PO-410, PHP 5,000, 10% down, delivery by 2026-10-30.
+tiwala> The deal was refused for two reasons:
+
+1. **Supplier cooling period** — Kalinaw Crafts was just saved and is still in its 24-hour on-chain waiting period. You can create deals with them after that period ends.
+
+2. **Forecast shortfall** — The forecast shows a ₱500 shortfall on 2026-10-25 (free balance ₱169,500, buffer ₱20,000). The suggested fix is to top up ₱50,000, which would eliminate the shortfall and add a large safety margin.
+
+Once the cooling period passes, you can re-run the deal creation. If you want to proceed, you'll also need to confirm the deal (the system will show a summary card for your approval).
+
+audit chain intact

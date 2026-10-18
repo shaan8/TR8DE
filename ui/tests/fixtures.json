@@ -94,5 +94,35 @@
         "n": 16,
         "title": "Halted (underfunded)",
         "synthetic": true
+    },
+    {
+        "name": "payee",
+        "n": 17,
+        "title": "New payee from your words",
+        "synthetic": false
+    },
+    {
+        "name": "payee_saved",
+        "n": 18,
+        "title": "Payee signed by owner key",
+        "synthetic": false
+    },
+    {
+        "name": "too_soon",
+        "n": 19,
+        "title": "Payee in waiting period",
+        "synthetic": false
+    },
+    {
+        "name": "lookalike",
+        "n": 20,
+        "title": "Lookalike address refused",
+        "synthetic": false
+    },
+    {
+        "name": "payee_chain",
+        "n": 21,
+        "title": "Address from chain text",
+        "synthetic": false
     }
 ]

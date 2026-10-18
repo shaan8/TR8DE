@@ -9,6 +9,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | --- | --- | --- |
 | Escrowed funds | Compromised or misled agent key | Contract limits the agent key (below); owner-only actions need the owner key |
 | Owner intent | Prompt injection via PO notes, supplier names, chat | Input guard wraps chain text as data; intent verifier compares actions to the owner's own words |
+| Payee list | Injected, poisoned or mistyped payout addresses | Payee checks in code (`payee.py`): the address must be in the owner's own words, EIP-55 checksum, no lookalike of a saved address or name, no wallet roles or blocklist; owner types its last 4 characters; owner key signs `addSupplier`; contract waits `supplierDelay` |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
 | Audit trail | Tampering after the fact | Hash-chained JSONL; `/verify` recomputes the chain |
 
@@ -20,7 +21,8 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
    closed on errors or unparseable output. Neither can sign.
 2. **Deterministic gate (`core.py`, `policy.py`, `intent.py`, `guard.py`).** Every action needs an HMAC Gate
    authorization minted only after the policy engine allows it. Tier 2 actions need a confirmation matched on the
-   owner's own next message, not on model output. Owner-tier actions run only from typed slash commands.
+   owner's own next message, not on model output. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
+   payee checks pass and the owner types the address's last 4 characters; the owner key signs it.
 3. **Scoped signer (`chain.py`).** The agent key can call only operator functions; each call is simulated first.
 4. **Contract (`TiwalaAgentWallet`).** For the agent key:
    - payees must be whitelisted by the owner and active after `supplierDelay`

@@ -1,5 +1,7 @@
 export const EXPLORER = "https://sepolia.etherscan.io";
 export const txUrl = (h) => `${EXPLORER}/tx/${h}`;
+export const addrUrl = (a) => `${EXPLORER}/address/${a}`;
+export const chunk = (a) => (a ? "0x" + a.slice(2).match(/.{1,4}/g).join(" ") : "");
 export const short = (h, n = 10) => (h ? `${h.slice(0, n)}…${h.slice(-4)}` : "");
 export const peso = (v, dp = 0) =>
   v == null ? "n/a" : "₱" + Number(v).toLocaleString("en-PH", { minimumFractionDigits: dp, maximumFractionDigits: dp });

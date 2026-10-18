@@ -153,6 +153,9 @@ class Chain:
                 return d
         return None
 
+    def supplier_delay(self, wallet: str) -> int:
+        return int(self.wallet(wallet).functions.supplierDelay().call())
+
     def supplier_onchain(self, wallet: str, supplier: str) -> tuple[bool, int]:
         listed, active_at, _, _ = self.wallet(wallet).functions.suppliers(Web3.to_checksum_address(supplier)).call()
         return bool(listed), int(active_at)
@@ -276,3 +279,9 @@ class OwnerConsole:
 
     def resolve(self, deal_id: int, release: bool) -> TxResult:
         return self._send(self.chain.wallet(self.wallet).functions.resolveDispute(deal_id, release))
+
+    def add_supplier(self, supplier: str) -> TxResult:
+        return self._send(self.chain.wallet(self.wallet).functions.addSupplier(Web3.to_checksum_address(supplier)))
+
+    def remove_supplier(self, supplier: str) -> TxResult:
+        return self._send(self.chain.wallet(self.wallet).functions.removeSupplier(Web3.to_checksum_address(supplier)))

@@ -43,8 +43,8 @@ policy engine allows it; Tier 2 confirmation is matched on the owner's own next 
 
 ## Live agent run on Sepolia
 
-All five demo beats ran end to end against the deployed contracts. Transcripts are in [`reports/live/`](reports/live/);
-`audit.jsonl` (69 entries) verifies as an intact hash chain.
+All six demo beats ran end to end against the deployed contracts. Transcripts are in [`reports/live/`](reports/live/);
+`audit.jsonl` (93 entries) verifies as an intact hash chain.
 
 | Beat | What happens | Evidence |
 | --- | --- | --- |
@@ -56,6 +56,7 @@ All five demo beats ran end to end against the deployed contracts. Transcripts a
 | 4c. Contract backstop | Agent key forces `releaseBalance` on an unattested deal; contract reverts `WrongStatus(Locked)` | [reverted tx](https://sepolia.etherscan.io/tx/0x0479cd2d2ea18c2403a90278ef526e0adb5b04bf2365f3cb3088606a4e5168d0), [transcript](reports/live/beat4c-forced-revert.txt) |
 | 4d. Social engineering | Owner pushes for 50% down; policy holds the 25% cap, Checker flags the changed terms | [transcript](reports/live/beat4d-manipulation.txt) |
 | 5. Overdue | Bayani misses the deadline; monitor tick refunds at Tier 1; Bayani's cap drops to 15% | [create](https://sepolia.etherscan.io/tx/0x47d2f33dbe583bf674a39a7e03290843a5ad3d44a17cd35434feb11718aba1b7), [down payment](https://sepolia.etherscan.io/tx/0x8ae244f155da26305d8ce3dec956a3cf6bc8378dc144f90182a370b0a3ac42e3), [refund](https://sepolia.etherscan.io/tx/0xb16c7e1fb84a082e5efa60336faace9a99e3713020b7321245758fcbe5c212e7), [transcript](reports/live/beat5-overdue.txt) |
+| 6. New payee | Owner saves Kalinaw Crafts in one sentence; payee checks pass; owner types the last 4 characters and the owner key signs `addSupplier`; a deal before the 24-hour waiting period is refused; a poisoned lookalike of Bayani's address and an address from a PO note are refused | [addSupplier](https://sepolia.etherscan.io/tx/0x9a95283c0a3880fc06a7253858ae2a2c784edd01cdb270191932abf06a723111), transcripts [save](reports/live/beat6-save-payee.txt), [too soon](reports/live/beat7-pay-too-soon.txt), [lookalike](reports/live/beat8-lookalike-payee.txt), [from chain](reports/live/beat9-payee-from-chain.txt) |
 
 ## Run the tests
 
@@ -102,7 +103,7 @@ cd ui && npm install && npm run build                                # builds ui
 cd ../agent && ../.venv/bin/uvicorn console.server:app --port 8000   # API + page on :8000
 ```
 
-Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 16 states in the header) to replay
+Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in the header) to replay
 `agent/logs/audit.jsonl` slices and `reports/live` transcripts with no model or chain calls. Without
 `?fixture=` the page drives the live agent. `cd ui && npm run shots` renders every state at 1440 and 390 into
 `reports/ui/` and runs axe on each (spec: `docs/ui-spec.md`).

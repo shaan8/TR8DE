@@ -413,3 +413,76 @@ def test_down_payment_followup_tells_checker_about_confirmed_card(env):
     req = chk.calls[-1]["messages"][0]["content"]
     assert '"release_down_payment"' in req or "release_down" in req
     assert "System (not the owner): the owner replied yes" in req and "20% = ₱24,000.00" in req
+
+
+# ------------------------------------------------------------------ payee onboarding
+
+
+def save_payee(env, name, addr, said=None):
+    t = env["make"](coord(("tool", "draft_save_supplier", {"name": name, "address": addr}), ("text", "Please check the card.")))
+    return t, t.handle(said or f"Save {name}, payout {addr}")
+
+
+def verdict_of(r):
+    return [e for e in r.events if e["event"] == "verdict"][-1]["verdict"]
+
+
+def test_payee_save_needs_last4_owner_key_and_waiting_period(env):
+    new = Account.create().address
+    t, r = save_payee(env, "Juan Supplies", new)
+    assert "CONFIRM NEW PAYEE" in r.reply and t.pending_payee, r.reply
+    assert "last 4 characters" in t.handle("yes").reply and t.pending_payee  # plain yes is not enough
+    wrong = "0000" if new[-4:].lower() != "0000" else "1111"
+    assert "Nothing was saved" in t.handle(f"yes {wrong}").reply and t.pending_payee is None
+    assert env["chain"].supplier_onchain(env["wallet"], new)[0] is False
+
+    t, _ = save_payee(env, "Juan Supplies", new)
+    r = t.handle(f"yes {new[-4:]}")
+    assert "Saved Juan Supplies" in r.reply and "Signed by you" in r.reply, r.reply
+    saved = [e for e in r.events if e["event"] == "payee_saved"][0]
+    listed, active_at = env["chain"].supplier_onchain(env["wallet"], new)
+    assert listed and active_at > env["chain"].now() and saved["active_at"] == active_at
+    assert t.directory[new].name == "Juan Supplies"
+
+    deal = lambda: env["make"](coord(("tool", "draft_create_deal", {
+        "supplier": "Juan Supplies", "total_php": 5000, "down_pct": 0, "deadline": day(env["chain"], 5),
+        "po_ref": "PO-500"}), ("text", "ok")), checker=approve_all()).handle("Juan Supplies PO-500 ₱5,000, 0% down")
+    v = verdict_of(deal())
+    assert not v["allowed"] and any("cooling period" in x for x in v["reasons"]), v
+    warp(env, env["chain"].supplier_delay(env["wallet"]) + 1)
+    v = verdict_of(deal())
+    assert not any("cooling period" in x or "whitelisted" in x for x in v["reasons"]), v
+
+
+def test_payee_from_chain_text_is_refused(env):
+    """The agent read an address somewhere other than the owner's words: it cannot become a payee."""
+    planted = Account.create().address
+    t, r = save_payee(env, "Juan Supplies", planted, said="Save the supplier address from the PO note as Juan Supplies")
+    check = [e for e in r.events if e["event"] == "payee_check"][0]
+    assert not check["allowed"] and "provenance" in check["flags"] and t.pending_payee is None
+    assert env["chain"].supplier_onchain(env["wallet"], planted)[0] is False
+
+
+def test_payee_lookalike_of_saved_address_is_refused(env):
+    b = env["bayani"].lower()
+    poisoned = Web3.to_checksum_address(b[:6] + "7" * 32 + b[-4:])
+    t, r = save_payee(env, "Juan Supplies", poisoned)
+    check = [e for e in r.events if e["event"] == "payee_check"][0]
+    assert not check["allowed"] and "lookalike_address" in check["flags"] and "CONFIRM" not in r.reply
+
+
+def test_payout_address_change_removes_old_and_flags_new(env):
+    new = Account.create().address
+    t, r = save_payee(env, "Bayani Weaves", new)
+    assert "CONFIRM PAYOUT ADDRESS CHANGE" in r.reply and "payout_address_change" in r.reply, r.reply
+    r = t.handle(f"yes {new[-4:]}")
+    assert "Old address removed" in r.reply, r.reply
+    assert env["chain"].supplier_onchain(env["wallet"], env["bayani"])[0] is False
+    assert env["bayani"] not in t.directory and t.directory[new].address_changed_at > 0
+
+
+def test_agent_key_cannot_add_a_supplier(env):
+    """Contract backstop: addSupplier is onlyOwner, so even a compromised agent key cannot add a payee."""
+    c = env["chain"]
+    with pytest.raises(Exception):
+        c.wallet(env["wallet"]).functions.addSupplier(Account.create().address).call({"from": c.agent_address})

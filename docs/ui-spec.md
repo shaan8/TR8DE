@@ -23,6 +23,11 @@ Criteria: **T** task completion 40%, **S** security and compliance 30%, **I** in
 | 14 | Shortfall alert | 2, 5 | monitor note "planned POs leave you ₱75,000 short" | "Needs you" alert with date and amount | T, I |
 | 15 | Reputation update | 5 | beat5 transcript (Bayani cap 15%) | Supplier row showing the cap dropped after non-delivery | I |
 | 16 | Halted (underfunded / paused) | none | `monitor_halt` (0 logged) | Red system banner; all actions disabled. Synthetic fixture, labelled as such | S |
+| 17 | New payee from your words | 6 | `payee_check` allowed (1 logged) | Every payee check, chunked address, last-4 input, "Sign with owner key" | S, I |
+| 18 | Payee signed by owner key | 6 | `payee_saved` (1 logged) | Owner-key receipt, Etherscan tx, "Payable from" after the 24-hour `supplierDelay` | S |
+| 19 | Payee in waiting period | 6 | verdict refused, cooling period (1 logged) | Deal to the new payee refused until the contract's waiting period ends | S |
+| 20 | Lookalike address refused | 6 | `payee_check` refused, `lookalike_address` (1 logged) | Address-poisoning pattern named: same first and last 4 characters as Bayani | S, I |
+| 21 | Address from chain text | 6 | model declines, no draft (2 logged) | Owner asks to save the address in deal 3's PO note; the model refuses. Code's provenance check is the tested backstop | S |
 
 States 12, 15 and 16 have no audit event; their fixtures come from the transcripts or are marked synthetic.
 

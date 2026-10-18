@@ -7,6 +7,8 @@ Security properties enforced here in code, not in prompts:
   * Confirmation is matched deterministically on the owner's own next message. A model,
     the monitor, or contract text cannot confirm.
   * Owner-tier actions (attest, approve, dispute, resolve) run only from typed slash commands.
+  * A new payee is saved only after the payee checks pass, the owner types "yes" plus the address's last
+    4 characters, and the owner key signs addSupplier. The agent key cannot add payees.
 """
 from __future__ import annotations
 
@@ -30,11 +32,12 @@ from . import forecast as fc
 from .agents import COORDINATOR_SYSTEM, COORDINATOR_TOOLS, checker_review, treasury_plan
 from .audit import AuditLog
 from .chain import Chain, OwnerConsole
-from .data import Plans, load_blocklist, load_directory, load_plans
+from .data import Plans, load_blocklist, load_directory, load_plans, save_directory
 from .guard import as_data, tag_contract, tag_user
 from .intent import verify as verify_intent
 from .llm import LLM
-from .models import (PHP, Action, ActionKind, Deal, Origin, Outcome, Status, Tier, Verdict, php)
+from .models import (PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier, Verdict, php)
+from .payee import PayeeVerdict, check_payee, chunk
 from .policy import PolicyContext, PolicySettings, decide
 from .reputation import DpPolicy, dp_cap, score
 
@@ -54,6 +57,7 @@ def user_tz() -> tzinfo:
         pass
     return datetime.now().astimezone().tzinfo or timezone.utc
 CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm(ed)?|ok(ay)?|go( ahead)?|proceed|sige|oo)\s*[.!]*\s*$", re.I)
+PAYEE_CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm|oo|sige)\s+([0-9a-f]{4})\s*[.!]*\s*$", re.I)
 PENDING_TTL_S = 600
 MAX_TOOL_STEPS = 8
 
@@ -141,6 +145,15 @@ class Pending:
 
 
 @dataclass
+class PendingPayee:
+    verdict: PayeeVerdict
+    texts: list[str]  # the owner's words the address came from
+    untrusted: list[str]
+    card: str
+    created: float
+
+
+@dataclass
 class TurnResult:
     reply: str
     events: list[dict] = field(default_factory=list)
@@ -167,6 +180,7 @@ class Tiwala:
         self.history: list[dict] = []
         self.ledger: list[str] = []  # owner's own words for the current draft
         self.pending: Optional[Pending] = None
+        self.pending_payee: Optional[PendingPayee] = None
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
 
@@ -194,8 +208,8 @@ class Tiwala:
         return None
 
     def _log(self, event: str, **data) -> None:
-        self.audit.write(event, **data)
-        self._events.append({"event": event, **data})
+        e = self.audit.write(event, **data)
+        self._events.append({"event": event, **data, "ts": e["ts"], "line": self.audit.count})
 
     # ------------------------------------------------------------ context
 
@@ -375,6 +389,15 @@ class Tiwala:
         if t.text.strip().startswith("/"):
             return TurnResult(self._owner_command(t.text.strip()), self._events)
 
+        if self.pending_payee:
+            if m := PAYEE_CONFIRM_RX.match(t.text):
+                return TurnResult(self._confirm_payee(m.group(2)), self._events)
+            if CONFIRM_RX.match(t.text):
+                return TurnResult('To save a payee, reply "yes" and the last 4 characters of the address, for '
+                                  'example "yes 1a2b". Reading them off the card is the check.', self._events)
+            self._log("payee_dropped", address=self.pending_payee.verdict.address)
+            self.pending_payee = None
+
         if self.pending and CONFIRM_RX.match(t.text):
             out = self.confirm_pending()
             self.ledger = []
@@ -495,11 +518,90 @@ class Tiwala:
                          total=round(float(a["total_php"]) * PHP), down_bps=round(float(a["down_pct"]) * 100),
                          deadline=_parse_deadline(a["deadline"]), ref=str(a.get("po_ref", ""))[:64])
             return self.propose(act, then_release_down=True)
+        if name == "draft_save_supplier":
+            return self.propose_payee(str(a.get("name", "")), str(a.get("address", "")))
         kinds = {"draft_release_down_payment": ActionKind.RELEASE_DOWN,
                  "draft_release_balance": ActionKind.RELEASE_BALANCE, "draft_cancel": ActionKind.CANCEL}
         if name in kinds:
             return self.propose(Action(kinds[name], self._origin([]), deal_id=int(a["deal_id"])))
         return {"error": f"unknown tool {name}"}
+
+    # ------------------------------------------------------------ payees
+
+    def _reserved(self) -> dict[str, str]:
+        ws = self.chain.wallet_state(self.wallet)
+        return {"wallet": self.wallet, "owner": ws.owner, "agent": ws.agent,
+                "settlement token": self.chain.token.address, "factory": self.chain.factory.address}
+
+    def _payee_card(self, v: PayeeVerdict, delay_s: int) -> str:
+        hours = f"{delay_s / 3600:g}-hour" if delay_s >= 3600 else f"{delay_s}-second"
+        lines = ["CONFIRM PAYOUT ADDRESS CHANGE" if v.kind == "address_change" else "CONFIRM NEW PAYEE",
+                 f"Name: {v.name}", f"Address: {chunk(v.address)}"]
+        if v.replaces:
+            lines.append(f"Replaces: {chunk(v.replaces)}")
+        lines.append("Checks passed: " + ", ".join(c.rule for c in v.checks if c.ok))
+        if v.flags:
+            lines.append("Risk flags: " + ", ".join(v.flags))
+        lines += [c.detail for c in v.checks if not c.ok]
+        lines += [f"Signed with your owner key, not the agent's. Payable after the wallet's {hours} waiting period.",
+                  'Reply "yes" and the last 4 characters of the address to save it.']
+        return "\n".join(lines)
+
+    def propose_payee(self, name: str, address: str) -> dict:
+        if self.pending:
+            self._log("pending_dropped", action=self.pending.action.to_dict())
+            self.pending = None
+        untrusted = sorted(self._contract_texts)
+        v = check_payee(name, address, self.ledger[-6:], untrusted, self.directory,
+                        load_blocklist(self.data / "blocklist.json"), self._reserved())
+        out = v.to_dict()
+        if not v.allowed:
+            self._log("payee_check", **out)
+            return {"status": "refused", "reasons": v.reasons, "flags": v.flags}
+        delay = self.chain.supplier_delay(self.wallet)
+        card = self._payee_card(v, delay)
+        self._log("payee_check", **out, delay_s=delay)
+        self.pending_payee = PendingPayee(v, list(self.ledger[-6:]), untrusted, card, time.time())
+        return {"status": "needs_confirmation", "card": card, "flags": v.flags,
+                "note": 'The owner must reply "yes" plus the last 4 characters of the address. Do not repeat them.'}
+
+    def _confirm_payee(self, code: str) -> str:
+        p, self.pending_payee = self.pending_payee, None
+        self.ledger = []
+        v = p.verdict
+        if time.time() - p.created > PENDING_TTL_S:
+            self._log("payee_confirm_failed", address=v.address, reason="expired")
+            return "That confirmation expired. Ask again and I will re-check the address."
+        if code.lower() != v.address[-4:].lower():
+            self._log("payee_confirm_failed", address=v.address, reason="last 4 characters did not match")
+            return (f"Those are not the last 4 characters of {chunk(v.address)}. Nothing was saved. "
+                    "Ask again to start over.")
+        fresh = check_payee(v.name, v.address, p.texts, p.untrusted, self.directory,
+                            load_blocklist(self.data / "blocklist.json"), self._reserved())
+        self._log("payee_confirmed", address=v.address, allowed=fresh.allowed, reasons=fresh.reasons)
+        if not fresh.allowed:
+            return "I did not save it. " + " ".join(fresh.reasons)
+        if self.owner is None:
+            return "Saving a payee needs the owner key configured on this device. Nothing was saved."
+        r = self.owner.add_supplier(v.address)
+        if not r.ok:
+            self._log("payee_failed", address=v.address, error=r.error, tx=r.tx_hash)
+            return f"The owner transaction did not go through ({r.error}). Nothing was saved."
+        removed = self.owner.remove_supplier(v.replaces) if v.replaces else None
+        _, active_at = self.chain.supplier_onchain(self.wallet, v.address)
+        d = self.directory
+        if v.replaces:
+            d.pop(v.replaces, None)
+        d[v.address] = SupplierEntry(v.name, v.address, self.chain.now() if v.replaces else 0)
+        save_directory(self.data / "suppliers.json", d)
+        self._log("payee_saved", name=v.name, address=v.address, kind=v.kind, replaces=v.replaces, tx=r.tx_hash,
+                  block=r.block, active_at=active_at, remove_tx=removed.tx_hash if removed else None,
+                  remove_ok=removed.ok if removed else None)
+        msg = f"Saved {v.name} at {chunk(v.address)}. Signed by you. Tx {r.tx_hash}"
+        if removed:
+            msg += (f"\nOld address removed. Tx {removed.tx_hash}" if removed.ok else
+                    f"\nThe old address could not be removed ({removed.error}). Run it again from the owner key.")
+        return msg + f"\nPayable from {_when(active_at)}, after the wallet's waiting period."
 
     # ------------------------------------------------------------ owner commands
 

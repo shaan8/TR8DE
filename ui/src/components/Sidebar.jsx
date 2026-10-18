@@ -1,6 +1,6 @@
-import { Lock, ShieldAlert, TrendingDown } from "lucide-react";
+import { Clock, Lock, ShieldAlert, TrendingDown } from "lucide-react";
 import { Chip, Panel } from "./ui.jsx";
-import { day, peso } from "../lib.js";
+import { addrUrl, day, peso, when } from "../lib.js";
 
 const STAGE_TONE = { Locked: "accent", "DP paid": "warn", Delivered: "accent", Completed: "ok", Refunded: "muted", Disputed: "bad" };
 
@@ -19,6 +19,27 @@ export function Wallet({ w }) {
       </dl>
       {w.underfunded && <p className="mt-2"><Chip tone="bad" icon={ShieldAlert}>Underfunded</Chip></p>}
       <p className="mt-3 text-cap text-ink-2">Snapshot: {w.source}</p>
+    </Panel>
+  );
+}
+
+export function Payees({ list, now, highlight }) {
+  if (!list?.length) return null;
+  return (
+    <Panel title="Saved payees" highlight={highlight} action={<span className="text-cap text-ink-2">only these can be paid</span>}>
+      <ul className="space-y-1.5 text-sm">
+        {list.map((p) => {
+          const waiting = p.active_at > now;
+          return (
+            <li key={p.address} className="flex flex-wrap items-center justify-between gap-x-2">
+              <span>{p.name} <a href={addrUrl(p.address)} target="_blank" rel="noreferrer" className="font-mono text-cap text-ink-2">{p.address.slice(0, 6)}…{p.address.slice(-4)}</a></span>
+              {!p.listed ? <Chip tone="bad">Removed</Chip>
+                : waiting ? <Chip tone="warn" icon={Clock}>Payable {when(p.active_at).slice(5)}</Chip>
+                : <Chip tone="ok">Active</Chip>}
+            </li>
+          );
+        })}
+      </ul>
     </Panel>
   );
 }

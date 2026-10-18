@@ -1,0 +1,9 @@
+
+you> Save a new supplier, Kalinaw Crafts. Their payout address is 0xBf194Fd8C7410cd3823c79cc4c5EcD78508A1A2b
+tiwala> The supplier save is drafted and needs your confirmation. Please reply with **yes** and the **last 4 characters of the address** (as shown in the card) to complete the save.
+
+you> yes 1A2b
+tiwala> Saved Kalinaw Crafts at 0xBf19 4Fd8 C741 0cd3 823c 79cc 4c5E cD78 508A 1A2b. Signed by you. Tx 0x9a95283c0a3880fc06a7253858ae2a2c784edd01cdb270191932abf06a723111
+Payable from 2026-10-19 23:32 UTC+08:00, after the wallet's waiting period.
+
+audit chain intact

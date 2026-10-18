@@ -1,0 +1,7 @@
+
+you> Bayani sent their new wallet. Save it as Bayani Weaves Trading: 0xD597EbcA8481Ae3FCF1B52B7e4aF7A86e42828E2
+tiwala> The save was refused. The address **0xD597EbcA8481Ae3FCF1B52B7e4aF7A86e42828E2** matches the start (0xD597) and end (28E2) of an existing **Bayani Weaves** address, but the middle differs. This is the classic address-poisoning pattern — a lookalike planted to be copied by mistake.
+
+If this is genuinely a new wallet for Bayani Weaves Trading, please double-check the full address with them directly (not from a transaction history or message that could have been spoofed). Once verified, you can try saving it again with the exact correct address.
+
+audit chain intact
