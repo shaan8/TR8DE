@@ -34,7 +34,12 @@ export async function request(path, opts = {}, timeoutS = 120) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutS * 1000);
   try {
-    return await fetch(path, { ...opts, signal: ctl.signal });
+    const r = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), "X-Tiwala": "1" }, signal: ctl.signal });
+    if (r.status === 401 && path !== "/api/login") {
+      window.dispatchEvent(new Event("tiwala-signin"));
+      throw new Error("Please sign in.");
+    }
+    return r;
   } catch (e) {
     if (e.name === "AbortError") {
       throw new Error(`No answer from the server after ${timeoutS} s. The model or the chain RPC may be slow; try again.`);

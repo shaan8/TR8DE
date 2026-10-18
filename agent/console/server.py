@@ -15,11 +15,12 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import auth as authmod
 from . import fixtures as fx
 
 HERE = Path(__file__).resolve().parent
@@ -28,7 +29,7 @@ PUBLIC_RPC = "https://ethereum-sepolia-rpc.publicnode.com"
 STAGE = {"LOCKED": "Locked", "DOWN_PAID": "DP paid", "DELIVERED": "Delivered", "COMPLETED": "Completed",
          "REFUNDED": "Refunded", "DISPUTED": "Disputed"}
 
-app = FastAPI(title="Tiwala console")
+app = FastAPI(title="Tiwala console", docs_url=None, redoc_url=None, openapi_url=None)
 
 
 class Msg(BaseModel):
@@ -37,6 +38,64 @@ class Msg(BaseModel):
 
 class Confirm(BaseModel):
     code: Optional[str] = None  # last 4 characters of a payee address
+
+
+# ---------------------------------------------------------------- owner login
+
+
+class Login(BaseModel):
+    username: str
+    password: str
+
+
+def _auth() -> authmod.Auth:
+    global AUTH
+    if AUTH is None:
+        _load_env()
+        AUTH = authmod.Auth.from_env()
+    return AUTH
+
+
+AUTH: Optional[authmod.Auth] = None
+
+
+@app.post("/api/login")
+def login(r: Login, request: Request, response: Response):
+    a = _auth()
+    if not a.configured:
+        raise HTTPException(503, "No login is set up. Run: cd agent && ../.venv/bin/python -m console.auth set-password <name>")
+    if request.headers.get("x-tiwala") != "1" or not authmod.same_origin(request):
+        raise HTTPException(403, "Cross-site request refused.")
+    client = authmod.client_of(request)
+    wait = a.locked_for(client)
+    if wait:
+        raise HTTPException(429, f"Too many failed sign-ins. Try again in {int(wait // 60) + 1} min.")
+    sid = a.login(client, r.username[:64], r.password[:256])
+    if sid is None:
+        _live_log("login_failed", client=client)
+        raise HTTPException(401, "Wrong username or password.")
+    _live_log("login_ok", client=client)
+    response.set_cookie(authmod.COOKIE, sid, max_age=authmod.SESSION_TTL_S, httponly=True, samesite="strict",
+                        secure=authmod.is_https(request), path="/")
+    return {"ok": True, "user": a.user}
+
+
+@app.post("/api/logout")
+def logout(request: Request, response: Response):
+    _auth().logout(request.cookies.get(authmod.COOKIE))
+    response.delete_cookie(authmod.COOKIE, path="/")
+    return {"ok": True}
+
+
+@app.get("/api/session")
+def session(request: Request):
+    a = _auth()
+    signed = authmod.test_bypass(request) or a.valid(request.cookies.get(authmod.COOKIE))
+    return {"signed_in": signed, "configured": a.configured}
+
+
+def _live_log(event: str, **data) -> None:
+    print(f"auth: {event} {data}", flush=True)  # server log only; the audit chain has a single writer
 
 
 # ---------------------------------------------------------------- live agent
@@ -237,6 +296,9 @@ def verify(fixture: Optional[str] = Query(None)):
 
 
 from .negotiation_api import router as negotiation_router  # noqa: E402
+
+_load_env()
+authmod.install(app, _auth())
 
 app.include_router(negotiation_router)
 

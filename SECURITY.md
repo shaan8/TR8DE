@@ -12,6 +12,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | Payee list | Injected, poisoned or mistyped payout addresses | Payee checks in code (`payee.py`): the address must be in the owner's own words, EIP-55 checksum, no lookalike of a saved address or name, no wallet roles or blocklist; owner types its last 4 characters; owner key signs `addSupplier`; contract waits `supplierDelay` |
 | Negotiated terms | Supplier text injection, stale or ambiguous acceptance, duplicate webhooks, human and agent answering at once | Supplier text never reaches the owner path; acceptance must name the open version and terms hash; counters supersede; lock plus version check; message-ID dedup; escrow handoff idempotent by on-chain reference; agreement rechecked on fresh chain data and confirmed by the owner ([`docs/negotiation.md`](docs/negotiation.md)) |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
+| Owner console | Anyone who reaches the console URL | Login (`agent/console/auth.py`): salted scrypt hash in `.env`, no plaintext; 256-bit server-side sessions in an HttpOnly, SameSite=Strict cookie (Secure on HTTPS), 2 h idle and 12 h absolute expiry; lockout after 5 failures per client and 30 overall per 15 min; same-origin plus `X-Tiwala` header on every write; CSP, frame-deny and HSTS headers; API docs disabled. The supplier console uses its own per-supplier token and the WhatsApp webhook its Meta signature |
 | Audit trail | Tampering after the fact | Hash-chained JSONL; `/verify` recomputes the chain (detects edits, not deletion of the tail) |
 
 ## Layered controls
@@ -37,7 +38,7 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 | Check | Result |
 | --- | --- |
 | Foundry: 38 unit, 1 fuzz, 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) | 42 pass, 256 runs x 64 depth, 0 reverts ([`reports/tests.txt`](reports/tests.txt)) |
-| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, red-team and pentest regressions on anvil | 151 pass |
+| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, console login, red-team and pentest regressions on anvil | 164 pass |
 | Slither 0.11.6 on `src/` | 0 high, 0 medium; 14 informational, triaged in [`reports/slither-triage.md`](reports/slither-triage.md) |
 | Live red-team on Sepolia | Injection, unknown payee, forced revert, social engineering: all held ([`README.md`](README.md#live-agent-run-on-sepolia)) |
 
@@ -65,6 +66,14 @@ Promptfoo runs, 13 recorded a prohibited payment.
 
 The Promptfoo cases were not rerun against the fixed code; the regression tests above replay each path on anvil with
 scripted models.
+
+## Deployment model
+
+The console runs on the owner's machine and binds to `127.0.0.1`. It is not meant to be exposed whole. Receiving
+live WhatsApp replies needs a public HTTPS URL for `/webhooks/whatsapp` only (signed by Meta with the app secret);
+expose that one path through a tunnel or reverse proxy for as long as it is needed and keep every other path local.
+The login is a second layer for any exposure, not a reason to publish the console. Set or change the password with
+`cd agent && ../.venv/bin/python -m console.auth set-password <username>`.
 
 ## Known limitations
 

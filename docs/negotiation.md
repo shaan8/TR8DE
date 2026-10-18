@@ -91,7 +91,8 @@ message shows its reason. In order, a live send needs:
 4. Free text only within 24 h of the supplier's last message; otherwise an approved `WHATSAPP_TEMPLATE_NAME`. Meta's
    sample `hello_world` (`WHATSAPP_TEMPLATE_LANG=en_US`) takes no parameters, so it says hello without the offer.
 5. For replies: `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` and a public HTTPS webhook URL registered in the
-   Meta app. Localhost is unreachable, so use a tunnel or a hosted server.
+   Meta app. Localhost is unreachable, so expose only `/webhooks/whatsapp` (tunnel or reverse proxy), never the
+   whole console; see [`SECURITY.md`](../SECURITY.md#deployment-model).
 
 Outbound records are in `agent/data/negotiation/whatsapp/outbox.json`.
 

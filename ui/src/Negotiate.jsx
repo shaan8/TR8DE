@@ -3,6 +3,7 @@ import { ArrowRight, Ban, Bot, CheckCircle2, Clock, FileWarning, Handshake, KeyR
 import clsx from "clsx";
 import { Button, Card, Chip, Panel, Row } from "./components/ui.jsx";
 import { day, peso, request, short, txUrl, when } from "./lib.js";
+import { logout } from "./Login.jsx";
 
 const P = (units) => peso(units / 100, 2);
 const STATE = {
@@ -35,6 +36,7 @@ export function ViewNav({ active }) {
         <button key={l} onClick={() => go(v)} aria-current={active === v ? "page" : undefined}
           className={clsx("min-h-[36px] rounded px-3", active === v ? "bg-raised font-semibold text-ink" : "text-ink-2 hover:text-ink")}>{l}</button>
       ))}
+      <button onClick={logout} className="min-h-[36px] rounded px-3 text-ink-2 hover:text-ink">Sign out</button>
     </nav>
   );
 }
@@ -288,7 +290,7 @@ export default function Negotiate() {
         <div className="flex flex-wrap items-center gap-2">
           {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}
           {fixture && data.fixture?.validation && <Chip tone="muted" wrap>{data.fixture.validation}</Chip>}
-          {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : "WhatsApp: simulator only (no credentials)"}</Chip>}
+          {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive || data.whatsapp.send ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : data.whatsapp.send ? "WhatsApp: live sending, replies via simulator" : "WhatsApp: simulator only (no credentials)"}</Chip>}
           <ViewNav active="negotiate" />
         </div>
       </header>
