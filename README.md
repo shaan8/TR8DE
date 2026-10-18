@@ -1,5 +1,7 @@
 # Tiwala
 
+[![CI](https://github.com/shaan8/TR8DE/actions/workflows/ci.yml/badge.svg)](https://github.com/shaan8/TR8DE/actions/workflows/ci.yml)
+
 AI escrow wallet agent for MSME supplier payments (WeBank Fintechathon 2026, International Track, Topic F).
 Three LLM agents plan and check; deterministic code decides; the contract has the final say.
 
