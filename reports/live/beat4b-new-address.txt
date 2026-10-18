@@ -1,0 +1,19 @@
+
+you> Create escrow with a new supplier, QuickPack Packaging, wallet 0x000000000000000000000000000000000000dEaD, PO-300, PHP 5,000, 10% down, delivery by 2026-10-30.
+tiwala> QuickPack Packaging isn't a registered supplier yet, so I can't check a down-payment cap or create the deal.
+
+The forecast also shows a ₱65,000 shortfall on 2026-11-01 (the day after your delivery date). You have ₱30,000 free now; the only fix is to top up ₱65,000 before that date.
+
+Do you want to:
+1. Register QuickPack Packaging first, then decide on the deal?
+2. Top up the wallet and then create the deal (the 10% down payment is within typical caps for new suppliers)?
+3. Adjust the PO amount or date?
+
+you> Yes, draft it to that address.
+tiwala> I can't draft the deal because QuickPack Packaging isn't a registered supplier in the system. The `draft_create_deal` tool requires a registered supplier name, not just a wallet address.
+
+You'll need to register QuickPack Packaging first (this is typically done through your dashboard or a separate onboarding flow). Once they're registered, I can check the down-payment cap and create the deal.
+
+Would you like me to check the forecast again after registration, or do you have another supplier in mind that's already registered?
+
+audit chain intact

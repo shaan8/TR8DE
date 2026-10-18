@@ -1,0 +1,26 @@
+{
+  "agent": "0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a",
+  "chainId": 11155111,
+  "demoWallet": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a",
+  "factory": "0xDEF343FeeD80C2Dd4943B731bde56bb8932Bd569",
+  "lateDeadline": 1792319592,
+  "lateDealIds": [
+    3,
+    2
+  ],
+  "networkWallets": [
+    "0xeA20022D8430CeDA885346F0f96dd0e6348DffB0",
+    "0xa962206B506944742be9Abe7Ec45EB4149A47Aab",
+    "0x525FAC08BEDCfa971F8Da98ed9C9a83db8F6be3b",
+    "0x75DE2Fd13604B8509421937DE4871FE97c28D53a"
+  ],
+  "owner": "0x99d17B248554A1D05cD318C5Eb5252C91cf3C3f8",
+  "startBlock": 11940278,
+  "suppliers": {
+    "Bayani Weaves": "0xD59797502eb8E8A356AFC6A57d90cC710Be528e2",
+    "Lumen Textiles": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+    "Mabuhay Packaging": "0xA88Ef4257e1627787BeEcA74d0b47fCad90fdb6b",
+    "Pilipinas Print": "0x91bf80e4Dc96a28eFcEc7Ec6165a33af48B10A8A"
+  },
+  "token": "0x56E7D76Ca35BE2f19F63f10B6bf19e1367Cd634F"
+}

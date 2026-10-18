@@ -1,0 +1,14 @@
+node_modules/
+out/
+cache/
+.env
+broadcast/
+lib/
+deployments/31337.json
+agent/data/
+agent/logs/
+__pycache__/
+.venv/
+.DS_Store
+.pytest_cache/
+*.pyc

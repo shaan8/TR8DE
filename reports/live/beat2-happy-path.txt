@@ -1,0 +1,43 @@
+
+you> Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25
+tiwala> Lumen is new to you, so the network caps the down payment at **25%** (not 30%).  
+
+The cash forecast shows a **₱60,000 shortfall on 2026‑11‑01** if you lock the full ₱120,000 now. The top fix is to **delay the PO until the “Receivable from SM store” arrives** (the forecast says that covers the shortfall at no extra cost).
+
+Do you want to:
+1. Create the deal with **25% down** (₱30,000) and the 2026‑10‑25 deadline, accepting the shortfall risk, or  
+2. Wait until the receivable arrives (the forecast will then show no shortfall)?
+
+you> OK, make it 20% down
+tiwala> **CONFIRM NEW ESCROW DEAL**  
+Supplier: Lumen Textiles (7 on time, 2 late, 0 non-delivery across 4 buyers (effective 3.25); score R = 0.39)  
+PO: PO-104   Locked now: ₱120,000.00 (full PO)  
+Down payment: 20% = ₱24,000.00, released right after creation  
+Cap: 25% (network 25%, new to you so the 25% stranger cap applies)  
+Balance ₱96,000.00 only after your delivery attestation (/attest)  
+Deliver by: 2026-10-25  
+Forecast: short by ₱60,000.00 on 2026-11-01  
+Risk flags: forecast_shortfall  
+Filled in by Tiwala, please check: deadline  
+
+Every new deal needs your confirmation.  
+Reply **“yes”** to confirm, or tell me what to change.
+
+CONFIRM NEW ESCROW DEAL
+Supplier: Lumen Textiles (7 on time, 2 late, 0 non-delivery across 4 buyers (effective 3.25); score R = 0.39)
+PO: PO-104   Locked now: ₱120,000.00 (full PO)
+Down payment: 20% = ₱24,000.00, released right after creation
+Cap: 25% (network 25%, new to you so the 25% stranger cap applies)
+Balance ₱96,000.00 only after your delivery attestation (/attest)
+Deliver by: 2026-10-25
+Forecast: short by ₱60,000.00 on 2026-11-01
+Risk flags: forecast_shortfall
+Filled in by Tiwala, please check: deadline
+Every new deal needs your confirmation.
+Reply "yes" to confirm, or tell me what to change.
+
+you> yes
+tiwala> Done. Tx 0xc26642d49f9e7079171076a8c5f6cf9f3c7b23537acc64b4aa4017b1200f953c (deal 2)
+Down payment released. Tx 0xfb10145647f17ce77194b5a15bb5934b2fd3107b359674180e66f06a9be407de
+
+audit chain intact

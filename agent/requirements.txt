@@ -1,0 +1,4 @@
+web3>=7,<9
+openai>=1.40
+anthropic>=0.40  # optional, only for TIWALA_LLM_PROVIDER=anthropic
+pytest>=8

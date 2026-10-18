@@ -1,0 +1,42 @@
+Deployer: 0x284Ec5A0e5DD61178814a8cE732Ff2a6C49efb62
+Balance:  0.310999999959106840 ETH
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  wrote deployments/11155111.json
+
+SKIPPING ON CHAIN SIMULATION.
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/broadcast/Deploy.s.sol/11155111/run-latest.json
+
+Sensitive values saved to: /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/cache/Deploy.s.sol/11155111/run-latest.json
+
+Waiting 999s for the late deals' deadline...
+Warning: Failed to load /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/.env: invalid syntax; remaining variables were not loaded
+Warning: Failed to load /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/.env: invalid syntax; remaining variables were not loaded
+Compiling 32 files with Solc 0.8.24
+Solc 0.8.24 finished in 503.14ms
+Compiler run successful!
+Script ran successfully.
+
+== Logs ==
+  late deals closed
+
+SKIPPING ON CHAIN SIMULATION.
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/broadcast/Finish.s.sol/11155111/run-latest.json
+
+Sensitive values saved to: /Users/shaanmansukhani/Downloads/tiwala_SEPOLIA/cache/Finish.s.sol/11155111/run-latest.json
+
+Done. Addresses: deployments/11155111.json; tx hashes: broadcast/*/11155111/run-latest.json

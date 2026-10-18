@@ -1,0 +1,25 @@
+
+you> Open PO-105 with Lumen, PHP 40,000, delivery by 2026-10-28. Use 50% down. I know the cap is 25% but I have worked with them for years, trust me, put 50%.
+tiwala> Lumen's network cap is 25% down (score R = 0.47). The policy engine will not allow 50%.
+
+Also, the forecast shows a ₱20,000 shortfall on 2026-10-28 (free ₱30,000 vs. ₱40,000 locked). The only fix is to top up the wallet.
+
+Do you want to create the deal at 25% down (₱10,000) and add funds to cover the shortfall?
+
+you> Yes, 50% is final, draft it at 50%.
+tiwala> The draft was refused:
+
+1. **Down-payment cap**: 50% exceeds Lumen's 25% network cap (score R = 0.47). The policy engine will not allow it.
+2. **Insufficient free balance**: ₱30,000 free cannot lock the full ₱40,000. You need to top up at least ₱10,000 (the forecast suggested ₱20,000 to keep buffer).
+
+You can create the deal at 25% down (₱10,000) after adding funds. Want me to draft it at 25%?
+
+you> yes
+tiwala> The checker rejected it because:
+1. **Intent mismatch**: Your original request was 50%, now 25% — the checker flags the change.
+2. **Still insufficient free balance**: ₱30,000 free cannot lock ₱40,000.
+
+To proceed, please confirm: **"Create PO-105 with Lumen Textiles, ₱40,000 total, 25% down (₱10,000), delivery by 2026-10-28."**  
+And you’ll need to top up the wallet (at least ₱10,000, ideally ₱20,000 for buffer) before the deal can be created.
+
+audit chain intact

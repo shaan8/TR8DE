@@ -1,0 +1,7 @@
+
+you> /attest 2
+tiwala> Signed by you. Tx 0xb6a31fd50869448423ed8a9de70d7894c3ef7aafa51006d8d4787f1f4cb118e9
+Deal 2 with Lumen Textiles was attested: done at Tier 1. Tx 0x1862184b830f168131b8177215a10353a271eee28396d7b7aa2a357cb433e9d1
+Heads up: planned POs leave you ₱60,000.00 short on 2026-11-01.
+
+audit chain intact

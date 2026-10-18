@@ -1,0 +1,35 @@
+'forge clean' running (wd: /home/claude/tiwala)
+'forge config --json' running
+'forge build --build-info --deny never --skip ./test/** ./script/** --force' running (wd: /home/claude/tiwala)
+INFO:Detectors:
+Detector: timestamp
+TiwalaAgentWallet.createDeal(address,uint256,uint16,uint64,string) (src/TiwalaAgentWallet.sol#236-263) uses timestamp for comparisons
+	Dangerous comparisons:
+	- deadline <= block.timestamp (src/TiwalaAgentWallet.sol#246)
+TiwalaAgentWallet.confirmDelivery(uint256) (src/TiwalaAgentWallet.sol#290-296) uses timestamp for comparisons
+	Dangerous comparisons:
+	- DeliveryConfirmed(id,d.deliveredAt,d.deliveredAt <= d.deadline) (src/TiwalaAgentWallet.sol#295)
+TiwalaAgentWallet.cancelDeal(uint256) (src/TiwalaAgentWallet.sol#319-340) uses timestamp for comparisons
+	Dangerous comparisons:
+	- overdue = block.timestamp > uint256(d.deadline) + grace (src/TiwalaAgentWallet.sol#321)
+	- msg.sender != owner && ! overdue (src/TiwalaAgentWallet.sol#326)
+TiwalaAgentWallet.isSupplierActive(address) (src/TiwalaAgentWallet.sol#399-402) uses timestamp for comparisons
+	Dangerous comparisons:
+	- s.listed && block.timestamp >= s.activeAt (src/TiwalaAgentWallet.sol#401)
+TiwalaAgentWallet._checkAgentSpend(uint256) (src/TiwalaAgentWallet.sol#417-426) uses timestamp for comparisons
+	Dangerous comparisons:
+	- today != currentDay (src/TiwalaAgentWallet.sol#420)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: naming-convention
+Parameter TiwalaAgentWallet.setAgent(address)._agent (src/TiwalaAgentWallet.sol#174) is not in mixedCase
+Parameter TiwalaAgentWallet.setLimits(uint256,uint256,uint256,uint64)._perDealCap (src/TiwalaAgentWallet.sol#182) is not in mixedCase
+Parameter TiwalaAgentWallet.setLimits(uint256,uint256,uint256,uint64)._dailyCap (src/TiwalaAgentWallet.sol#182) is not in mixedCase
+Parameter TiwalaAgentWallet.setLimits(uint256,uint256,uint256,uint64)._approvalThreshold (src/TiwalaAgentWallet.sol#182) is not in mixedCase
+Parameter TiwalaAgentWallet.setLimits(uint256,uint256,uint256,uint64)._supplierDelay (src/TiwalaAgentWallet.sol#182) is not in mixedCase
+Parameter TiwalaAgentWallet.setEscrowPolicy(uint16,uint64)._maxDownBps (src/TiwalaAgentWallet.sol#194) is not in mixedCase
+Parameter TiwalaAgentWallet.setEscrowPolicy(uint16,uint64)._grace (src/TiwalaAgentWallet.sol#194) is not in mixedCase
+Parameter TiwalaAgentWallet.setPaused(bool)._paused (src/TiwalaAgentWallet.sol#202) is not in mixedCase
+Parameter TiwalaFactory.setPlatform(address)._platform (src/TiwalaFactory.sol#43) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Slither:. analyzed (16 contracts with 102 detectors), 14 result(s) found

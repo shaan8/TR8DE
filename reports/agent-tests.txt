@@ -1,0 +1,61 @@
+tests/test_deepseek.py::test_history_conversion_round_trip PASSED
+tests/test_deepseek.py::test_tool_calls_parsed_and_model_sent PASSED
+tests/test_deepseek.py::test_checker_on_deepseek_fails_closed_on_empty_content PASSED
+tests/test_integration.py::test_network_reputation_from_factory_wallets PASSED
+tests/test_integration.py::test_lookalike_wallet_cannot_inflate_reputation PASSED
+tests/test_integration.py::test_happy_path_create_confirm_then_release_down_payment PASSED
+tests/test_integration.py::test_confirmation_card_shows_cap_forecast_and_flags PASSED
+tests/test_integration.py::test_correction_redraft_then_confirm PASSED
+tests/test_integration.py::test_rt_direct_prompt_injection PASSED
+tests/test_integration.py::test_rt_indirect_injection_from_contract_text PASSED
+tests/test_integration.py::test_rt_coordinator_manipulation_checker_and_policy PASSED
+tests/test_integration.py::test_rt_payout_redirection PASSED
+tests/test_integration.py::test_rt_fake_delivery_then_real_attestation PASSED
+tests/test_integration.py::test_rt_amount_tampering PASSED
+tests/test_integration.py::test_rt_key_compromise_contract_backstop PASSED
+tests/test_integration.py::test_rt_confirmation_only_from_owner_message PASSED
+tests/test_integration.py::test_rt_pending_confirmation_expires PASSED
+tests/test_integration.py::test_rt_offchain_data_minimized PASSED
+tests/test_integration.py::test_monitor_cancels_overdue_deal_at_tier1 PASSED
+tests/test_integration.py::test_monitor_waits_on_disputed_overdue_deal PASSED
+tests/test_integration.py::test_monitor_halts_when_underfunded PASSED
+tests/test_integration.py::test_audit_log_covers_every_step_and_verifies PASSED
+tests/test_integration.py::test_print_demo_transcript PASSED
+tests/test_integration.py::test_full_flow_through_deepseek_adapter PASSED
+tests/test_units.py::test_worked_example_from_doc PASSED
+tests/test_units.py::test_new_supplier_starts_at_zero_trust PASSED
+tests/test_units.py::test_stranger_cap_binds_for_new_buyer PASSED
+tests/test_units.py::test_dispute_release_and_pre_dp_cancel_are_neutral PASSED
+tests/test_units.py::test_non_delivery_counts_double PASSED
+tests/test_units.py::test_sybil_buyers_get_quarter_weight PASSED
+tests/test_units.py::test_value_weighting_caps_large_deals PASSED
+tests/test_units.py::test_forecast_finds_first_shortfall_and_fixes PASSED
+tests/test_units.py::test_guard_flags_injection_and_wraps_contract_text PASSED
+tests/test_units.py::test_intent_correction_latest_percent_wins PASSED
+tests/test_units.py::test_intent_catches_wrong_supplier_amount_and_po PASSED
+tests/test_units.py::test_intent_lists_agent_filled_fields PASSED
+tests/test_units.py::test_intent_monitor_rule_must_match_action PASSED
+tests/test_units.py::test_policy_new_deal_is_tier2 PASSED
+tests/test_units.py::test_policy_refusals[change0-cap] PASSED
+tests/test_units.py::test_policy_refusals[change1-per-deal cap] PASSED
+tests/test_units.py::test_policy_refusals[change2-not a registered supplier] PASSED
+tests/test_units.py::test_policy_refusals[change3-future] PASSED
+tests/test_units.py::test_policy_refusals[change4-contract free text] PASSED
+tests/test_units.py::test_policy_refusals[change5-only come from] PASSED
+tests/test_units.py::test_policy_halts_when_underfunded_or_paused PASSED
+tests/test_units.py::test_policy_checker_reject_or_missing_blocks PASSED
+tests/test_units.py::test_policy_release_balance_needs_attestation PASSED
+tests/test_units.py::test_policy_daily_cap PASSED
+tests/test_units.py::test_policy_monitor_cancel_only_after_grace_and_not_disputed PASSED
+tests/test_units.py::test_policy_monitor_cannot_create_or_release_down PASSED
+tests/test_units.py::test_policy_recent_address_change_forces_confirmation_flag PASSED
+tests/test_units.py::test_policy_blocklist_and_exposure PASSED
+tests/test_units.py::test_checker_fails_closed_on_bad_output[sure, looks fine] PASSED
+tests/test_units.py::test_checker_fails_closed_on_bad_output[{"approve": "yes"}] PASSED
+tests/test_units.py::test_checker_fails_closed_on_bad_output[{broken] PASSED
+tests/test_units.py::test_checker_fails_closed_on_bad_output[] PASSED
+tests/test_units.py::test_checker_sees_only_request_and_action PASSED
+tests/test_units.py::test_gate_rejects_forged_or_stale_authorization PASSED
+tests/test_units.py::test_audit_chain_detects_tampering PASSED
+tests/test_units.py::test_connector_reads_only_consented_allowlisted_fields PASSED
+============================= 60 passed in 18.08s ==============================

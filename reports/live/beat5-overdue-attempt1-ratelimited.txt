@@ -1,0 +1,9 @@
+
+you> /tick
+Deal 5 with Bayani Weaves is overdue: not done. Independent Checker rejected it: Checker unavailable (RateLimitError); failing closed
+Heads up: planned POs leave you ₱75,000.00 short on 2026-11-01.
+
+you> What is Bayani Weaves' delivery record now?
+tiwala> The assistant model is unavailable right now (RateLimitError). Nothing was drafted or sent; please try again.
+
+audit chain intact

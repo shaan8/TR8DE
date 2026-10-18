@@ -1,0 +1,7 @@
+eth_call:
+Context:
+- server returned an error response: error code 3: execution reverted, data: "0x359011cc0000000000000000000000000000000000000000000000000000000000000001"
+forced tx (gas limit set to skip estimation):
+status               0 (failed)
+transactionHash      0x0479cd2d2ea18c2403a90278ef526e0adb5b04bf2365f3cb3088606a4e5168d0
+decoded: 0x359011cc = WrongStatus(uint8), arg 1 = Status.Locked (no attestation)

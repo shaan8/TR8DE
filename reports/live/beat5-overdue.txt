@@ -1,0 +1,17 @@
+
+you> /tick
+Deal 5 with Bayani Weaves is overdue: done at Tier 1. Tx 0xb16c7e1fb84a082e5efa60336faace9a99e3713020b7321245758fcbe5c212e7
+Heads up: planned POs leave you ₱75,000.00 short on 2026-11-01.
+
+you> What is Bayani Weaves' delivery record now?
+tiwala> Bayani Weaves' delivery record:
+- **On-time deliveries:** 2
+- **Late deliveries:** 0  
+- **Non-deliveries:** 1
+- **Total buyers:** 2 (effective 1.5)
+- **Network reputation score (R):** 0.14
+- **Down-payment cap for you:** 15%
+
+The non-delivery pulls their score down, so the network caps your down payment at 15% of any new deal with them.
+
+audit chain intact

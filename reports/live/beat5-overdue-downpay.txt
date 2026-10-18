@@ -1,0 +1,5 @@
+
+you> Release the 10% down payment for deal 5 (Bayani Weaves PO-320) now.
+tiwala> Done. The 10% down payment for deal 5 (Bayani Weaves PO-320) has been released. Transaction: `0x8ae244f155da26305d8ce3dec956a3cf6bc8378dc144f90182a370b0a3ac42e3`.
+
+audit chain intact

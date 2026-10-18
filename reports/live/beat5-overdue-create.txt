@@ -1,0 +1,33 @@
+
+you> Create escrow for Bayani Weaves PO-320, PHP 5,000, 10% down, deliver by 2026-10-18 20:08
+tiwala> **CONFIRM NEW ESCROW DEAL**  
+Supplier: Bayani Weaves (2 on time, 0 late, 0 non-delivery across 2 buyers (effective 1.50); score R = 0.14)  
+PO: PO-320   Locked now: ₱5,000.00 (full PO)  
+Down payment: 10% = ₱500.00, released right after creation  
+Cap: 15% (network 15%)  
+Balance ₱4,500.00 only after your delivery attestation (/attest)  
+Deliver by: 2026-10-18 20:08 UTC+08:00  
+Forecast: short by ₱75,000.00 on 2026-11-01  
+Risk flags: forecast_shortfall  
+Filled in by Tiwala, please check: deadline  
+Every new deal needs your confirmation.  
+Reply “yes” to confirm, or tell me what to change.
+
+CONFIRM NEW ESCROW DEAL
+Supplier: Bayani Weaves (2 on time, 0 late, 0 non-delivery across 2 buyers (effective 1.50); score R = 0.14)
+PO: PO-320   Locked now: ₱5,000.00 (full PO)
+Down payment: 10% = ₱500.00, released right after creation
+Cap: 15% (network 15%)
+Balance ₱4,500.00 only after your delivery attestation (/attest)
+Deliver by: 2026-10-18 20:08 UTC+08:00
+Forecast: short by ₱75,000.00 on 2026-11-01
+Risk flags: forecast_shortfall
+Filled in by Tiwala, please check: deadline
+Every new deal needs your confirmation.
+Reply "yes" to confirm, or tell me what to change.
+
+you> yes
+tiwala> Done. Tx 0x47d2f33dbe583bf674a39a7e03290843a5ad3d44a17cd35434feb11718aba1b7 (deal 5)
+Down payment not released: Independent Checker rejected it: Action is a down-payment release, not an escrow creation, and lacks the PO number and delivery date from the request.
+
+audit chain intact
