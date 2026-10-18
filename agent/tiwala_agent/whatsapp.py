@@ -81,8 +81,10 @@ class Config:
     def missing(self) -> list[str]:
         """Why a live WhatsApp send or receive would fail right now, in plain words (names only, no values)."""
         out = []
-        if not (self.access_token and self.phone_number_id):
-            out.append("No Meta credentials: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are empty in .env.")
+        empty = [k for k, v in (("WHATSAPP_ACCESS_TOKEN", self.access_token),
+                                ("WHATSAPP_PHONE_NUMBER_ID", self.phone_number_id)) if not v]
+        if empty:
+            out.append(f"Missing Meta credentials in .env: {' and '.join(empty)}.")
         if not self.live_send:
             out.append("Live sending is off: WHATSAPP_LIVE_SEND is not 1.")
         if not self.allowed:
