@@ -380,3 +380,22 @@ def test_guide_needs_no_model_chain_or_owner_key(tmp_path):
 def test_no_payment_wording(said, blocked):
     from tiwala_agent.intent import NO_PAYMENT
     assert bool(NO_PAYMENT.search(said)) is blocked
+
+
+def test_model_never_sees_phones_accounts_or_wallet_addresses():
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM, ToolCall
+    from tiwala_agent.privacy import RedactingLLM
+    addr = "0x4Cda1F90B5beF0827985ECD45c9240dFfc7779ec"
+    seen = []
+
+    def model(system, messages, tools):
+        seen.append(json.dumps(messages))
+        return LLMResponse("Saving ADDR_1", [ToolCall("t1", "draft_save_supplier", {"name": "John", "address": "ADDR_1"})])
+
+    llm = RedactingLLM(ScriptedLLM(model))
+    out = llm.complete("s", [{"role": "user", "content": f"Save John, payout {addr}. Call +63 927 026 9627 or "
+                                                         f"0917-123-4567, BPI 1234 5678 9012, email j@x.ph, ₱120,000"}])
+    sent = seen[0]
+    assert addr not in sent and "9627" not in sent and "4567" not in sent and "9012" not in sent and "j@x.ph" not in sent
+    assert "120,000" in sent and "ADDR_1" in sent
+    assert out.tool_calls[0].args["address"] == addr and addr in out.text

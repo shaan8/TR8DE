@@ -40,6 +40,7 @@ from .models import (MONEY_MOVING, PHP, Action, ActionKind, Deal, Origin, Outcom
                      Verdict, php)
 from .payee import PayeeVerdict, check_payee, chunk
 from .policy import PolicyContext, PolicySettings, decide
+from .privacy import RedactingLLM, Redactor
 from .reputation import DpPolicy, dp_cap, score
 
 def user_tz() -> tzinfo:
@@ -234,6 +235,7 @@ class Tiwala:
         self.pending_payee: Optional[PendingPayee] = None
         self.pending_negotiation: Optional[dict] = None  # {"spec", "card", "created"}
         self.negotiations = None  # NegotiationService, attached by the service itself
+        self._redactor = Redactor()  # one per conversation, so placeholders stay stable across turns
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
         self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
@@ -379,7 +381,7 @@ class Tiwala:
         ctx.intent_mismatches = intent.mismatches
         view = self._action_view(a, ctx, deal)
         request = self._request_desc(a, deal, system_note)
-        ok, reason = checker_review(self.llms["checker"], request, view)
+        ok, reason = checker_review(RedactingLLM(self.llms["checker"], self._redactor), request, view)
         ctx.checker_approved, ctx.checker_reason = ok, reason
         verdict = decide(a, ctx, self.settings)
         self._log("verdict", action=a.to_dict(), view=view, intent=intent.__dict__,
@@ -524,7 +526,8 @@ class Tiwala:
         reply = ""
         for _ in range(MAX_TOOL_STEPS):
             try:
-                r = self.llms["coordinator"].complete(COORDINATOR_SYSTEM, self.history, COORDINATOR_TOOLS)
+                r = RedactingLLM(self.llms["coordinator"], self._redactor).complete(
+                    COORDINATOR_SYSTEM, self.history, COORDINATOR_TOOLS)
             except Exception as e:  # model down or rate-limited: nothing was drafted, so drop the turn
                 del self.history[turn_start:]
                 self._log("coordinator_error", error=f"{type(e).__name__}: {str(e)[:200]}")

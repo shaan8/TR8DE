@@ -18,6 +18,7 @@ from .llm import LLM
 from .models import PHP, Action, php
 from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, NegotiationError, State, Store, TERMINAL,
                           Terms, buyer_checks, cash_impact, escrow_ref, passes)
+from .privacy import RedactingLLM
 from .reputation import DpPolicy, dp_cap, score
 from .supplier_agent import MandateStore, SupplierAgent, SupplierMandate, run_agent_turns
 from .whatsapp import Config, Contact, Gateway, redact
@@ -32,8 +33,9 @@ class NegotiationService:
         self.mandates = MandateStore(root / "supplier")  # supplier side
         self.supplier_llm, self.supplier_model = supplier_llm, supplier_model
         self.escalations: list[dict] = []
-        self.engine = Engine(Store(root / "negotiations"), self.buyer_view, self._log, negotiator, interpreter,
-                             send=self._send)
+        wrap = lambda m: RedactingLLM(m) if m is not None else None  # supplier text can carry phones, accounts
+        self.engine = Engine(Store(root / "negotiations"), self.buyer_view, self._log, wrap(negotiator),
+                             wrap(interpreter), send=self._send)
         self.wa = Gateway(root / "whatsapp", wa_cfg or Config.from_env(), self.engine.supplier_text, self.find_open,
                           self._escalate, self._log, sender=wa_sender)
         self.t.on_executed.append(self._on_executed)
