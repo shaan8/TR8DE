@@ -19,18 +19,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Install forge, anvil, cast and OpenZeppelin (pinned by package-lock.json)
-        run: npm ci
+      - name: Foundry (forge, anvil, cast), same version as the local build
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - name: OpenZeppelin (pinned by package-lock.json)
+        run: npm ci --omit=dev
       - name: forge-std at the commit used for the Sepolia build
         run: |
           git clone https://github.com/foundry-rs/forge-std lib/forge-std
           git -C lib/forge-std checkout b013eff2ac4fce26f34d789e6f5c49021c5ee817
       - name: Contract tests (unit, fuzz, invariants)
-        run: PATH="$PWD/node_modules/.bin:$PATH" forge test
+        run: forge --version && forge test
       - name: Agent tests on a local anvil chain, then the evidence summary
         run: |
           python -m venv .venv && .venv/bin/pip install -q -r agent/requirements.txt
-          export PATH="$PWD/node_modules/.bin:$PATH"
           .venv/bin/python scripts/evidence.py
       - uses: actions/upload-artifact@v4
         if: always()
