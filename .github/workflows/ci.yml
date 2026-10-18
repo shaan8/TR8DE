@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts-and-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install forge, anvil, cast and OpenZeppelin (pinned by package-lock.json)
+        run: npm ci
+      - name: forge-std at the commit used for the Sepolia build
+        run: |
+          git clone https://github.com/foundry-rs/forge-std lib/forge-std
+          git -C lib/forge-std checkout b013eff2ac4fce26f34d789e6f5c49021c5ee817
+      - name: Contract tests (unit, fuzz, invariants)
+        run: PATH="$PWD/node_modules/.bin:$PATH" forge test
+      - name: Agent tests on a local anvil chain, then the evidence summary
+        run: |
+          python -m venv .venv && .venv/bin/pip install -q -r agent/requirements.txt
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          .venv/bin/python scripts/evidence.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence
+          path: reports/evidence/
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build
+        working-directory: ui
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
