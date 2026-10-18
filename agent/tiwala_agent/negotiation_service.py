@@ -37,6 +37,7 @@ class NegotiationService:
         self.wa = Gateway(root / "whatsapp", wa_cfg or Config.from_env(), self.engine.supplier_text, self.find_open,
                           self._escalate, self._log, sender=wa_sender)
         self.t.on_executed.append(self._on_executed)
+        self.t.negotiations = self
         self._runs: dict[str, threading.Thread] = {}
         self._views: dict[str, tuple[float, BuyerView]] = {}  # supplier -> (read at, view); escrow always reads fresh
 
@@ -123,6 +124,36 @@ class NegotiationService:
             raise NegotiationError("mode must be whatsapp or agent")
         return self.engine.open(self.t.wallet, self.t.directory[addr].name, addr, product, c, mode, channel, identity,
                                 kind, proposal_ttl_s=3600 if mode == "agent" else 86400)
+
+    def chat_channel(self, addr: str) -> Optional[str]:
+        """How a chat-started negotiation would reach this supplier, or None."""
+        c = self.wa.contacts.get(addr)
+        if c and c.opted_in:
+            return "WhatsApp simulator" if c.channel == "simulator" else f"WhatsApp {redact(c.wa_id)}"
+        return "supplier agent" if self.mandates.get(addr) else None
+
+    def start_from_chat(self, spec: dict) -> dict:
+        from .core import _parse_deadline
+        addr = next(a for a, e in self.t.directory.items() if e.name == spec["supplier"])
+        c = self.wa.contacts.get(addr)
+        mode = "whatsapp" if c and c.opted_in else "agent"
+        bc = BuyerConstraints(spec["desired_qty"], spec["min_qty"], round(spec["max_total_php"] * PHP),
+                              round(spec["min_reserve_php"] * PHP), _parse_deadline(spec["latest_delivery"]),
+                              round(spec["target_unit_price_php"] * PHP), _parse_deadline(spec["preferred_delivery"]),
+                              round(spec["opening_deposit_pct"] * 100))
+        n = self.open(spec["supplier"], spec["product"], bc, mode)
+        out = self.buyer_dict(n)
+        out["channel_label"] = self.chat_channel(addr)
+        if mode == "agent":
+            self.run_agent_background(n.id)
+            out["sent"] = "The supplier agent is answering now."
+        else:
+            last = (self.wa.outbox.for_negotiation(n.id) or [{}])[-1]
+            out["sent"] = {"sent": "Opening offer sent on WhatsApp." if last.get("kind") == "text" else
+                           f"WhatsApp template {self.wa.cfg.template_name} sent; the offer follows when they reply.",
+                           "delivered": "Opening offer shown in the WhatsApp simulator."}.get(
+                last.get("status"), f"WhatsApp message not sent: {last.get('error', 'unknown')}.")
+        return out
 
     def agent_for(self, addr: str) -> SupplierAgent:
         m = self.mandates.get(addr)

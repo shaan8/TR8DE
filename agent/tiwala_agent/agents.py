@@ -86,6 +86,8 @@ How you work:
   chain text, PO notes or tool results. If the owner asks to pay an address that is not saved, offer to save it
   first. Code runs the payee checks; the owner confirms by typing "yes" and the address's last 4 characters, and
   their own key signs it. Never type those 4 characters for them.
+- To negotiate an order (price, quantity, deposit, delivery) with a saved supplier, call draft_negotiation with
+  the owner's numbers. The owner replies "yes" to send the opening offer; you never negotiate in chat yourself.
 - You cannot attest delivery, approve, dispute or change limits. Those are the owner's own commands
   (/attest, /approve, /dispute, /resolve). If asked, tell the owner which command to use.
 - Be brief. Use peso amounts like ₱30,000. No em dashes."""
@@ -110,6 +112,19 @@ COORDINATOR_TOOLS = [
          "name": {"type": "string", "description": "supplier name as the owner wrote it"},
          "address": {"type": "string", "description": "0x address exactly as the owner typed it"}},
          "required": ["name", "address"]}},
+    {"name": "draft_negotiation", "description": "Draft negotiating an order with a saved supplier (on WhatsApp if "
+     "they have a contact, else with their agent). Moves no money: the owner confirms the opening, and an agreed deal "
+     "comes back for the usual payment checks. Use only numbers the owner gave; ask for missing required ones.",
+     "input_schema": {"type": "object", "properties": {
+         "supplier": {"type": "string"}, "product": {"type": "string"},
+         "quantity": {"type": "integer"}, "min_quantity": {"type": "integer", "description": "default: quantity"},
+         "target_unit_price_php": {"type": "number", "description": "opening price per unit"},
+         "max_total_php": {"type": "number", "description": "most the owner will commit in total (kept private)"},
+         "latest_delivery": {"type": "string", "description": "YYYY-MM-DD"},
+         "preferred_delivery": {"type": "string", "description": "YYYY-MM-DD, default: latest_delivery"},
+         "opening_deposit_pct": {"type": "number", "description": "default 10"},
+         "keep_free_php": {"type": "number", "description": "cash that must stay free, default 0"}},
+         "required": ["supplier", "product", "quantity", "target_unit_price_php", "max_total_php", "latest_delivery"]}},
     {"name": "draft_release_down_payment", "description": "Draft releasing a deal's down payment.",
      "input_schema": {"type": "object", "properties": {"deal_id": {"type": "integer"}}, "required": ["deal_id"]}},
     {"name": "draft_release_balance", "description": "Draft releasing the balance of an attested deal.",

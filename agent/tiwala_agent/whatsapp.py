@@ -337,8 +337,8 @@ class Gateway:
             ok, pid, err = self.sender.send(c.wa_id, text, template_params=[text[:1000]][:self.cfg.template_params])
             rec.update(status="sent" if ok else "failed", provider_id=pid, error=err, kind="template")
             if ok and not self.cfg.template_params:
-                rec["note"] = (f"sent template {self.cfg.template_name} without the offer text; the offer goes out as "
-                               "free text once the supplier replies")
+                rec.update(held=True, note=f"sent template {self.cfg.template_name} without the offer text; the offer "
+                                           "goes out as free text once the supplier replies")
         else:
             rec.update(status="blocked", error="outside the 24-hour window and no approved template configured")
         if rec["status"] in ("blocked", "failed"):
@@ -379,6 +379,13 @@ class Gateway:
             return {"status": "ignored", "reason": "no open negotiation"}
         if out_of_order:
             self.log("whatsapp_out_of_order", negotiation=nid, id=m.id[-12:])
+        held = [r for r in self.outbox.for_negotiation(nid) if r.get("held") and r.get("provider_id")]
+        if held:  # the window is open now: deliver the offer the template could not carry, before reading the reply
+            for r in held:
+                self.outbox.update(r["provider_id"], held=False)
+            self.send(nid, c.supplier_address, held[-1]["text"], held[-1].get("proposal"))
+            self.log("whatsapp_offer_released", negotiation=nid)
+            return {"status": "offer_delivered", "negotiation": nid}  # their message answered the template, not the offer
         if HUMAN_RX.search(m.text) and not re.search(r"\d", m.text):
             self.escalate(nid, "The supplier asked to talk to a person.")
             self.send(nid, c.supplier_address, "Thank you. A person from the buyer will contact you. Nothing was "

@@ -123,3 +123,37 @@ def test_whatsapp_human_negotiation_to_escrow(env, svc):
     assert "Done." in svc.t.handle("yes").reply
     outs = svc.wa.outbox.for_negotiation(n.id)
     assert outs and all(o["channel"] == "simulator" for o in outs) and "Escrow created" in outs[-1]["text"]
+
+
+def test_owner_chat_starts_live_whatsapp_negotiation(env, tmp_path):
+    from tiwala_agent.whatsapp import CloudSender
+    from .test_integration import day
+    cfg = Config("tok", "pnid", "sec", "ver", template_name="hello_world", template_lang="en_US", live_send=True,
+                 allowed=("639170000000",), template_params=0)
+    sent = []
+    sender = CloudSender(cfg, post=lambda url, body, tok: sent.append(body) or {"messages": [{"id": f"m{len(sent)}"}]})
+    draft = ("tool", "draft_negotiation", {"supplier": "Lumen Textiles", "product": "Cotton fabric", "quantity": 500,
+                                           "target_unit_price_php": 100, "max_total_php": 60000,
+                                           "latest_delivery": day(env["chain"], 20)})
+    t = env["make"](coord(draft, ("text", "Please check the card.")))
+    s = NegotiationService(t, tmp_path / "neg", wa_cfg=cfg, wa_sender=sender)
+    s.wa.contacts.put(Contact(env["lumen"], "639170000000", "live", opted_in_at=1))
+
+    r = t.handle("Negotiate 500 m of cotton fabric with Lumen at ₱100 each, max ₱60,000")
+    assert "CONFIRM NEGOTIATION" in r.reply and "+••••0000" in r.reply and not sent, r.reply
+    r = t.handle("yes")
+    assert "Opened negotiation" in r.reply and "hello_world" in r.reply, r.reply
+    assert sent[-1]["type"] == "template" and "components" not in sent[-1]["template"]
+    assert s.wa.handle(Inbound("w1", "639170000000", 0, "hi"), "live")["status"] == "offer_delivered"
+    assert sent[-1]["type"] == "text" and "Cotton fabric" in sent[-1]["text"]["body"] and "ACCEPT" in sent[-1]["text"]["body"]
+
+
+def test_chat_negotiation_needs_the_supplier_in_the_owners_words(env, tmp_path):
+    from .test_integration import day
+    draft = ("tool", "draft_negotiation", {"supplier": "Lumen Textiles", "product": "Cotton", "quantity": 10,
+                                           "target_unit_price_php": 1, "max_total_php": 10,
+                                           "latest_delivery": day(env["chain"], 5)})
+    t = env["make"](coord(draft, ("text", "ok")))
+    NegotiationService(t, tmp_path / "neg", wa_cfg=Config())
+    r = t.handle("Start a negotiation for 10 cotton")
+    assert t.pending_negotiation is None and "CONFIRM NEGOTIATION" not in r.reply

@@ -214,6 +214,8 @@ class Tiwala:
         self.ledger: list[str] = []  # owner's own words for the current draft
         self.pending: Optional[Pending] = None
         self.pending_payee: Optional[PendingPayee] = None
+        self.pending_negotiation: Optional[dict] = None  # {"spec", "card", "created"}
+        self.negotiations = None  # NegotiationService, attached by the service itself
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
         self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
@@ -452,6 +454,12 @@ class Tiwala:
             self._log("payee_dropped", address=self.pending_payee.verdict.address)
             self.pending_payee = None
 
+        if self.pending_negotiation:
+            p, self.pending_negotiation = self.pending_negotiation, None
+            if CONFIRM_RX.match(t.text):
+                return TurnResult(self._start_negotiation(p), self._events)
+            self._log("negotiation_draft_dropped", supplier=p["spec"]["supplier"])
+
         if self.pending and CONFIRM_RX.match(t.text):
             out = self.confirm_pending()
             self.ledger = []
@@ -572,6 +580,8 @@ class Tiwala:
                          total=round(float(a["total_php"]) * PHP), down_bps=round(float(a["down_pct"]) * 100),
                          deadline=_parse_deadline(a["deadline"]), ref=str(a.get("po_ref", ""))[:64])
             return self.propose(act, then_release_down=True)
+        if name == "draft_negotiation":
+            return self.propose_negotiation(a)
         if name == "draft_save_supplier":
             return self.propose_payee(str(a.get("name", "")), str(a.get("address", "")))
         kinds = {"draft_release_down_payment": ActionKind.RELEASE_DOWN,
@@ -581,6 +591,56 @@ class Tiwala:
         return {"error": f"unknown tool {name}"}
 
     # ------------------------------------------------------------ negotiated deals
+
+    def propose_negotiation(self, a: dict) -> dict:
+        """Owner asked in chat to negotiate. Checked in code, shown as a card, opened only on the owner's own yes."""
+        if self.negotiations is None:
+            return {"status": "refused", "reasons": ["Negotiations are not available here; use the Negotiations tab."]}
+        addr = self._supplier_by_name(str(a.get("supplier", "")))
+        if addr is None:
+            return {"status": "refused", "reasons": [f"'{a.get('supplier')}' is not a saved payee. Save it first."]}
+        name = self.directory[addr].name
+        if name not in parse_intent(self.ledger[-6:], list(self.names().values())).suppliers:
+            return {"status": "refused", "reasons": [f"You did not name {name}; say which supplier to negotiate with."]}
+        try:
+            qty, price = int(a["quantity"]), float(a["target_unit_price_php"])
+            spec = {"supplier": name, "product": str(a["product"])[:80], "desired_qty": qty,
+                    "min_qty": int(a.get("min_quantity") or qty), "target_unit_price_php": price,
+                    "max_total_php": float(a["max_total_php"]), "min_reserve_php": float(a.get("keep_free_php") or 0),
+                    "latest_delivery": str(a["latest_delivery"]),
+                    "preferred_delivery": str(a.get("preferred_delivery") or a["latest_delivery"]),
+                    "opening_deposit_pct": float(a.get("opening_deposit_pct") or 10)}
+            _parse_deadline(spec["latest_delivery"]), _parse_deadline(spec["preferred_delivery"])
+        except (KeyError, ValueError, TypeError) as e:
+            return {"status": "refused", "reasons": [f"Missing or unreadable value ({e}); ask the owner for it."]}
+        channel = self.negotiations.chat_channel(addr)
+        if channel is None:
+            return {"status": "refused", "reasons": [f"{name} has no WhatsApp contact and no supplier agent."]}
+        card = "\n".join([
+            "CONFIRM NEGOTIATION",
+            f"Supplier: {name}   Channel: {channel}",
+            f"Product: {spec['product']}",
+            f"Opening offer: {qty:,} at {php(round(price * PHP))} each, {spec['opening_deposit_pct']:g}% deposit, "
+            f"delivery {spec['preferred_delivery']}",
+            f"Your private limits: at least {spec['min_qty']:,} units, at most {php(round(spec['max_total_php'] * PHP))} "
+            f"total, delivery by {spec['latest_delivery']}, keep {php(round(spec['min_reserve_php'] * PHP))} free",
+            "The supplier never sees your limits. No money moves: an agreed deal comes back here for your yes.",
+            'Reply "yes" to send the opening offer.'])
+        self.pending_negotiation = {"spec": spec, "card": card, "created": time.time()}
+        self._log("negotiation_drafted", supplier=name, channel=channel)
+        return {"status": "needs_confirmation", "card": card}
+
+    def _start_negotiation(self, p: dict) -> str:
+        if time.time() - p["created"] > PENDING_TTL_S:
+            return "That confirmation expired. Ask again and I will draft it fresh."
+        try:
+            n = self.negotiations.start_from_chat(p["spec"])
+        except Exception as e:
+            return f"I could not open the negotiation: {e}"
+        self._log("negotiation_opened_from_chat", negotiation=n["id"])
+        sent = n.get("sent") or ""
+        return (f"Opened negotiation NEG-{n['id']} with {p['spec']['supplier']} ({n['channel_label']}). {sent}"
+                " Follow it in the Negotiations tab.").replace("  ", " ")
 
     def propose_negotiated(self, detail: str, supplier: str, total: int, down_bps: int, deadline: int, ref: str,
                            summary: str, label: str, supplier_via: str) -> dict:
