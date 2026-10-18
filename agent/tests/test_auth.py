@@ -98,3 +98,10 @@ def test_security_headers_on_every_response(client):
 def test_test_bypass_never_applies_through_a_tunnel(monkeypatch, client):
     monkeypatch.setenv("TIWALA_AUTH_DISABLED", "1")
     assert client.get("/api/fixtures").status_code == 401  # TestClient is not loopback
+
+
+def test_unsigned_webhook_posts_are_refused_before_the_agent_is_built(client, monkeypatch):
+    from console import negotiation_api
+    monkeypatch.setattr(negotiation_api, "svc", lambda: (_ for _ in ()).throw(AssertionError("agent built")))
+    assert client.post("/webhooks/whatsapp", content=b"{}", headers={"X-Hub-Signature-256": "sha256=00"}).status_code == 403
+    assert client.get("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=x&hub.challenge=1").status_code == 403

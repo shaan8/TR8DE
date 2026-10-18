@@ -298,11 +298,19 @@ def sim_supplier_link(supplier: str):
 # ---------------------------------------------------------------- live WhatsApp Cloud API webhook
 
 
+def _wa_cfg():
+    """WhatsApp settings without building the live agent: the public webhook checks Meta's token or signature first."""
+    from tiwala_agent.whatsapp import Config
+    from .server import _load_env
+    _load_env()
+    return Config.from_env()
+
+
 @router.get("/webhooks/whatsapp")
 def wa_verify(request: Request):
     from tiwala_agent.whatsapp import verify_subscription
     q = request.query_params
-    ch = verify_subscription(svc().wa.cfg, q.get("hub.mode", ""), q.get("hub.verify_token", ""),
+    ch = verify_subscription(_wa_cfg(), q.get("hub.mode", ""), q.get("hub.verify_token", ""),
                              q.get("hub.challenge", ""))
     if ch is None:
         raise HTTPException(403, "verification failed")
@@ -313,10 +321,10 @@ def wa_verify(request: Request):
 async def wa_event(request: Request):
     from tiwala_agent.whatsapp import parse_webhook, valid_signature
     raw = await request.body()
-    s = svc()
-    if not valid_signature(s.wa.cfg, raw, request.headers.get("x-hub-signature-256", "")):
-        s._log("whatsapp_bad_signature", size=len(raw))
+    if not valid_signature(_wa_cfg(), raw, request.headers.get("x-hub-signature-256", "")):
+        print(f"whatsapp: bad signature, {len(raw)} bytes", flush=True)  # nothing built or stored for unsigned posts
         raise HTTPException(403, "bad signature")
+    s = svc()
     try:
         msgs, sts = parse_webhook(json.loads(raw))
     except ValueError:
