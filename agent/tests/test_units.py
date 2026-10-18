@@ -350,3 +350,17 @@ def test_non_delivery_never_raises_r(nd_total):
         after = score(base + [_cd(demo, bayani, nd_total, Outcome.NON_DELIVERY, 5)] + extra, bayani)
         assert after.non_delivery == 1 and after.r < before.r
         assert after.p < before.p
+
+
+def test_guide_needs_no_model_chain_or_owner_key(tmp_path):
+    from tiwala_agent.audit import AuditLog
+    from tiwala_agent.core import GUIDE, Tiwala
+    from tiwala_agent.llm import ScriptedLLM
+
+    def boom(*a):
+        raise AssertionError("no model call for /guide")
+    t = Tiwala(None, "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a", tmp_path, {"coordinator": ScriptedLLM(boom),
+               "checker": ScriptedLLM(boom)}, AuditLog(tmp_path / "a.jsonl"))
+    for cmd in ("/guide", "/HELP", " help "):
+        r = t.handle(cmd)
+        assert r.reply == GUIDE and "/attest N" in r.reply and "Negotiations tab" in r.reply

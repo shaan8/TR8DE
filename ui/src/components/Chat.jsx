@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, Timer, User } from "lucide-react";
+import { BookOpen, Send, Timer, User } from "lucide-react";
 import { ActionCard, ModelDown, OwnerReceipt, PayeeCard, PayeeNotSaved, PayeeReceipt, QuestionCard, RefusalCard, TxReceipt, UntrustedBlock } from "./Cards.jsx";
 import { Trace } from "./Trace.jsx";
 import { Button, Chip, Prose } from "./ui.jsx";
@@ -73,7 +73,7 @@ export function Composer({ disabled, busy, value, setValue, onSend, onTick, inpu
       onSubmit={(ev) => { ev.preventDefault(); if (value.trim()) onSend(value.trim()); }}>
       <label htmlFor="msg" className="sr-only">Message Tiwala</label>
       <input id="msg" ref={inputRef} value={value} onChange={(ev) => setValue(ev.target.value)} disabled={disabled}
-        placeholder={disabled ? "Halted: actions are disabled" : "Ask Tiwala, or type /attest <deal>"}
+        placeholder={disabled ? "Halted: actions are disabled" : "Ask Tiwala, or type /guide"}
         className="min-h-[44px] flex-1 rounded border border-accent bg-raised px-3 text-base text-ink placeholder:text-ink-2 disabled:opacity-60" />
       <div className="flex gap-2">
         <Button type="submit" disabled={disabled || busy || !value.trim()} className="flex-1 sm:flex-none"><Send size={16} aria-hidden="true" />Send</Button>
@@ -83,11 +83,37 @@ export function Composer({ disabled, busy, value, setValue, onSend, onTick, inpu
   );
 }
 
+export const SUGGESTIONS = [
+  "What's my balance and what deals are open?",
+  "What is Lumen Textiles' delivery record?",
+  "Can I afford a PHP 80,000 PO on 2026-10-30?",
+  "Create escrow for Lumen PO-106, PHP 100,000, 20% down, delivery by 2026-10-30",
+  "Release the balance for deal 6",
+  "Save a new supplier, Kalinaw Crafts, payout 0x",
+];
+
+/** Recommended prompts. A click fills the box so the owner can edit before sending; /guide sends at once. */
+export function Suggestions({ onPick, onSend, disabled }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Suggested prompts">
+      <span className="text-cap text-ink-2">Try:</span>
+      <button type="button" disabled={disabled} onClick={() => onSend("/guide")}
+        className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-accent px-3 text-cap font-semibold text-ink hover:bg-subtle/40 disabled:opacity-50">
+        <BookOpen size={12} aria-hidden="true" />/guide</button>
+      {SUGGESTIONS.map((s) => (
+        <button key={s} type="button" disabled={disabled} onClick={() => onPick(s)}
+          className="min-h-[32px] max-w-full rounded-full border border-subtle px-3 text-left text-cap text-ink-2 hover:border-accent hover:text-ink disabled:opacity-50">
+          {s}</button>
+      ))}
+    </div>
+  );
+}
+
 export function EmptyChat() {
   return (
     <div className="rounded bg-surface p-6 text-ink-2">
       <p className="flex items-center gap-2 text-base text-ink"><User size={16} aria-hidden="true" />Tell Tiwala what to pay, and to whom.</p>
-      <p className="mt-1 text-sm">For example: “Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25”. Every new deal comes back to you for a yes.</p>
+      <p className="mt-1 text-sm">For example: “Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25”. Every new deal comes back to you for a yes. Type <span className="font-mono text-ink">/guide</span> for everything Tiwala can do.</p>
     </div>
   );
 }

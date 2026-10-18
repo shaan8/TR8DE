@@ -57,6 +57,39 @@ def user_tz() -> tzinfo:
         pass
     return datetime.now().astimezone().tzinfo or timezone.utc
 CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm(ed)?|ok(ay)?|go( ahead)?|proceed|sige|oo)\s*[.!]*\s*$", re.I)
+GUIDE = "\n".join([
+    '**What Tiwala does**',
+    'Pays your suppliers through on-chain escrow. The full PO is locked when a deal is created, the down payment goes out right after, and the balance only after you confirm delivery. Every new deal comes back to you for a yes.',
+    '',
+    '**Try asking**',
+    "- What's my balance and what deals are open?",
+    "- What is Lumen Textiles' delivery record?",
+    '- Can I afford a PHP 80,000 PO on 2026-10-30?',
+    '- Create escrow for Lumen PO-106, PHP 100,000, 20% down, delivery by 2026-10-30',
+    '- Release the down payment for deal 6',
+    '- Release the balance for deal 6 (after you /attest it)',
+    '- Cancel deal 5 (only once it is overdue)',
+    '- Save a new supplier, Kalinaw Crafts, payout 0x... (the address you got from the supplier)',
+    '',
+    '**Answering a confirmation card**',
+    '- yes: confirm the deal on the card',
+    '- Tell me what to change, for example "make it 15% down", and I re-check everything',
+    '- Saving a payee: yes plus the last 4 characters of the address, for example "yes 1a2b"',
+    '',
+    '**Your own commands (signed with your key, never by the agent)**',
+    '- /attest N: confirm delivery of deal N, which releases its balance',
+    '- /approve N: approve a deal above your approval threshold',
+    '- /dispute N: freeze deal N',
+    '- /resolve N release or /resolve N refund: settle a dispute',
+    '- Run monitor: check deadlines, attestations and balances now',
+    '- /guide: show this list',
+    '',
+    '**Negotiations tab**',
+    'Tiwala negotiates quantity, price, deposit and delivery with a supplier on WhatsApp or with their agent, inside your limits, then brings the exact agreement back here for your yes.',
+    '',
+    '**Built-in safety**',
+    "Only saved payees can be paid, and new ones wait 24 hours. PO notes and supplier messages are treated as data, never instructions. Contract limits cap every deal and the agent's daily spend.",
+])
 PAYEE_CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm|oo|sige)\s+([0-9a-f]{4})\s*[.!]*\s*$", re.I)
 PENDING_TTL_S = 600
 MAX_TOOL_STEPS = 8
@@ -402,6 +435,8 @@ class Tiwala:
         t = tag_user(text)
         self._log("user_message", text=t.text, flags=list(t.flags))
 
+        if t.text.strip().lower() in ("/guide", "/help", "help"):
+            return TurnResult(GUIDE, self._events)
         if t.text.strip().startswith("/"):
             return TurnResult(self._owner_command(t.text.strip()), self._events)
 

@@ -156,6 +156,12 @@ def state(fixture: Optional[str] = Query(None)):
 @app.post("/api/message")
 async def message(m: Msg, fixture: Optional[str] = Query(None)):
     """SSE: one `step` per pipeline event as it happens, then one `reply`."""
+    if fixture and m.text.strip().lower() in ("/guide", "/help", "help"):
+        from tiwala_agent.core import GUIDE
+
+        async def guide():
+            yield _sse("reply", {"reply": GUIDE, "turn": {"user": m.text, "reply": GUIDE, "events": []}})
+        return StreamingResponse(guide(), media_type="text/event-stream")
     if fixture:
         f = _fixture(fixture)
         last = f["turns"][-1] if f["turns"] else {"events": [], "reply": "Nothing to replay."}

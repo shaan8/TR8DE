@@ -267,7 +267,7 @@ def main() -> None:
             t.pending = None
             st.rerun()
 
-    msg = st.chat_input("Ask Tiwala, or type /attest N, /approve N, /dispute N, /resolve N release|refund")
+    msg = st.chat_input("Ask Tiwala, or type /guide for everything it can do")
     msg = cmd or msg
     if msg:
         chat.append(("user", msg, []))

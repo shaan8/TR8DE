@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileWarning, ShieldAlert, ShieldCheck } from "lucide-react";
-import { Composer, EmptyChat, Turn } from "./components/Chat.jsx";
+import { Composer, EmptyChat, Suggestions, Turn } from "./components/Chat.jsx";
 import { Feed, NeedsYou } from "./components/Feed.jsx";
 import { DailyLimit, Deals, Payees, Suppliers, Wallet } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
@@ -154,6 +154,7 @@ export default function App() {
             {turns.length ? turns.map((t, i) => <Turn key={i} turn={t} ctx={ctx} />) : <EmptyChat />}
           </section>
           <Composer disabled={halted} busy={busy} value={draft} setValue={setDraft} onSend={send} onTick={tick} inputRef={inputRef} />
+          <Suggestions disabled={busy} onSend={send} onPick={(s) => { setDraft(s); inputRef.current?.focus(); }} />
         </main>
 
         <aside aria-label="Wallet and deals" className="order-2 space-y-4 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 xl:row-span-1">

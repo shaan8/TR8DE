@@ -113,7 +113,7 @@ Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in 
 `?fixture=` the page drives the live agent. `cd ui && npm run shots` renders every state at 1440 and 390 into
 `reports/ui/` and runs axe on each (spec: `docs/ui-spec.md`).
 
-Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
+`/guide` lists what Tiwala can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
 Deadlines accept `YYYY-MM-DD` (23:59) or `YYYY-MM-DD HH:MM` in the device timezone (`TIWALA_TZ` overrides).
 
