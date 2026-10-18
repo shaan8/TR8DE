@@ -34,15 +34,16 @@ export default function App() {
   const [list, setList] = useState([]);
   const inputRef = useRef(null);
 
-  const load = async () => {
+  // Live refreshes keep the chat: /api/state has no conversation history, only wallet and deals.
+  const load = async (initial = false) => {
     try {
       const s = await getJSON("/api/state", fixture);
-      setState(s); setTurns(s.turns); setActivity(s.activity);
-      setPendingLine(s.pending?.line ?? null);
+      setState(s); setActivity(s.activity);
+      if (initial) { setTurns(s.turns); setPendingLine(s.pending?.line ?? null); }
     } catch (e) { setError(String(e.message || e)); }
   };
   useEffect(() => {
-    load();
+    load(true);
     getJSON("/api/verify", fixture).then(setAudit).catch(() => setAudit(null));
     getJSON("/api/fixtures").then(setList).catch(() => {});
   }, []);
