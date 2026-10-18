@@ -7,6 +7,7 @@ Live on Sepolia: factory [`0xDEF343...d569`](https://sepolia.etherscan.io/addres
 demo wallet [`0x2Fc37E...8C1a`](https://sepolia.etherscan.io/address/0x2Fc37E4e02F4d10745875710cd54B52429A28C1a).
 Full deploy log (111 txs, 0 reverted): [`reports/sepolia-evidence.md`](reports/sepolia-evidence.md).
 Security self-assessment: [`SECURITY.md`](SECURITY.md).
+Submission map (every deliverable and where to find it): [`SUBMISSION.md`](SUBMISSION.md). Execution evidence: [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md).
 Source: https://github.com/shaan8/TR8DE
 
 ## Layout

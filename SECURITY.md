@@ -13,7 +13,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | Negotiated terms | Supplier text injection, stale or ambiguous acceptance, duplicate webhooks, human and agent answering at once | Supplier text never reaches the owner path; acceptance must name the open version and terms hash; counters supersede; lock plus version check; message-ID dedup; escrow handoff idempotent by on-chain reference; agreement rechecked on fresh chain data and confirmed by the owner ([`docs/negotiation.md`](docs/negotiation.md)) |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
 | Owner console | Anyone who reaches the console URL | Login (`agent/console/auth.py`): salted scrypt hash in `.env`, no plaintext; 256-bit server-side sessions in an HttpOnly, SameSite=Strict cookie (Secure on HTTPS), 2 h idle and 12 h absolute expiry; lockout after 5 failures per client and 30 overall per 15 min; same-origin plus `X-Tiwala` header on every write; CSP, frame-deny and HSTS headers; API docs disabled. The supplier console uses its own per-supplier token and the WhatsApp webhook its Meta signature |
-| Audit trail | Tampering after the fact | Hash-chained JSONL; `/verify` recomputes the chain (detects edits, not deletion of the tail) |
+| Audit trail | Tampering after the fact | Hash-chained JSONL; `/anchor` writes the head hash and entry count to Sepolia from the owner key, so edits, deletions and tail truncation up to the last anchor are detected by [`scripts/verify_audit.py`](scripts/verify_audit.py) (standard library only, works offline) |
 
 ## Layered controls
 
@@ -25,6 +25,10 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
    authorization minted only after the policy engine allows it. Tier 2 actions need a confirmation matched on the
    owner's own next message, not on model output. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
    payee checks pass and the owner types the address's last 4 characters; the owner key signs it.
+   Each Gate authorization is single-use. Model replies are grounded: a transaction hash not produced here
+   replaces the reply, and peso amounts not taken from wallet data are flagged. Three refused payment requests
+   within 10 minutes freeze the agent (circuit breaker); `/freeze` also pauses the wallet on-chain.
+   Every payout path (create, down payment, balance, monitor) re-runs the blocklist and supplier status checks.
 3. **Scoped signer (`chain.py`).** The agent key can call only operator functions; each call is simulated first.
 4. **Contract (`TiwalaAgentWallet`).** For the agent key:
    - payees must be whitelisted by the owner and active after `supplierDelay`
@@ -38,7 +42,9 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 | Check | Result |
 | --- | --- |
 | Foundry: 38 unit, 1 fuzz, 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) | 42 pass, 256 runs x 64 depth, 0 reverts ([`reports/tests.txt`](reports/tests.txt)) |
-| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, console login, red-team and pentest regressions on anvil | 164 pass |
+| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, console login, red-team and pentest regressions on anvil | All pass; grouped in [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md), run in [CI](.github/workflows/ci.yml) |
+| Policy fuzzing: 200,000 seeded random cases, every payout rule checked after each decision | 0 violations; three planted bugs each caught |
+| Secret scan of the full git history (gitleaks in CI, plus a check of every `.env` value) | No secrets committed; only the public Anvil test keys, allowlisted |
 | Slither 0.11.6 on `src/` | 0 high, 0 medium; 14 informational, triaged in [`reports/slither-triage.md`](reports/slither-triage.md) |
 | Live red-team on Sepolia | Injection, unknown payee, forced revert, social engineering: all held ([`README.md`](README.md#live-agent-run-on-sepolia)) |
 
@@ -61,8 +67,8 @@ Promptfoo runs, 13 recorded a prohibited payment.
 | Benign request refused when the supplier was named by a short form ("Bayani") | Fixed: names resolved in code are passed to the Checker, and its prompt accepts the first-word short form |
 | Cheap reputation manufacture by colluding factory buyers (F4) | Accepted for the demo: needs platform-onboarded buyers. Production needs value and age floors per verified buyer |
 | Compromised agent key can lock all free funds in unapproved deals (F5) | Accepted: recoverable (pause, rotate agent, cancel). Production should cap aggregate unapproved commitments |
-| Audit log tail deletion passes `/verify` (F6) | Accepted; claim narrowed in `audit.py` and above. Needs an external checkpoint |
-| Gate authorization reusable within its 60 s TTL | Accepted: no tool accepts an authorization; nonces stop raw replay |
+| Audit log tail deletion passes `/verify` (F6) | Fixed: on-chain anchors via `/anchor`; `scripts/verify_audit.py` reports deleted or rewritten entries. Entries after the last anchor are covered only once the next anchor is written |
+| Gate authorization reusable within its 60 s TTL | Fixed: each authorization carries a nonce and is consumed on use |
 
 The Promptfoo cases were not rerun against the fixed code; the regression tests above replay each path on anvil with
 scripted models.
@@ -86,7 +92,9 @@ The login is a second layer for any exposure, not a reason to publish the consol
   Disputes stop a release but rely on off-chain resolution.
 - **Reputation is off-chain and computed by the agent.** A bug in `reputation.py` could set a wrong cap; the
   contract's `maxDownBps` is the hard ceiling. Sybil resistance depends on the platform's account dedup.
-- **LLM provider sees conversation content.** The audit log is redacted; prompts sent to the provider are not.
+- **LLM provider sees conversation content, minimised.** Phones, e-mails and account numbers are masked and wallet
+  addresses replaced by placeholders before any model call (`privacy.py`); names, amounts and dates still go to the
+  provider.
 - **Timestamps.** Deadlines use `block.timestamp`; drift of seconds does not matter at hour and day granularity.
 - **Single chain, test token, no upgrade path.** Contracts are not upgradeable; a fix means a new deployment.
 - **WhatsApp live integration is untested.** No Meta credentials were available. Eligibility of an escrow-linked
