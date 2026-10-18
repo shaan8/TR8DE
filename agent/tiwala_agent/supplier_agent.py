@@ -143,25 +143,41 @@ class SupplierAgent:
                 for p in props]
         body = (f"Product: {pub['product']}\nYour mandate (private): {json.dumps(mandate)}\nOffers so far: "
                 f"{json.dumps(hist)}\nOffers left: {pub['max_rounds'] - len(props)}. Answer buyer offer v{cur.version}.")
-        try:
-            r = self.llm.complete(SUPPLIER_SYSTEM, [{"role": "user", "content": body}])
-            j = json.loads(re.search(r"\{.*\}", r.text or "", re.S).group(0))
-        except Exception:
-            return None  # outage or malformed output: hand over, never guess
-        if not isinstance(j, dict):
-            return None
+        msgs = [{"role": "user", "content": body}]
+        for attempt in range(2):  # one corrective retry: the failed mandate checks go back to the agent, supplier side only
+            try:
+                r = self.llm.complete(SUPPLIER_SYSTEM, msgs)
+                j = json.loads(re.search(r"\{.*\}", r.text or "", re.S).group(0))
+            except Exception:
+                return None  # outage or malformed output: hand over, never guess
+            move, failed = self._check_move(j, cur) if isinstance(j, dict) else (None, ["not a JSON object"])
+            if move is not None:
+                return move
+            self.store.log(m.supplier_address, {"negotiation": pub["id"], "offer": cur.id, "kind": self.kind,
+                                                "refused_model_move": j, "failed": failed, "attempt": attempt + 1})
+            msgs += [{"role": "assistant", "content": r.text},
+                     {"role": "user", "content": "That move breaks your mandate: " + " ".join(failed) +
+                      " Answer again with a move inside the mandate, JSON only."}]
+        return None
+
+    def _check_move(self, j: dict, cur: Proposal) -> tuple[Optional[dict], list[str]]:
+        from .negotiation import _terms_from_json
+        m = self.m
         act = j.get("action")
         if act == "accept":
-            ok = m.agent_may_accept and passes(supplier_checks(cur.terms, m))
-            return {"type": "accept", "proposal_id": cur.id, "terms_hash": cur.terms_hash} if ok else None
+            bad = [c.detail for c in supplier_checks(cur.terms, m) if not c.ok]
+            if not m.agent_may_accept:
+                bad.append("You may not accept; counter or reject.")
+            return ({"type": "accept", "proposal_id": cur.id, "terms_hash": cur.terms_hash}, []) if not bad else (None, bad)
         if act == "counter":
             t = _terms_from_json(j, cur.terms)
-            if t is None or not passes(supplier_checks(t, m)):
-                return None
-            return {"type": "counter", "terms": t, "note": str(j.get("message", ""))[:300]}
+            if t is None:
+                return None, ["The terms could not be read."]
+            bad = [c.detail for c in supplier_checks(t, m) if not c.ok]
+            return ({"type": "counter", "terms": t, "note": str(j.get("message", ""))[:300]}, []) if not bad else (None, bad)
         if act == "reject":
-            return {"type": "reject", "reason": str(j.get("message", ""))[:200]}
-        return None
+            return {"type": "reject", "reason": str(j.get("message", ""))[:200]}, []
+        return None, ["action must be accept, counter or reject."]
 
     # ---------------------------------------------------------- scripted
 

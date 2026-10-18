@@ -189,7 +189,11 @@ class NegotiationService:
                 return {"status": "needs_confirmation", "card": t.pending.card}
             tt = p.terms
             sup_acc = p.accepted_by.get("supplier", {})
-            via = f"{sup_acc.get('via', '?')}, {redact(sup_acc.get('identity', ''))}"
+            channel = {"supplier_agent_live_model": "supplier agent, live model",
+                       "supplier_agent_scripted": "supplier agent, scripted", "supplier_console": "supplier console",
+                       "simulator_text": "WhatsApp simulator", "live_text": "WhatsApp"}.get(sup_acc.get("via", ""),
+                                                                                       sup_acc.get("via", "?"))
+            via = f"{channel}, {redact(sup_acc.get('identity', ''))}"
             summary = (f"The owner asked to put negotiated agreement NEG-{n.id} v{p.version} into escrow. Agreed with "
                        f"{n.supplier_name}: {tt.quantity} units of {n.product} at {php(tt.unit_price)} each = "
                        f"{php(tt.total)} total, deposit {tt.deposit_bps / 100:g}% ({php(tt.deposit)}) released after "
@@ -200,6 +204,7 @@ class NegotiationService:
             if out["status"] == "needs_confirmation":
                 n.state = State.READY_FOR_ESCROW.value
                 n.handoff = {"state": "pending", "ref": ref, "proposal": p.id}
+                n.reason = "Escrow card ready: your own yes creates the deal and pays the deposit."
                 n.note("escrow_requested", "confirmation card shown; waiting for your yes", eng.now())
             else:
                 n.handoff = {"state": "refused", "ref": ref, "reasons": out.get("reasons", []),

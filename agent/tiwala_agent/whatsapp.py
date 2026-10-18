@@ -36,8 +36,12 @@ HUMAN_RX = re.compile(r"\b(human|person|agent|tao|talk to (someone|a person))\b"
 
 def redact(wa_id: str) -> str:
     """Phone-number ids in logs and the UI: keep the last 4 digits only."""
-    d = re.sub(r"\D", "", wa_id or "")
-    return f"+••••{d[-4:]}" if len(d) >= 4 else (wa_id if (wa_id or "").startswith("sim:") else "••••")
+    w = wa_id or ""
+    if w.startswith(("sim:", "agent:", "supplier-console:")):  # not phone numbers: keep the kind, shorten the address
+        kind, _, rest = w.partition(":")
+        return f"{kind}:{rest[:6]}…{rest[-4:]}" if len(rest) > 12 else w
+    d = re.sub(r"\D", "", w)
+    return f"+••••{d[-4:]}" if len(d) >= 4 else "••••"
 
 
 @dataclass(frozen=True)

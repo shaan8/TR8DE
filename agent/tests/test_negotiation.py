@@ -352,3 +352,15 @@ def test_live_sender_needs_window_template_and_allowlist(world):
     g.contacts.put(Contact(LUMEN, "639990000000", "live", opted_in_at=T0, last_inbound_at=world["clock"].t))
     assert g.send("N1", LUMEN, "offer")["status"] == "failed"  # not on the allowlist: refused before any request
     assert len(sent) == 2
+
+
+def test_supplier_model_gets_one_corrective_retry(world):
+    bad = json.dumps({"action": "counter", "quantity": 450, "unit_price_php": 130, "deposit_pct": 15,
+                      "deliver_by": "2027-01-24"})  # 450 units need the 20% tier
+    good = json.dumps({"action": "counter", "quantity": 450, "unit_price_php": 130, "deposit_pct": 20,
+                       "deliver_by": "2027-01-24"})
+    llm = ScriptedLLM([LLMResponse(bad), LLMResponse(good)])
+    n, agent = open_agent(world, llm=llm)
+    move = agent.decide(world["eng"].store.get(n.id).public())
+    assert move["type"] == "counter" and move["terms"].deposit_bps == 2000
+    assert "20% for 450 units" in llm.calls[1]["messages"][-1]["content"]  # told which mandate rule it broke
