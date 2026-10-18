@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Ban, Bot, CheckCircle2, Clock, FileWarning, Handshake, KeyRound, Lock, MessageSquare, Phone, Send, ShieldAlert, User, XCircle } from "lucide-react";
 import clsx from "clsx";
 import { Button, Card, Chip, Panel, Row } from "./components/ui.jsx";
-import { day, peso, short, txUrl, when } from "./lib.js";
+import { day, peso, request, short, txUrl, when } from "./lib.js";
 
 const P = (units) => peso(units / 100, 2);
 const STATE = {
@@ -21,7 +21,7 @@ const FIELD = { quantity: "Quantity", unit_price: "Unit price", total: "Total", 
 const fmt = (k, v) => (k === "quantity" ? v.toLocaleString("en-US") : k === "deposit_bps" ? `${v / 100}%` : k === "deliver_by" ? day(v) : P(v));
 
 async function call(path, method = "GET", body) {
-  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const r = await request(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || `${r.status}`);
   return j;
@@ -104,6 +104,7 @@ function Conversation({ n }) {
                   {(m.flags || []).map((f) => <Chip key={f} tone="bad" icon={ShieldAlert}>{f}</Chip>)}
                 </p>
                 {m.text}
+                {o?.error && <p className="mt-1 text-cap text-bad">Not sent: {o.error}</p>}
               </div>
             </li>
           );
@@ -292,6 +293,15 @@ export default function Negotiate() {
         </div>
       </header>
       {err && <p role="alert" className="mb-4 rounded border border-bad bg-raised p-3 text-sm text-bad">{err}</p>}
+      {!fixture && data.whatsapp?.missing?.length > 0 && (
+        <details className="mb-4 rounded border border-subtle bg-surface p-3 text-sm">
+          <summary className="cursor-pointer text-ink-2">Why live WhatsApp cannot send yet ({data.whatsapp.missing.length})</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-2">
+            {data.whatsapp.missing.map((x) => <li key={x}>{x}</li>)}
+            <li>Each supplier also needs an opted-in WhatsApp contact; only local simulator contacts exist now.</li>
+          </ul>
+        </details>
+      )}
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_360px]">
         <aside className="space-y-4" aria-label="Negotiations">
           {!fixture && data.payees && <NewNegotiation payees={data.payees} onOpen={open} busy={busy} />}

@@ -76,7 +76,24 @@ class Config:
     def status(self) -> dict:
         """Safe to show: which pieces are configured, never their values."""
         return {"receive": self.can_receive, "send": self.can_send, "template": bool(self.template_name),
-                "allowed_recipients": len(self.allowed), "graph_version": self.graph_version}
+                "allowed_recipients": len(self.allowed), "graph_version": self.graph_version, "missing": self.missing()}
+
+    def missing(self) -> list[str]:
+        """Why a live WhatsApp send or receive would fail right now, in plain words (names only, no values)."""
+        out = []
+        if not (self.access_token and self.phone_number_id):
+            out.append("No Meta credentials: WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are empty in .env.")
+        if not self.live_send:
+            out.append("Live sending is off: WHATSAPP_LIVE_SEND is not 1.")
+        if not self.allowed:
+            out.append("No WHATSAPP_ALLOWED_RECIPIENTS: every live recipient is refused.")
+        if not self.can_receive:
+            out.append("Supplier replies cannot arrive: WHATSAPP_APP_SECRET and WHATSAPP_VERIFY_TOKEN are empty, and Meta "
+                       "needs a public HTTPS webhook URL (localhost is unreachable).")
+        if not self.template_name:
+            out.append("No approved template (WHATSAPP_TEMPLATE_NAME): a first message, or one sent more than 24 h after "
+                       "the supplier's last message, is blocked.")
+        return out
 
 
 # ---------------------------------------------------------------------- webhook primitives

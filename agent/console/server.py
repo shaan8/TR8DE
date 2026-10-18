@@ -240,6 +240,22 @@ from .negotiation_api import router as negotiation_router  # noqa: E402
 
 app.include_router(negotiation_router)
 
+
+@app.on_event("startup")
+def _warm():
+    """Build the live agent and the negotiation view in the background, so the first page load is not a 10 s+
+    chain read. Skipped with TIWALA_NO_WARM=1 (UI shots use fixtures only)."""
+    if os.environ.get("TIWALA_NO_WARM") == "1":
+        return
+    from .negotiation_api import list_negotiations
+
+    def run():
+        try:
+            list_negotiations(None)
+        except Exception as e:  # no .env or RPC down: the request path reports it when someone asks
+            print(f"warm-up skipped: {type(e).__name__}: {e}")
+    threading.Thread(target=run, daemon=True).start()
+
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 

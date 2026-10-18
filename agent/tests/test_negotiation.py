@@ -364,3 +364,12 @@ def test_supplier_model_gets_one_corrective_retry(world):
     move = agent.decide(world["eng"].store.get(n.id).public())
     assert move["type"] == "counter" and move["terms"].deposit_bps == 2000
     assert "20% for 450 units" in llm.calls[1]["messages"][-1]["content"]  # told which mandate rule it broke
+
+
+def test_whatsapp_status_explains_what_is_missing():
+    from tiwala_agent.whatsapp import Config
+    empty = Config().status()
+    assert not empty["send"] and len(empty["missing"]) == 5
+    full = Config("tok", "pnid", "sec", "ver", template_name="tpl", live_send=True, allowed=("639170000000",)).status()
+    assert full["send"] and full["receive"] and full["missing"] == []
+    assert "tok" not in json.dumps(full) and "sec" not in json.dumps(full)

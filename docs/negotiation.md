@@ -79,6 +79,20 @@ live use.
 tested. The adapter is covered by unit tests (signature, verification, parsing, dedup, window, template, allowlist,
 opt-out) and the simulator runs the same engine.
 
+### Why a message does not send
+
+The Negotiations page lists what is missing ("Why live WhatsApp cannot send yet"), and each blocked or failed
+message shows its reason. In order, a live send needs:
+
+1. `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` from a Meta app, and `WHATSAPP_LIVE_SEND=1`.
+2. The recipient's number in `WHATSAPP_ALLOWED_RECIPIENTS`.
+3. An opted-in contact for that supplier (today only simulator contacts exist, via `POST /api/sim/whatsapp/contact`).
+4. Free text only within 24 h of the supplier's last message; otherwise an approved `WHATSAPP_TEMPLATE_NAME`.
+5. For replies: `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` and a public HTTPS webhook URL registered in the
+   Meta app. Localhost is unreachable, so use a tunnel or a hosted server.
+
+Outbound records are in `agent/data/negotiation/whatsapp/outbox.json`.
+
 ## Demos (recorded, `reports/negotiation/`)
 
 | Demo | Result | Validation |

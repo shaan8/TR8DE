@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bot, CheckCircle2, FileWarning, Hand, Play, Save, Send, User, XCircle } from "lucide-react";
 import { Button, Card, Chip, Panel } from "./components/ui.jsx";
-import { day, peso, when } from "./lib.js";
+import { day, peso, request, when } from "./lib.js";
 import { ModeChips } from "./Negotiate.jsx";
 
 const P = (u) => peso(u / 100, 2);
@@ -14,12 +14,12 @@ export default function SupplierView() {
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const load = () => fetch(`/api/supplier${base}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.detail); setD(j); }).catch((e) => setErr(String(e.message)));
+  const load = () => request(`/api/supplier${base}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.detail); setD(j); }).catch((e) => setErr(String(e.message)));
   useEffect(() => { load(); const id = fixture ? null : setInterval(load, 2000); return () => id && clearInterval(id); }, []);
   const post = async (path, body, method = "POST") => {
     setBusy(true); setErr("");
     try {
-      const r = await fetch(path + (path.includes("?") ? "&" : "?") + `supplier=${supplier}&token=${token}`, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+      const r = await request(path + (path.includes("?") ? "&" : "?") + `supplier=${supplier}&token=${token}`, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
       const j = await r.json(); if (!r.ok) throw new Error(j.detail); await load();
     } catch (e) { setErr(String(e.message)); } finally { setBusy(false); }
   };

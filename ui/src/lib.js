@@ -26,13 +26,32 @@ export function query() {
 }
 const q = (fixture) => (fixture ? `?fixture=${encodeURIComponent(fixture)}` : "");
 
+export const SERVER_DOWN = "Cannot reach the Tiwala server. It is not running or it restarted. Start it with: "
+  + "cd agent && ../.venv/bin/uvicorn console.server:app --port 8000, then reload this page.";
+
+/** fetch with a clear message for a dead server or a slow model/chain instead of a bare "Load failed". */
+export async function request(path, opts = {}, timeoutS = 120) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutS * 1000);
+  try {
+    return await fetch(path, { ...opts, signal: ctl.signal });
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error(`No answer from the server after ${timeoutS} s. The model or the chain RPC may be slow; try again.`);
+    }
+    throw new Error(SERVER_DOWN);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 export async function getJSON(path, fixture) {
-  const r = await fetch(path + q(fixture));
+  const r = await request(path + q(fixture));
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   return r.json();
 }
 export async function postJSON(path, fixture, body) {
-  const r = await fetch(path + q(fixture), {
+  const r = await request(path + q(fixture), {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}),
   });
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
@@ -41,14 +60,15 @@ export async function postJSON(path, fixture, body) {
 
 /** POST /api/message and read the SSE stream: onStep per event, resolves with the reply payload. */
 export async function sendMessage(text, fixture, onStep) {
-  const r = await fetch("/api/message" + q(fixture), {
+  const r = await request("/api/message" + q(fixture), {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
-  });
+  }, 300);
+  if (!r.ok || !r.body) throw new Error(`/api/message: ${r.status}`);
   const reader = r.body.getReader();
   const dec = new TextDecoder();
   let buf = "", result = null;
   for (;;) {
-    const { value, done } = await reader.read();
+    const { value, done } = await reader.read().catch(() => { throw new Error(SERVER_DOWN); });
     if (done) break;
     buf += dec.decode(value, { stream: true });
     let i;
