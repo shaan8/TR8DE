@@ -10,10 +10,6 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-try:
-    from tiwala_agent.connectors import CONSENT_SCOPE
-except ImportError:  # connectors are optional; the logged link still shows its consent scope
-    CONSENT_SCOPE = "Read account balances only. Tiwala cannot move money from this account."
 from tiwala_agent.guard import tag_contract
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,8 +108,6 @@ WALLETS = {
     "halted": dict(free=0, locked=10000, balance=5000, daily_left=30000, daily_cap=150000, per_deal_cap=200000,
                    paused=False, underfunded=True, source="Synthetic: escrow holds ₱5,000 against ₱10,000 locked"),
 }
-ACCOUNTS = [{"provider": "GCash", "balance_php": 48000, "read_only": True},
-            {"provider": "BPI savings", "balance_php": 112000, "read_only": True}]
 
 # Deals as read from the demo wallet on Sepolia; stages replay from audit events up to a line.
 DEALS = {
@@ -177,9 +171,6 @@ def activity_at(end: int) -> list[dict]:
         elif k == "owner_command":
             out.append({"type": "owner", "status": "executed" if e["ok"] else "failed", "command": e["command"],
                         "tx": e.get("tx"), "error": e.get("error"), "ts": e["ts"], "line": e["line"]})
-        elif k in ("account_linked", "account_unlinked"):
-            out.append({"type": "system", "status": k, "provider": e["provider"], "link_id": e["link_id"],
-                        "ts": e["ts"], "line": e["line"]})
     return out[::-1]
 
 
@@ -282,8 +273,6 @@ SPECS: dict[str, dict] = {
                    turns=lambda: [{"user": "/tick", "reply": "HALTED: escrow holds ₱5,000.00 but open deals need "
                                    "₱10,000.00 (likely an issuer clawback). I will not move any funds until this is "
                                    "resolved.", "events": [SYNTH_HALT], "source": "synthetic, text from core.tick()"}]),
-    "account": dict(title="Account linked", n=17, beat="1", end=71, wallet="now", highlight="accounts",
-                    turns=lambda: []),
 }
 
 
@@ -309,17 +298,10 @@ def build(name: str) -> dict:
     alerts = alerts_at(s["end"])
     if name == "halted":
         alerts = [{"kind": "halt", "text": turns[0]["reply"], "synthetic": True}] + alerts
-    links = []
-    if name == "account":
-        e = ev(70) if len(audit()) > 70 else None  # line 71: account_linked
-        if e and e["event"] == "account_linked":
-            links = [{"id": e["link_id"], "provider": e["provider"], "label": "Manual entry",
-                      "consent": {"given_at": e["ts"], "scope": CONSENT_SCOPE}, "warnings": e["warnings"],
-                      "line": e["line"]}]
     return {
         "fixture": name, "title": s["title"], "state_no": s["n"], "beat": s["beat"],
         "synthetic": s.get("synthetic", False), "highlight": s.get("highlight"),
-        "wallet": WALLETS[s["wallet"]], "accounts": ACCOUNTS, "links": links,
+        "wallet": WALLETS[s["wallet"]],
         "deals": deals_at(s["end"]), "activity": activity_at(s["end"]), "alerts": alerts,
         "suppliers": SUPPLIERS.get(s.get("suppliers", "before")), "turns": turns, "pending": _pending(turns),
         "explorer": "https://sepolia.etherscan.io", "wallet_link": CONTRACT_LINK, "audit_source": str(AUDIT.relative_to(ROOT)),

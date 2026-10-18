@@ -94,11 +94,5 @@
         "n": 16,
         "title": "Halted (underfunded)",
         "synthetic": true
-    },
-    {
-        "name": "account",
-        "n": 17,
-        "title": "Account linked",
-        "synthetic": false
     }
 ]

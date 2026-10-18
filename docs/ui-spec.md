@@ -7,7 +7,7 @@ Criteria: **T** task completion 40%, **S** security and compliance 30%, **I** in
 
 | # | State | Demo beat | Raw source | What the screen must show | Proves |
 |---|---|---|---|---|---|
-| 1 | Empty / first load | 1 | wallet_state, accounts | Wallet split free vs locked, read-only accounts, daily limit left, open deals, "Nothing needs you" | T (asset management) |
+| 1 | Empty / first load | 1 | wallet_state | Wallet split free vs locked, daily limit left, open deals, "Nothing needs you" | T (asset management) |
 | 2 | Loading, step by step | all | event order in a turn | Live pipeline: guard, Coordinator, Checker, policy, signer, each ticking as it finishes | I |
 | 3 | Clarifying question | 4b | beat4b transcript | Agent question with the missing field named; no action card | I |
 | 4 | Approval needed (Tier 2) | 2 | `verdict` tier2 conf=true (2 logged) | ActionCard: supplier, R, cap math (network cap, stranger cap, final), DP and balance, forecast impact, flags, Checker verdict, Confirm / Edit | T, S, I |
@@ -23,7 +23,6 @@ Criteria: **T** task completion 40%, **S** security and compliance 30%, **I** in
 | 14 | Shortfall alert | 2, 5 | monitor note "planned POs leave you ₱75,000 short" | "Needs you" alert with date and amount | T, I |
 | 15 | Reputation update | 5 | beat5 transcript (Bayani cap 15%) | Supplier row showing the cap dropped after non-delivery | I |
 | 16 | Halted (underfunded / paused) | none | `monitor_halt` (0 logged) | Red system banner; all actions disabled. Synthetic fixture, labelled as such | S |
-| 17 | Account linked / unlinked | 1 | `account_linked` (1 logged) | Consent record, provider, read-only scope | S (RA 10173) |
 
 States 12, 15 and 16 have no audit event; their fixtures come from the transcripts or are marked synthetic.
 
@@ -38,7 +37,7 @@ States 12, 15 and 16 have no audit event; their fixtures come from the transcrip
 the same API the live agent uses, steps stream over SSE, and Playwright/axe work against a normal page. Keep the
 current Streamlit app as the fallback for recording until the new console passes its checks.
 
-API sketch: `GET /api/state` (wallet, accounts, deals, pending, alerts) · `POST /api/message` (SSE stream of events,
+API sketch: `GET /api/state` (wallet, deals, pending, alerts) · `POST /api/message` (SSE stream of events,
 then reply) · `POST /api/confirm` · `POST /api/tick` · `GET /api/verify` · `?fixture=<name>` on all of them replays
 `audit.jsonl` slices with no LLM or chain calls.
 
@@ -70,7 +69,7 @@ Breakpoints: 1440 (sidebar + feed + chat), 1024 (feed collapses under chat), 390
 
 ## 4. Layout
 
-- **Left (surface):** wallet split, read-only accounts, daily limit, deals table showing each deal's lifecycle stage (Locked, DP paid, Delivered, Completed, Refunded, Disputed).
+- **Left (surface):** wallet split, daily limit, deals table showing each deal's lifecycle stage (Locked, DP paid, Delivered, Completed, Refunded, Disputed).
 - **Centre:** "Needs you" strip (pending ActionCards, shortfall and halt alerts) above the chat; agent replies hold
   ActionCard / RefusalCard / TxReceipt components, each with a collapsible agent trace.
 - **Right:** activity feed of autonomous actions and owner-key actions, newest first, each with its receipt.

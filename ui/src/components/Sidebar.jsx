@@ -1,6 +1,6 @@
-import { Lock, ShieldAlert, ShieldCheck, TrendingDown } from "lucide-react";
+import { Lock, ShieldAlert, TrendingDown } from "lucide-react";
 import { Chip, Panel } from "./ui.jsx";
-import { day, peso, when } from "../lib.js";
+import { day, peso } from "../lib.js";
 
 const STAGE_TONE = { Locked: "accent", "DP paid": "warn", Delivered: "accent", Completed: "ok", Refunded: "muted", Disputed: "bad" };
 
@@ -19,30 +19,6 @@ export function Wallet({ w }) {
       </dl>
       {w.underfunded && <p className="mt-2"><Chip tone="bad" icon={ShieldAlert}>Underfunded</Chip></p>}
       <p className="mt-3 text-cap text-ink-2">Snapshot: {w.source}</p>
-    </Panel>
-  );
-}
-
-export function Accounts({ accounts, links, highlight }) {
-  return (
-    <Panel title="Linked accounts" highlight={highlight} action={<Chip tone="ok" icon={ShieldCheck}>Read-only</Chip>}>
-      <ul className="space-y-1 text-sm">
-        {accounts.map((a) => (
-          <li key={a.provider} className="flex justify-between"><span>{a.provider}</span><span className="font-mono">{peso(a.balance_php)}</span></li>
-        ))}
-      </ul>
-      {links.map((l) => (
-        <div key={l.id} className="mt-3 rounded border border-ok p-3 text-sm" aria-label="Consent record">
-          <p className="mb-1 flex flex-wrap items-center gap-2 font-semibold">Account linked <Chip tone="ok">Consent recorded</Chip></p>
-          <dl className="space-y-0.5 text-ink-2">
-            <div><dt className="inline">Provider: </dt><dd className="inline text-ink">{l.label} ({l.provider})</dd></div>
-            <div><dt className="inline">Scope: </dt><dd className="inline text-ink">{l.consent.scope}</dd></div>
-            <div><dt className="inline">Consent given: </dt><dd className="inline font-mono text-ink">{when(l.consent.given_at)}</dd></div>
-            <div><dt className="inline">Link id: </dt><dd className="inline font-mono text-ink">{l.id}</dd></div>
-          </dl>
-          <p className="mt-1 text-cap text-ink-2">RA 10173: balances only, no secrets in the log (audit line {l.line}). Unlink any time.</p>
-        </div>
-      ))}
     </Panel>
   );
 }

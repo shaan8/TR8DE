@@ -87,8 +87,6 @@ def _live_state() -> dict:
         deals.append({"id": d.id, "supplier": names.get(d.supplier, d.supplier), "ref": tag.text,
                       "ref_flags": list(tag.flags), "total_php": d.total / PHP, "down_pct": d.down_bps / 100,
                       "deadline": d.deadline, "stage": STAGE[d.status.name]})
-    links = t.registry.links() if hasattr(t, "registry") else []
-    accounts = t.accounts() if hasattr(t, "accounts") else []
     pending = {"card": fx.parse_card(t.pending.card)} if t.pending else None
     return {
         "fixture": None, "title": "Live", "synthetic": False,
@@ -96,8 +94,7 @@ def _live_state() -> dict:
                    "daily_left": ws.daily_remaining / PHP, "daily_cap": ws.daily_cap / PHP,
                    "per_deal_cap": ws.per_deal_cap / PHP, "paused": ws.paused, "underfunded": ws.underfunded,
                    "source": "Sepolia, live"},
-        "accounts": [{"provider": a.provider, "balance_php": a.balance / PHP, "read_only": True} for a in accounts],
-        "links": links, "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
+        "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
         "turns": [], "pending": pending, "explorer": "https://sepolia.etherscan.io",
     }
 

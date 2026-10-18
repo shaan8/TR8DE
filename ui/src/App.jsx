@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FileWarning, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Composer, EmptyChat, Turn } from "./components/Chat.jsx";
 import { Feed, NeedsYou } from "./components/Feed.jsx";
-import { Accounts, DailyLimit, Deals, Suppliers, Wallet } from "./components/Sidebar.jsx";
+import { DailyLimit, Deals, Suppliers, Wallet } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
 import { getJSON, postJSON, query, sendMessage } from "./lib.js";
 
@@ -140,7 +140,6 @@ export default function App() {
 
         <aside aria-label="Wallet and deals" className="order-2 space-y-4 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 xl:row-span-1">
           <Wallet w={state.wallet} />
-          <Accounts accounts={state.accounts} links={state.links} highlight={state.highlight === "accounts"} />
           <DailyLimit w={state.wallet} />
           {state.suppliers && state.fixture === "reputation" && <Suppliers list={state.suppliers} />}
           <Deals deals={state.deals} />

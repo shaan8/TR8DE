@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Bot, CheckCircle2, ExternalLink, KeyRound, Link2, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Ban, Bot, CheckCircle2, ExternalLink, KeyRound, ShieldAlert } from "lucide-react";
 import clsx from "clsx";
 import { Trace } from "./Trace.jsx";
 import { Button, Chip, Panel } from "./ui.jsx";
@@ -23,9 +23,6 @@ function Entry({ a, highlight }) {
   } else if (a.type === "owner") {
     head = <><Chip tone="accent" icon={KeyRound} className="border-ink text-ink">Owner key</Chip>{a.status === "executed" ? <Chip tone="ok">Signed</Chip> : <Chip tone="bad">Failed</Chip>}</>;
     body = <p className="text-sm"><span className="font-mono font-semibold">{a.command}</span> <span className="text-ink-2">signed by you, not the agent</span></p>;
-  } else {
-    head = <Chip tone="ok" icon={Link2}>{a.status === "account_linked" ? "Account linked" : "Account unlinked"}</Chip>;
-    body = <p className="text-sm">{a.provider} <span className="text-ink-2">· read-only · link {a.link_id}</span></p>;
   }
   return (
     <li className={clsx("rounded bg-raised p-3", highlight && "ring-2 ring-warn")}>
