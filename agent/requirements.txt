@@ -5,3 +5,4 @@ pytest>=8
 streamlit>=1.40  # optional, only for the chat UI (agent/app.py)
 fastapi>=0.116,<0.117  # console API (agent/console/server.py)
 uvicorn>=0.32
+httpx>=0.27  # tests only: FastAPI TestClient (agent/tests/test_auth.py)
