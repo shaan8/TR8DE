@@ -95,6 +95,9 @@ GUIDE = "\n".join([
 ])
 PAYEE_CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm|oo|sige)\s+([0-9a-f]{4})\s*[.!]*\s*$", re.I)
 PENDING_TTL_S = 600
+TX_RX = re.compile(r"0x[0-9a-fA-F]{64}")
+NUM_RX = re.compile(r"\d[\d,]*(?:\.\d+)?")
+PESO_RX = re.compile(r"(?:₱|PHP\s?)(\d[\d,]*(?:\.\d+)?)\s*(k\b)?", re.I)
 BREAKER_REFUSALS, BREAKER_WINDOW_S = 3, 600  # refused payment requests from chat before the agent freezes itself
 MAX_TOOL_STEPS = 8
 
@@ -260,6 +263,8 @@ class Tiwala:
         return None
 
     def _log(self, event: str, **data) -> None:
+        if isinstance(data.get("tx"), str):
+            self._known_tx = getattr(self, "_known_tx", set()) | {data["tx"].lower()}
         e = self.audit.write(event, **data)
         self._events.append({"event": event, **data, "ts": e["ts"], "line": self.audit.count})
 
@@ -546,10 +551,60 @@ class Tiwala:
             reply = "I could not finish that safely in one go. Nothing was paid. Could you say it more simply?"
         if any(e["event"] == "executed" for e in self._events):
             self.ledger = []
+        reply = self._ground(reply)
         if any(e["event"] == "agent_frozen" for e in self._events):  # shown by code, not left to the model
             cards.append("Circuit breaker: I have frozen myself after repeated refused payment requests. Nothing "
                          "moves until you type /unfreeze. Type /freeze to also pause the wallet on-chain.")
         return TurnResult("\n\n".join([reply] + cards).strip(), self._events)
+
+    def _grounding_text(self) -> str:
+        """Everything Tiwala's code or the owner said in this conversation: tool results and user turns, not the
+        model's own earlier replies."""
+        parts = list(self.ledger)
+        for m in self.history:
+            if m["role"] != "user":
+                continue
+            c = m["content"]
+            parts += [c] if isinstance(c, str) else [b.get("content", "") for b in c if isinstance(b, dict)]
+        return "\n".join(str(p) for p in parts)
+
+    def _tx_is_ours(self, h: str) -> bool:
+        """Signed here this session, or a mined transaction to this wallet or from its owner."""
+        if h.lower() in getattr(self, "_known_tx", set()):
+            return True
+        try:
+            r = self.chain.w3.eth.get_transaction_receipt(h)
+        except Exception:
+            return False
+        mine = {self.wallet.lower()} | ({self.owner.acct.address.lower()} if self.owner else set())
+        return (r.get("to") or "").lower() in mine or (r.get("from") or "").lower() in mine
+
+    def _ground(self, reply: str) -> str:
+        """Numbers in the model's reply must come from a tool result or the owner. A transaction hash that does not
+        is a claimed payment that did not happen here: the reply is replaced. Unbacked peso amounts get a warning."""
+        if not reply:
+            return reply
+        src = self._grounding_text()
+        low = src.lower()
+        fake = [h for h in TX_RX.findall(reply) if h.lower() not in low and not self._tx_is_ours(h)]
+        if fake:
+            self._log("ungrounded_reply", kind="tx_hash", hashes=fake)
+            return ("I could not confirm that: the reply quoted a transaction that is not in this conversation's "
+                    "results. Nothing was paid unless the Activity panel shows it. Please ask again.")
+        nums = set()
+        for x in NUM_RX.findall(src):
+            try:
+                v = float(x.replace(",", ""))
+            except ValueError:
+                continue
+            nums |= {round(v, 2), round(v / PHP, 2)}  # pesos, or units in raw chain fields
+        bad = [m.group(0) for m in PESO_RX.finditer(reply)
+               if round(float(m.group(1).replace(",", "")) * (1000 if m.group(2) else 1), 2) not in nums]
+        if bad:
+            self._log("ungrounded_reply", kind="amount", amounts=bad)
+            reply += ("\n\n(Check: " + ", ".join(dict.fromkeys(bad)) + " is not taken directly from your wallet data "
+                      "or your words; it may be the assistant's own arithmetic.)")
+        return reply
 
     def _render_result(self, out: dict) -> str:
         s = out.get("status")

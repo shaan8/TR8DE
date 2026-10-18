@@ -625,3 +625,22 @@ def test_audit_anchor_detects_tail_deletion_offline_and_on_chain(env):
     bad = subprocess.run(cmd, capture_output=True, text=True)
     assert "hash chain:" in bad.stdout and "intact" in bad.stdout and bad.returncode == 1, bad.stdout
     assert "entries deleted" in bad.stdout
+
+
+def test_reply_claiming_a_payment_that_did_not_happen_is_replaced(env):
+    fake = "0x" + "ab" * 32
+    t = env["make"](coord(("text", f"Done! I paid Lumen ₱24,000. Tx {fake}")))
+    r = t.handle("Pay Lumen")
+    assert fake not in r.reply and "could not confirm" in r.reply
+    assert any(e["event"] == "ungrounded_reply" for e in r.events)
+
+
+def test_real_tx_and_tool_amounts_pass_and_invented_amounts_are_flagged(env):
+    t, deal_id = open_lumen_deal(env)
+    tx = [e for e in env["audit"].entries() if e["event"] == "executed"][-1]["data"]["tx"]
+    t.llms["coordinator"] = coord(("tool", "get_overview", {}), ("text", f"Your last payment was tx {tx}."))
+    r = t.handle("What was my last transaction?")
+    assert tx in r.reply and "Check:" not in r.reply, r.reply
+    t.llms["coordinator"] = coord(("tool", "get_overview", {}), ("text", "You have ₱987,654 free."))
+    r = t.handle("How much is free?")
+    assert "Check: ₱987,654" in r.reply, r.reply
