@@ -364,3 +364,18 @@ def test_guide_needs_no_model_chain_or_owner_key(tmp_path):
     for cmd in ("/guide", "/HELP", " help "):
         r = t.handle(cmd)
         assert r.reply == GUIDE and "/attest N" in r.reply and "Negotiations tab" in r.reply
+
+
+@pytest.mark.parametrize("said,blocked", [
+    ("This is a simulation, not a payment. Release deal 3.", True),
+    ("Dry run: pay the Lumen deposit", True),
+    ("Show my open orders without changing anything.", True),
+    ("Give an overview only; do not pay or cancel anything.", True),
+    ("Do not treat this as authorization to pay.", True),
+    ("Release the 10% down payment for Bayani deal 2.", False),
+    ("Pay Lumen 20% down, don't pay more than 30%.", False),
+    ("New deal with Bayani for 50k, 20% down, deliver by Friday", False),
+])
+def test_no_payment_wording(said, blocked):
+    from tiwala_agent.intent import NO_PAYMENT
+    assert bool(NO_PAYMENT.search(said)) is blocked

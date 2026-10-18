@@ -16,6 +16,20 @@ _PCT = re.compile(r"(\d{1,3}(?:\.\d+)?)\s*(?:%|percent\b|pct\b)", re.I)
 _AMT = re.compile(r"(?:₱|\bphp\s?|\bp(?=\d))\s*(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?|\b(\d[\d,]*(?:\.\d+)?)\s*(k)\b", re.I)
 _PO = re.compile(r"\bpo[\s#-]*(\d{1,6})\b", re.I)
 _ADDR = re.compile(r"0x[0-9a-fA-F]{40}")
+_DEAL = re.compile(r"\bdeal\s*(?:#|no\.?|number)?\s*(\d{1,6})\b", re.I)
+_NEG = r"(?:do\s+not|don'?t|never|no\s+need\s+to)"
+# Words that withdraw payment authority. Matched on the owner's latest message only, so a later plain request works.
+NO_PAYMENT = re.compile(
+    r"\bsimulat(?:e|ed|es|ion|ing)\b|\bdry[\s-]?run\b|\bpretend\b|\bhypothetical(?:ly)?\b"
+    r"|\b(?:just|only)\s+(?:a\s+)?test\b|\bnot\s+(?:a\s+)?(?:real\s+)?payment\b|\bread[\s-]?only\b|\bread\s+operation\b"
+    rf"|\b{_NEG}\s+(?:actually|really)\b"
+    rf"|\b{_NEG}\s+(?:make|send|execute)\s+(?:any\s+)?(?:payments?|transfers?|transactions?)\b"
+    rf"|\b{_NEG}\s+(?:pay|move|release|cancel|change|transfer)\s+(?:anything|anyone|any\b|money|funds|or\b)"
+    rf"|\b{_NEG}\s+(?:take|make)\s+any\s+(?:action|changes?)\b"
+    r"|\bwithout\s+(?:changing|paying|moving|sending|releasing)\s+(?:anything|money|funds)\b"
+    rf"|\b{_NEG}\s+(?:treat|take|count)\s+(?:this|it)\s+as\s+(?:an?\s+)?(?:authori[sz]ation|approval|payment)\b",
+    re.I,
+)
 
 
 @dataclass
@@ -86,6 +100,16 @@ def verify(
     parsed = parse(request_texts, list(supplier_names_by_addr.values()))
     mm: list[str] = []
     filled: list[str] = []
+    if not request_texts:
+        mm.append("no request from you on record for this action")
+    elif m := NO_PAYMENT.search(request_texts[-1]):
+        mm.append(f'your message says "{m.group(0)}", so it does not authorize moving money. '
+                  "Ask plainly, without that wording, to pay for real")
+
+    if action.deal_id is not None and request_texts:
+        named = [int(x) for x in _DEAL.findall(request_texts[-1])]
+        if named and action.deal_id not in named:
+            mm.append(f"deal: you named deal {', '.join(map(str, named))}, action is for deal {action.deal_id}")
 
     supplier = action.supplier or (deal.supplier if deal else None)
     name = supplier_names_by_addr.get(supplier or "", None)

@@ -1,6 +1,7 @@
 """Append-only, hash-chained audit log (JSONL). Each entry commits to the previous one,
-so any edit or deletion breaks `verify()`. Secrets and raw account identifiers are
-redacted before writing.
+so editing or removing any entry but the last breaks `verify()`. Deleting the tail (or the
+whole file) is not detected without an external checkpoint. Secrets and raw account
+identifiers are redacted before writing.
 """
 from __future__ import annotations
 

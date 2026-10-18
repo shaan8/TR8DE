@@ -34,7 +34,7 @@ from .audit import AuditLog
 from .chain import Chain, OwnerConsole
 from .data import Plans, load_blocklist, load_directory, load_plans, save_directory
 from .guard import as_data, tag_contract, tag_user
-from .intent import verify as verify_intent
+from .intent import parse as parse_intent, verify as verify_intent
 from .llm import LLM
 from .models import (PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier, Verdict, php)
 from .payee import PayeeVerdict, check_payee, chunk
@@ -303,6 +303,9 @@ class Tiwala:
     def _request_desc(self, a: Action, deal: Optional[Deal], system_note: str = "") -> str:
         if a.origin.kind == "user":
             said = "\n".join(f'Owner said: "{t}"' for t in self.ledger[-6:]) or "(no request)"
+            named = parse_intent(self.ledger[-6:], list(self.names().values())).suppliers
+            if named:  # short names ("Bayani") resolved in code, so the Checker does not refuse them
+                said += "\nSystem (not the owner): saved payees named in the owner's words: " + ", ".join(named)
             return said + (f"\nSystem (not the owner): {system_note}" if system_note else "")
         if a.origin.kind == "negotiation":
             base = self.agreements.get(a.origin.detail, {}).get("summary", "Negotiated agreement (no summary on record)")

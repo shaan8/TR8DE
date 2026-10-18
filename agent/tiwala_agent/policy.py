@@ -87,7 +87,7 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
     elif action.kind == ActionKind.RELEASE_DOWN:
         _check_release_down(action, ctx, refuse, flags)
     elif action.kind == ActionKind.RELEASE_BALANCE:
-        _check_release_balance(action, ctx, refuse)
+        _check_release_balance(action, ctx, refuse, flags)
     elif action.kind == ActionKind.CANCEL:
         if action.origin.kind == "user":
             tier = max(tier, Tier.CONFIRM)
@@ -114,13 +114,22 @@ def _payee_checks(addr: Optional[str], ctx: PolicyContext, refuse: list, flags: 
         flags.append("unregistered_payee")
     elif w.now - entry.address_changed_at < ADDRESS_COOLING_S and entry.address_changed_at:
         flags.append("payee_address_recently_changed")
+    _payout_checks(addr, ctx, refuse, flags)
+
+
+def _payout_checks(addr: str, ctx: PolicyContext, refuse: list, flags: list, removed_ok: bool = False) -> None:
+    """Run before every agent payout (create, down payment, balance, monitor). The contract checks only the
+    `listed` flag on releases, so the off-chain blocklist and renewed cooling are enforced here."""
     if addr.lower() in {b.lower() for b in ctx.blocklist}:
         refuse.append(f"{addr} is on the sanctions / blocklist.")
         flags.append("blocklisted")
     if not ctx.onchain_listed.get(addr, False):
-        refuse.append("Supplier is not whitelisted on the wallet contract.")
-    elif ctx.onchain_active_at.get(addr, 0) > w.now:
-        refuse.append("Supplier was added recently and is still in its cooling period on-chain.")
+        if removed_ok:
+            flags.append("supplier_removed")
+        else:
+            refuse.append("Supplier is not whitelisted on the wallet contract.")
+    elif ctx.onchain_active_at.get(addr, 0) > ctx.wallet.now:
+        refuse.append("Supplier is in its on-chain cooling period (added or re-added recently); no payouts until it ends.")
 
 
 def _check_create(action: Action, ctx: PolicyContext, s: PolicySettings, refuse: list, flags: list, notes: list) -> None:
@@ -171,15 +180,14 @@ def _check_release_down(action: Action, ctx: PolicyContext, refuse: list, flags:
         refuse.append(f"Deal {d.id} is {d.status.name}, not awaiting a down payment.")
     if not d.owner_approved:
         refuse.append(f"Deal {d.id} is above the approval threshold and needs your on-chain approval first.")
-    if not ctx.onchain_listed.get(d.supplier, False):
-        refuse.append("Supplier has been removed from the whitelist.")
+    _payout_checks(d.supplier, ctx, refuse, flags)
     if ctx.cap is not None and d.down_bps > ctx.cap.cap_bps:
         flags.append("down_payment_above_current_cap")
     if d.down_amount > ctx.wallet.daily_remaining:
         refuse.append(f"Would exceed today's agent limit ({php(ctx.wallet.daily_remaining)} left).")
 
 
-def _check_release_balance(action: Action, ctx: PolicyContext, refuse: list) -> None:
+def _check_release_balance(action: Action, ctx: PolicyContext, refuse: list, flags: list) -> None:
     d = ctx.deal
     if d is None or d.id != action.deal_id:
         refuse.append("Deal not found in this wallet.")
@@ -189,6 +197,8 @@ def _check_release_balance(action: Action, ctx: PolicyContext, refuse: list) -> 
             f"No valid delivery attestation for deal {d.id} (status {d.status.name}). "
             "Only your signed confirmDelivery releases the balance, not a chat message."
         )
+    # Goods already arrived, so a plain removal only asks the owner (flag -> confirm); blocklist and cooling refuse.
+    _payout_checks(d.supplier, ctx, refuse, flags, removed_ok=True)
     if d.total - d.down_amount > ctx.wallet.daily_remaining:
         refuse.append(f"Would exceed today's agent limit ({php(ctx.wallet.daily_remaining)} left).")
 
