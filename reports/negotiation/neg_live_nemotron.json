@@ -1,0 +1,870 @@
+{
+ "meta": {
+  "name": "neg_live",
+  "title": "Live negotiation",
+  "validation": "live: Sepolia demo wallet reads, supplier agent live_model:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free, live model buyer; escrow not confirmed"
+ },
+ "buyer": {
+  "id": "CAB1B432",
+  "buyer": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a",
+  "supplier_name": "Lumen Textiles",
+  "supplier_address": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+  "product": "Cotton fabric (metres)",
+  "mode": "agent",
+  "channel": "local",
+  "controller": "agent",
+  "supplier_identity": "supplier-console:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+  "agent_kind": "live_model:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+  "constraints": {
+   "desired_qty": 500,
+   "min_qty": 300,
+   "max_total": 6000000,
+   "min_reserve": 10000000,
+   "latest_delivery": 1794153540,
+   "target_unit_price": 10000,
+   "preferred_delivery": 1793116740,
+   "opening_deposit_bps": 1000,
+   "latest_delivery_text": "2026-11-08"
+  },
+  "state": "ready_for_escrow",
+  "created": 1792342512,
+  "expires": 1792601712,
+  "max_rounds": 8,
+  "proposal_ttl": 3600,
+  "proposals": [
+   {
+    "id": "CAB1B432-v1",
+    "version": 1,
+    "by": "buyer",
+    "terms": {
+     "quantity": 500,
+     "unit_price": 10000,
+     "deposit_bps": 1000,
+     "deliver_by": 1793116740,
+     "total": 5000000,
+     "deposit": 500000
+    },
+    "terms_hash": "a9723e6ba96f93985390aad5332275b5d89443839e9866d632137fb2fa0ecc15",
+    "created": 1792342523,
+    "expires": 1792346123,
+    "source": "owner",
+    "note": "Opening offer.",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342523,
+      "via": "owner"
+     }
+    },
+    "final": false,
+    "code": "A9723E"
+   },
+   {
+    "id": "CAB1B432-v2",
+    "version": 2,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 13000,
+     "deposit_bps": 2000,
+     "deliver_by": 1793030340,
+     "total": 5850000,
+     "deposit": 1170000
+    },
+    "terms_hash": "2e00e5aeb8443568eb7c0b1a0783c7137b008b7d0109a3584b6a14ee0f048424",
+    "created": 1792342546,
+    "expires": 1792346146,
+    "source": "supplier_agent_live_model",
+    "note": "We can supply 450 metres at 130 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792342546,
+      "via": "supplier_agent_live_model"
+     }
+    },
+    "final": false,
+    "code": "2E00E5"
+   },
+   {
+    "id": "CAB1B432-v3",
+    "version": 3,
+    "by": "buyer",
+    "terms": {
+     "quantity": 500,
+     "unit_price": 11500,
+     "deposit_bps": 1500,
+     "deliver_by": 1793030340,
+     "total": 5750000,
+     "deposit": 862500
+    },
+    "terms_hash": "baf7e2e60b2c98053a56eee77ee805b15eb5e94dd0dd392de1e27338e107678d",
+    "created": 1792342589,
+    "expires": 1792346189,
+    "source": "buyer_model",
+    "note": "We can do 500 metres at 115 PHP per metre with 15% deposit, delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342589,
+      "via": "buyer_model"
+     }
+    },
+    "final": false,
+    "code": "BAF7E2"
+   },
+   {
+    "id": "CAB1B432-v4",
+    "version": 4,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 12000,
+     "deposit_bps": 2000,
+     "deliver_by": 1793030340,
+     "total": 5400000,
+     "deposit": 1080000
+    },
+    "terms_hash": "fefddb22910d3a47e36d311ce97f4b0a47f13b56580f51013d4c1fb3f20ff00d",
+    "created": 1792342600,
+    "expires": 1792346200,
+    "source": "supplier_agent_live_model",
+    "note": "We can supply 450 metres at 120 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792342600,
+      "via": "supplier_agent_live_model"
+     }
+    },
+    "final": false,
+    "code": "FEFDDB"
+   },
+   {
+    "id": "CAB1B432-v5",
+    "version": 5,
+    "by": "buyer",
+    "terms": {
+     "quantity": 475,
+     "unit_price": 11800,
+     "deposit_bps": 1750,
+     "deliver_by": 1793030340,
+     "total": 5605000,
+     "deposit": 980875
+    },
+    "terms_hash": "368cec24fcf488f42678124e19805970dc71eceb5c7945d5684466b2d05277dc",
+    "created": 1792342640,
+    "expires": 1792346240,
+    "source": "buyer_model",
+    "note": "We can meet at 475 metres for 118 PHP per metre with 17.5% deposit, delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342640,
+      "via": "buyer_model"
+     }
+    },
+    "final": false,
+    "code": "368CEC"
+   },
+   {
+    "id": "CAB1B432-v6",
+    "version": 6,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 11800,
+     "deposit_bps": 2000,
+     "deliver_by": 1793030340,
+     "total": 5310000,
+     "deposit": 1062000
+    },
+    "terms_hash": "94b04c914521d2590e804b7039cc6dca6d100ae2cf39e07df85a41eeb5eac8b4",
+    "created": 1792342651,
+    "expires": 1792346251,
+    "source": "supplier_agent_live_model",
+    "note": "We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792342651,
+      "via": "supplier_agent_live_model"
+     }
+    },
+    "final": false,
+    "code": "94B04C"
+   },
+   {
+    "id": "CAB1B432-v7",
+    "version": 7,
+    "by": "buyer",
+    "terms": {
+     "quantity": 460,
+     "unit_price": 11800,
+     "deposit_bps": 1850,
+     "deliver_by": 1793030340,
+     "total": 5428000,
+     "deposit": 1004180
+    },
+    "terms_hash": "d32a403897da5dbb4824135bd2a7b0386d50f860bbc96ede636fa42148566125",
+    "created": 1792342701,
+    "expires": 1792346301,
+    "source": "buyer_model",
+    "note": "We can agree on 460 metres at 118 PHP per metre with 18.5% deposit, delivery by 2026-10-26.",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342701,
+      "via": "buyer_model"
+     }
+    },
+    "final": false,
+    "code": "D32A40"
+   },
+   {
+    "id": "CAB1B432-v8",
+    "version": 8,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 11800,
+     "deposit_bps": 2000,
+     "deliver_by": 1793030340,
+     "total": 5310000,
+     "deposit": 1062000
+    },
+    "terms_hash": "bac31ce0ecf95c984e44967f523f1ad1c60d50034290c9f3c04d60817956935e",
+    "created": 1792342714,
+    "expires": 1792346314,
+    "source": "supplier_agent_live_model",
+    "note": "We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "status": "accepted",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792342714,
+      "via": "supplier_agent_live_model"
+     },
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342726,
+      "via": "buyer_rules"
+     }
+    },
+    "final": false,
+    "code": "BAC31C"
+   }
+  ],
+  "messages": [
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at \u20b1100.00 each = \u20b150,000.00, 10% deposit (\u20b15,000.00), delivery by 2026-10-27. Offer v1, code A9723E. Reply ACCEPT A9723E to accept, send a counteroffer, or REJECT.",
+    "channel": "local",
+    "ts": 1792342523,
+    "proposal": "CAB1B432-v1"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1130.00 each = \u20b158,500.00, 20% deposit (\u20b111,700.00), delivery by 2026-10-26. Offer v2, code 2E00E5. We can supply 450 metres at 130 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "channel": "local",
+    "ts": 1792342546,
+    "proposal": "CAB1B432-v2",
+    "via": "supplier_agent_live_model"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "We can do 500 metres at 115 PHP per metre with 15% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 500 units at \u20b1115.00 each = \u20b157,500.00, 15% deposit (\u20b18,625.00), delivery by 2026-10-26. Offer v3, code BAF7E2. Reply ACCEPT BAF7E2 to accept.",
+    "channel": "local",
+    "ts": 1792342589,
+    "proposal": "CAB1B432-v3"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1120.00 each = \u20b154,000.00, 20% deposit (\u20b110,800.00), delivery by 2026-10-26. Offer v4, code FEFDDB. We can supply 450 metres at 120 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "channel": "local",
+    "ts": 1792342600,
+    "proposal": "CAB1B432-v4",
+    "via": "supplier_agent_live_model"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "We can meet at 475 metres for 118 PHP per metre with 17.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 475 units at \u20b1118.00 each = \u20b156,050.00, 17.5% deposit (\u20b19,808.75), delivery by 2026-10-26. Offer v5, code 368CEC. Reply ACCEPT 368CEC to accept.",
+    "channel": "local",
+    "ts": 1792342640,
+    "proposal": "CAB1B432-v5"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1118.00 each = \u20b153,100.00, 20% deposit (\u20b110,620.00), delivery by 2026-10-26. Offer v6, code 94B04C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "channel": "local",
+    "ts": 1792342651,
+    "proposal": "CAB1B432-v6",
+    "via": "supplier_agent_live_model"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "We can agree on 460 metres at 118 PHP per metre with 18.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 460 units at \u20b1118.00 each = \u20b154,280.00, 18.5% deposit (\u20b110,041.80), delivery by 2026-10-26. Offer v7, code D32A40. Reply ACCEPT D32A40 to accept.",
+    "channel": "local",
+    "ts": 1792342701,
+    "proposal": "CAB1B432-v7"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1118.00 each = \u20b153,100.00, 20% deposit (\u20b110,620.00), delivery by 2026-10-26. Offer v8, code BAC31C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+    "channel": "local",
+    "ts": 1792342714,
+    "proposal": "CAB1B432-v8",
+    "via": "supplier_agent_live_model"
+   }
+  ],
+  "timeline": [
+   {
+    "ts": 1792342523,
+    "event": "opened",
+    "detail": "Cotton fabric (metres) with Lumen Textiles (agent, local)"
+   },
+   {
+    "ts": 1792342546,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792342589,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792342600,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792342640,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792342651,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792342701,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792342714,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792342726,
+    "event": "state",
+    "detail": "Both parties accepted v8. Waiting for your review."
+   },
+   {
+    "ts": 1792342768,
+    "event": "escrow_requested",
+    "detail": "confirmation card shown; waiting for your yes"
+   }
+  ],
+  "agreement": {
+   "proposal_id": "CAB1B432-v8",
+   "terms_hash": "bac31ce0ecf95c984e44967f523f1ad1c60d50034290c9f3c04d60817956935e",
+   "buyer": {
+    "identity": "tiwala:buyer",
+    "at": 1792342726,
+    "via": "buyer_rules"
+   },
+   "supplier": {
+    "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+    "at": 1792342714,
+    "via": "supplier_agent_live_model"
+   },
+   "expires": 1792346314
+  },
+  "handoff": {
+   "state": "pending",
+   "ref": "NEG-CAB1B432-v8 BAC31C",
+   "proposal": "CAB1B432-v8"
+  },
+  "reason": "Escrow card ready: your own yes creates the deal and pays the deposit.",
+  "escalated": false,
+  "view": {
+   "free": 16950000,
+   "deposit_ceiling_bps": 2500,
+   "deposit_ceiling_reason": "reputation cap 25%, contract ceiling 50%",
+   "supplier_ok": true,
+   "supplier_reason": "Saved payee, active on the wallet contract.",
+   "now": 1792342764
+  },
+  "checks": [
+   {
+    "rule": "supplier",
+    "ok": true,
+    "detail": "Saved payee, active on the wallet contract.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "min_quantity",
+    "ok": true,
+    "detail": "450 units, you need at least 300.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "max_quantity",
+    "ok": true,
+    "detail": "450 units, you asked for 500.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "budget",
+    "ok": true,
+    "detail": "\u20b153,100.00 total against your \u20b160,000.00 limit.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "reserve",
+    "ok": true,
+    "detail": "Locks the full \u20b153,100.00 now and leaves \u20b1116,400.00 free; your reserve is \u20b1100,000.00.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "per_deal_cap",
+    "ok": true,
+    "detail": "Contract per-deal cap \u20b1200,000.00.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "deposit_ceiling",
+    "ok": true,
+    "detail": "20% deposit; this supplier's ceiling is 25% (reputation cap 25%, contract ceiling 50%).",
+    "severity": "refuse"
+   },
+   {
+    "rule": "latest_delivery",
+    "ok": true,
+    "detail": "Delivery 2026-10-26; latest you accept is 2026-11-08.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "delivery_future",
+    "ok": true,
+    "detail": "Delivery must be at least an hour from now.",
+    "severity": "refuse"
+   },
+   {
+    "rule": "deposit_today",
+    "ok": true,
+    "detail": "The \u20b110,620.00 deposit is paid by the agent; \u20b129,500.00 of today's agent limit is left, so it may wait until tomorrow.",
+    "severity": "flag"
+   },
+   {
+    "rule": "forecast",
+    "ok": false,
+    "detail": "Forecast short by \u20b153,600.00 on 2026-10-25.",
+    "severity": "flag"
+   }
+  ],
+  "cash": {
+   "locked_now": 5310000,
+   "free_before": 16950000,
+   "free_after": 11640000,
+   "reserve": 10000000,
+   "deposit_to_supplier": 1062000,
+   "balance_after_delivery": 4248000,
+   "unfulfilled_qty": 50,
+   "note": "The full order is locked at creation. The deposit only changes how much the supplier receives before delivery, not your free cash. Only a smaller order frees cash."
+  },
+  "diff": {
+   "quantity": [
+    460,
+    450
+   ],
+   "deposit_bps": [
+    1850,
+    2000
+   ],
+   "total": [
+    5428000,
+    5310000
+   ],
+   "deposit": [
+    1004180,
+    1062000
+   ]
+  },
+  "outbox": [],
+  "running": false,
+  "pending_card": "CONFIRM NEW ESCROW DEAL\nSupplier: Lumen Textiles (8 on time, 2 late, 0 non-delivery across 5 buyers (effective 3.75); score R = 0.45)\nPO: NEG-CAB1B432-v8 BAC31C   Locked now: \u20b153,100.00 (full PO)\nDown payment: 20% = \u20b110,620.00, released right after creation\nCap: 25% (network 25%)\nBalance \u20b142,480.00 only after your delivery attestation (/attest)\nDeliver by: 2026-10-26\nForecast: short by \u20b153,600.00 on 2026-10-25\nFrom negotiation NEG-CAB1B432 v8; supplier accepted these exact terms (supplier agent, live model, agent:0x3ca6\u20268af3). Your yes is the payment approval.\nRisk flags: forecast_shortfall\nEvery new deal needs your confirmation.\nReply \"yes\" to confirm, or tell me what to change."
+ },
+ "supplier": {
+  "supplier": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+  "name": "Lumen Textiles",
+  "mandate": {
+   "supplier_address": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+   "list_unit_price": 15000,
+   "min_unit_price": 11000,
+   "available_qty": 450,
+   "min_order_qty": 200,
+   "earliest_delivery": 1793030340,
+   "min_deposit_bps": 1500,
+   "deposit_tiers": [
+    [
+     400,
+     2000
+    ]
+   ],
+   "agent_may_accept": true
+  },
+  "negotiations": [
+   {
+    "id": "CAB1B432",
+    "product": "Cotton fabric (metres)",
+    "buyer": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a",
+    "supplier_name": "Lumen Textiles",
+    "state": "ready_for_escrow",
+    "proposals": [
+     {
+      "id": "CAB1B432-v1",
+      "version": 1,
+      "by": "buyer",
+      "terms": {
+       "quantity": 500,
+       "unit_price": 10000,
+       "deposit_bps": 1000,
+       "deliver_by": 1793116740,
+       "total": 5000000,
+       "deposit": 500000
+      },
+      "terms_hash": "a9723e6ba96f93985390aad5332275b5d89443839e9866d632137fb2fa0ecc15",
+      "created": 1792342523,
+      "expires": 1792346123,
+      "source": "owner",
+      "note": "Opening offer.",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792342523,
+        "via": "owner"
+       }
+      },
+      "final": false,
+      "code": "A9723E"
+     },
+     {
+      "id": "CAB1B432-v2",
+      "version": 2,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 13000,
+       "deposit_bps": 2000,
+       "deliver_by": 1793030340,
+       "total": 5850000,
+       "deposit": 1170000
+      },
+      "terms_hash": "2e00e5aeb8443568eb7c0b1a0783c7137b008b7d0109a3584b6a14ee0f048424",
+      "created": 1792342546,
+      "expires": 1792346146,
+      "source": "supplier_agent_live_model",
+      "note": "We can supply 450 metres at 130 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792342546,
+        "via": "supplier_agent_live_model"
+       }
+      },
+      "final": false,
+      "code": "2E00E5"
+     },
+     {
+      "id": "CAB1B432-v3",
+      "version": 3,
+      "by": "buyer",
+      "terms": {
+       "quantity": 500,
+       "unit_price": 11500,
+       "deposit_bps": 1500,
+       "deliver_by": 1793030340,
+       "total": 5750000,
+       "deposit": 862500
+      },
+      "terms_hash": "baf7e2e60b2c98053a56eee77ee805b15eb5e94dd0dd392de1e27338e107678d",
+      "created": 1792342589,
+      "expires": 1792346189,
+      "source": "buyer_model",
+      "note": "We can do 500 metres at 115 PHP per metre with 15% deposit, delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792342589,
+        "via": "buyer_model"
+       }
+      },
+      "final": false,
+      "code": "BAF7E2"
+     },
+     {
+      "id": "CAB1B432-v4",
+      "version": 4,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 12000,
+       "deposit_bps": 2000,
+       "deliver_by": 1793030340,
+       "total": 5400000,
+       "deposit": 1080000
+      },
+      "terms_hash": "fefddb22910d3a47e36d311ce97f4b0a47f13b56580f51013d4c1fb3f20ff00d",
+      "created": 1792342600,
+      "expires": 1792346200,
+      "source": "supplier_agent_live_model",
+      "note": "We can supply 450 metres at 120 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792342600,
+        "via": "supplier_agent_live_model"
+       }
+      },
+      "final": false,
+      "code": "FEFDDB"
+     },
+     {
+      "id": "CAB1B432-v5",
+      "version": 5,
+      "by": "buyer",
+      "terms": {
+       "quantity": 475,
+       "unit_price": 11800,
+       "deposit_bps": 1750,
+       "deliver_by": 1793030340,
+       "total": 5605000,
+       "deposit": 980875
+      },
+      "terms_hash": "368cec24fcf488f42678124e19805970dc71eceb5c7945d5684466b2d05277dc",
+      "created": 1792342640,
+      "expires": 1792346240,
+      "source": "buyer_model",
+      "note": "We can meet at 475 metres for 118 PHP per metre with 17.5% deposit, delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792342640,
+        "via": "buyer_model"
+       }
+      },
+      "final": false,
+      "code": "368CEC"
+     },
+     {
+      "id": "CAB1B432-v6",
+      "version": 6,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 11800,
+       "deposit_bps": 2000,
+       "deliver_by": 1793030340,
+       "total": 5310000,
+       "deposit": 1062000
+      },
+      "terms_hash": "94b04c914521d2590e804b7039cc6dca6d100ae2cf39e07df85a41eeb5eac8b4",
+      "created": 1792342651,
+      "expires": 1792346251,
+      "source": "supplier_agent_live_model",
+      "note": "We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792342651,
+        "via": "supplier_agent_live_model"
+       }
+      },
+      "final": false,
+      "code": "94B04C"
+     },
+     {
+      "id": "CAB1B432-v7",
+      "version": 7,
+      "by": "buyer",
+      "terms": {
+       "quantity": 460,
+       "unit_price": 11800,
+       "deposit_bps": 1850,
+       "deliver_by": 1793030340,
+       "total": 5428000,
+       "deposit": 1004180
+      },
+      "terms_hash": "d32a403897da5dbb4824135bd2a7b0386d50f860bbc96ede636fa42148566125",
+      "created": 1792342701,
+      "expires": 1792346301,
+      "source": "buyer_model",
+      "note": "We can agree on 460 metres at 118 PHP per metre with 18.5% deposit, delivery by 2026-10-26.",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792342701,
+        "via": "buyer_model"
+       }
+      },
+      "final": false,
+      "code": "D32A40"
+     },
+     {
+      "id": "CAB1B432-v8",
+      "version": 8,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 11800,
+       "deposit_bps": 2000,
+       "deliver_by": 1793030340,
+       "total": 5310000,
+       "deposit": 1062000
+      },
+      "terms_hash": "bac31ce0ecf95c984e44967f523f1ad1c60d50034290c9f3c04d60817956935e",
+      "created": 1792342714,
+      "expires": 1792346314,
+      "source": "supplier_agent_live_model",
+      "note": "We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "status": "accepted",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792342714,
+        "via": "supplier_agent_live_model"
+       },
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792342726,
+        "via": "buyer_rules"
+       }
+      },
+      "final": false,
+      "code": "BAC31C"
+     }
+    ],
+    "max_rounds": 8,
+    "messages": [
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at \u20b1100.00 each = \u20b150,000.00, 10% deposit (\u20b15,000.00), delivery by 2026-10-27. Offer v1, code A9723E. Reply ACCEPT A9723E to accept, send a counteroffer, or REJECT.",
+      "channel": "local",
+      "ts": 1792342523,
+      "proposal": "CAB1B432-v1"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1130.00 each = \u20b158,500.00, 20% deposit (\u20b111,700.00), delivery by 2026-10-26. Offer v2, code 2E00E5. We can supply 450 metres at 130 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "channel": "local",
+      "ts": 1792342546,
+      "proposal": "CAB1B432-v2",
+      "via": "supplier_agent_live_model"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "We can do 500 metres at 115 PHP per metre with 15% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 500 units at \u20b1115.00 each = \u20b157,500.00, 15% deposit (\u20b18,625.00), delivery by 2026-10-26. Offer v3, code BAF7E2. Reply ACCEPT BAF7E2 to accept.",
+      "channel": "local",
+      "ts": 1792342589,
+      "proposal": "CAB1B432-v3"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1120.00 each = \u20b154,000.00, 20% deposit (\u20b110,800.00), delivery by 2026-10-26. Offer v4, code FEFDDB. We can supply 450 metres at 120 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "channel": "local",
+      "ts": 1792342600,
+      "proposal": "CAB1B432-v4",
+      "via": "supplier_agent_live_model"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "We can meet at 475 metres for 118 PHP per metre with 17.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 475 units at \u20b1118.00 each = \u20b156,050.00, 17.5% deposit (\u20b19,808.75), delivery by 2026-10-26. Offer v5, code 368CEC. Reply ACCEPT 368CEC to accept.",
+      "channel": "local",
+      "ts": 1792342640,
+      "proposal": "CAB1B432-v5"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1118.00 each = \u20b153,100.00, 20% deposit (\u20b110,620.00), delivery by 2026-10-26. Offer v6, code 94B04C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "channel": "local",
+      "ts": 1792342651,
+      "proposal": "CAB1B432-v6",
+      "via": "supplier_agent_live_model"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "We can agree on 460 metres at 118 PHP per metre with 18.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 460 units at \u20b1118.00 each = \u20b154,280.00, 18.5% deposit (\u20b110,041.80), delivery by 2026-10-26. Offer v7, code D32A40. Reply ACCEPT D32A40 to accept.",
+      "channel": "local",
+      "ts": 1792342701,
+      "proposal": "CAB1B432-v7"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1118.00 each = \u20b153,100.00, 20% deposit (\u20b110,620.00), delivery by 2026-10-26. Offer v8, code BAC31C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.",
+      "channel": "local",
+      "ts": 1792342714,
+      "proposal": "CAB1B432-v8",
+      "via": "supplier_agent_live_model"
+     }
+    ],
+    "agreement": {
+     "proposal_id": "CAB1B432-v8",
+     "terms_hash": "bac31ce0ecf95c984e44967f523f1ad1c60d50034290c9f3c04d60817956935e",
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792342726,
+      "via": "buyer_rules"
+     },
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792342714,
+      "via": "supplier_agent_live_model"
+     },
+     "expires": 1792346314
+    },
+    "controller": "agent",
+    "mode": "agent",
+    "channel": "local",
+    "expires": 1792601712,
+    "agent_kind": "live_model:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+    "running": false
+   }
+  ]
+ },
+ "after": {}
+}

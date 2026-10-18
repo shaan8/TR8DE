@@ -1,0 +1,24 @@
+Live negotiation
+Validation: live: Sepolia demo wallet reads, supplier agent live_model:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free, live model buyer; escrow not confirmed
+
+NEG-CAB1B432 with Lumen Textiles
+tiwala (buyer)> Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at ₱100.00 each = ₱50,000.00, 10% deposit (₱5,000.00), delivery by 2026-10-27. Offer v1, code A9723E. Reply ACCEPT A9723E to accept, send a counteroffer, or REJECT.
+supplier (supplier_agent_live_model)> Cotton fabric (metres): 450 units at ₱130.00 each = ₱58,500.00, 20% deposit (₱11,700.00), delivery by 2026-10-26. Offer v2, code 2E00E5. We can supply 450 metres at 130 PHP per metre with a 20% deposit. Delivery by 2026-10-26.
+tiwala (buyer)> We can do 500 metres at 115 PHP per metre with 15% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 500 units at ₱115.00 each = ₱57,500.00, 15% deposit (₱8,625.00), delivery by 2026-10-26. Offer v3, code BAF7E2. Reply ACCEPT BAF7E2 to accept.
+supplier (supplier_agent_live_model)> Cotton fabric (metres): 450 units at ₱120.00 each = ₱54,000.00, 20% deposit (₱10,800.00), delivery by 2026-10-26. Offer v4, code FEFDDB. We can supply 450 metres at 120 PHP per metre with a 20% deposit. Delivery by 2026-10-26.
+tiwala (buyer)> We can meet at 475 metres for 118 PHP per metre with 17.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 475 units at ₱118.00 each = ₱56,050.00, 17.5% deposit (₱9,808.75), delivery by 2026-10-26. Offer v5, code 368CEC. Reply ACCEPT 368CEC to accept.
+supplier (supplier_agent_live_model)> Cotton fabric (metres): 450 units at ₱118.00 each = ₱53,100.00, 20% deposit (₱10,620.00), delivery by 2026-10-26. Offer v6, code 94B04C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.
+tiwala (buyer)> We can agree on 460 metres at 118 PHP per metre with 18.5% deposit, delivery by 2026-10-26. Our counteroffer: Cotton fabric (metres): 460 units at ₱118.00 each = ₱54,280.00, 18.5% deposit (₱10,041.80), delivery by 2026-10-26. Offer v7, code D32A40. Reply ACCEPT D32A40 to accept.
+supplier (supplier_agent_live_model)> Cotton fabric (metres): 450 units at ₱118.00 each = ₱53,100.00, 20% deposit (₱10,620.00), delivery by 2026-10-26. Offer v8, code BAC31C. We can supply 450 metres at 118 PHP per metre with a 20% deposit. Delivery by 2026-10-26.
+
+final state: ready_for_escrow  Escrow card ready: your own yes creates the deal and pays the deposit.
+  v1 buyer    500 x 100 dep 10% source=owner status=superseded
+  v2 supplier 450 x 130 dep 20% source=supplier_agent_live_model status=superseded
+  v3 buyer    500 x 115 dep 15% source=buyer_model status=superseded
+  v4 supplier 450 x 120 dep 20% source=supplier_agent_live_model status=superseded
+  v5 buyer    475 x 118 dep 17.5% source=buyer_model status=superseded
+  v6 supplier 450 x 118 dep 20% source=supplier_agent_live_model status=superseded
+  v7 buyer    460 x 118 dep 18.5% source=buyer_model status=superseded
+  v8 supplier 450 x 118 dep 20% source=supplier_agent_live_model status=accepted
+
+escrow request: needs_confirmation 
