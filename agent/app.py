@@ -30,15 +30,15 @@ STATUS = {
 }
 OPEN = {Status.LOCKED, Status.DOWN_PAID, Status.DELIVERED, Status.DISPUTED}
 
-# Blue eclipse: #0F0E47 night, #272757 deep, #505081 mid, #8686AC haze. Light canvas so the four read apart.
+# Blue eclipse: #0F0E47 night (sidebar), #272757 deep (cards), #505081 mid (borders, chips), #8686AC haze (accents).
 CSS = """
 <style>
-.stApp { background:#F5F5FA; }
+.stApp { background:#1B1A52; }
 [data-testid="stSidebar"] { background:#0F0E47; }
 [data-testid="stSidebar"] * { color:#E4E4F1; }
 [data-testid="stSidebar"] a { color:#B9B8E0 !important; }
 .block-container { padding-top:2rem; max-width:1100px; }
-.tw-head { background:#272757; border-radius:18px; padding:22px 26px; display:flex; justify-content:space-between;
+.tw-head { background:#272757; border:1px solid #505081; border-radius:18px; padding:22px 26px; display:flex; justify-content:space-between;
   align-items:center; margin-bottom:18px; }
 .tw-brand { color:#F5F5FA; font-size:1.9rem; font-weight:700; letter-spacing:-0.01em; }
 .tw-tag { color:#B9B8D6; font-size:0.92rem; margin-top:2px; }
@@ -46,19 +46,19 @@ CSS = """
 .tw-chip { background:#505081; color:#F5F5FA; border-radius:999px; padding:5px 12px; font-size:0.8rem; white-space:nowrap; }
 .tw-chip.live::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:#9BE3B5;
   margin-right:7px; vertical-align:middle; }
-.tw-pending { background:#FFFFFF; border:2px solid #505081; border-radius:14px; padding:14px 18px; margin:8px 0 4px;
-  color:#0F0E47; }
-.tw-pending b { color:#505081; }
-[data-testid="stChatMessage"] { background:#FFFFFF; border:1px solid #DCDCEA; border-radius:14px; padding:14px 16px; }
-.tw-trace { border-left:2px solid #DCDCEA; margin:6px 0 2px 6px; padding-left:16px; }
-.tw-step { position:relative; margin:0 0 10px 0; font-size:0.88rem; color:#272757; line-height:1.4; }
+.tw-pending { background:#272757; border:2px solid #8686AC; border-radius:14px; padding:14px 18px; margin:8px 0 4px;
+  color:#E4E4F1; }
+.tw-pending b { color:#FFFFFF; }
+[data-testid="stChatMessage"] { background:#272757; border:1px solid #505081; border-radius:14px; padding:14px 16px; }
+.tw-trace { border-left:2px solid #505081; margin:6px 0 2px 6px; padding-left:16px; }
+.tw-step { position:relative; margin:0 0 10px 0; font-size:0.88rem; color:#D6D6EA; line-height:1.4; }
 .tw-step::before { content:""; position:absolute; left:-23px; top:5px; width:12px; height:12px; border-radius:50%;
-  background:var(--dot); border:2px solid #F5F5FA; }
-.tw-who { font-weight:600; color:#0F0E47; }
-.tw-ok { color:#2E7D5B; font-weight:600; }
-.tw-bad { color:#B3261E; font-weight:600; }
-.tw-muted { color:#6E6D96; }
-.tw-legend { font-size:0.78rem; color:#6E6D96; margin-top:4px; }
+  background:var(--dot); border:2px solid #272757; }
+.tw-who { font-weight:600; color:#FFFFFF; }
+.tw-ok { color:#8FE0B0; font-weight:600; }
+.tw-bad { color:#FF9A8F; font-weight:600; }
+.tw-muted { color:#A9A8CC; }
+.tw-legend { font-size:0.78rem; color:#A9A8CC; margin-top:4px; }
 .tw-legend span { display:inline-block; width:9px; height:9px; border-radius:50%; margin:0 5px 0 12px; vertical-align:middle; }
 .tw-card { background:#272757; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
 .tw-label { color:#8686AC !important; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.09em; }
@@ -70,7 +70,7 @@ CSS = """
 </style>
 """
 
-LLM_DOT, CODE_DOT, CHAIN_DOT, OWNER_DOT = "#8686AC", "#505081", "#0F0E47", "#2E7D5B"
+LLM_DOT, CODE_DOT, CHAIN_DOT, OWNER_DOT = "#8686AC", "#C9C8E4", "#5B5BD6", "#8FE0B0"
 
 
 def load_env() -> None:
