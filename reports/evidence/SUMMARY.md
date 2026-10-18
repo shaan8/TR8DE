@@ -1,17 +1,17 @@
 # Tiwala execution evidence
 
-Commit `27dc3f2 (with local changes)`, Python 3.14.7, 2026-10-18 21:29 UTC, 68 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `f69a0eb (with local changes)`, Python 3.14.7, 2026-10-18 21:37 UTC, 74 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
-**154/154 scenarios pass.**
+**155/155 scenarios pass.**
 
 | Group | Passed |
 | --- | --- |
 | C. Attacks blocked | 53/53 |
 | D. Privacy and integrity | 10/10 |
 | B. Safe execution and owner control | 30/30 |
-| A. Task completion | 61/61 |
+| A. Task completion | 62/62 |
 
 Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed payouts reached: cancel_deal 974, create_deal 141, release_balance 175, release_down_payment 198. Three deliberately planted bugs (no payee checks, no daily limit, no Checker) are each caught.
 
@@ -127,6 +127,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 
 | Scenario | File | Result |
 | --- | --- | --- |
+| unsigned webhook posts are refused before the agent is built | test_auth | pass |
 | network reputation from factory wallets | test_integration | pass |
 | happy path create confirm then release down payment | test_integration | pass |
 | correction redraft then confirm | test_integration | pass |
