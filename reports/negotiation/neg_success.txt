@@ -1,0 +1,12 @@
+Agreement reached: your review
+Validation: local anvil chain, scripted supplier agent (not AI), rules-based buyer
+
+NEG-4C79F29D  Cotton fabric (metres) with Lumen Textiles  mode=agent channel=local supplier_agent=scripted
+
+tiwala (buyer)> Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at ₱100.00 each = ₱50,000.00, 10% deposit (₱5,000.00), delivery by 2026-10-27. Offer v1, code 989F1D. Reply ACCEPT 989F1D to accept, send a counteroffer, or REJECT.
+supplier (supplier_agent_scripted)> Cotton fabric (metres): 450 units at ₱130.00 each = ₱58,500.00, 20% deposit (₱11,700.00), delivery by 2026-10-27. Offer v2, code EE429F. We can move a little on price.
+tiwala (buyer)> Our counteroffer: Cotton fabric (metres): 450 units at ₱115.00 each = ₱51,750.00, 20% deposit (₱10,350.00), delivery by 2026-10-27. Offer v3, code 03B6E1. Reply ACCEPT 03B6E1 to accept.
+supplier (supplier_agent_scripted)> Cotton fabric (metres): 450 units at ₱122.00 each = ₱54,900.00, 20% deposit (₱10,980.00), delivery by 2026-10-27. Offer v4, code AED5D1. We can move a little on price.
+tiwala (buyer)> Our counteroffer: Cotton fabric (metres): 450 units at ₱118.00 each = ₱53,100.00, 20% deposit (₱10,620.00), delivery by 2026-10-27. Offer v5, code DFD90C. Reply ACCEPT DFD90C to accept.
+
+final state: awaiting_buyer_approval  Both parties accepted v5. Waiting for your review.

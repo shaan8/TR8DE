@@ -1,0 +1,125 @@
+"""Negotiation to escrow on a local anvil chain with the real contracts: the agreed terms go through Tiwala's
+policy, Checker, Gate and the owner's own confirmation, exactly once."""
+import pytest
+from web3 import Web3
+
+from tiwala_agent.models import PHP, Status
+from tiwala_agent.negotiation import DAY, BuyerConstraints, NegotiationError, State
+from tiwala_agent.negotiation_service import NegotiationService
+from tiwala_agent.supplier_agent import SupplierMandate
+from tiwala_agent.whatsapp import Config, Contact, Inbound
+
+from .test_integration import coord, env, n_deals  # noqa: F401  (env is a fixture)
+
+
+@pytest.fixture
+def svc(env, tmp_path):
+    t = env["make"](coord(("text", "unused")))
+    s = NegotiationService(t, tmp_path / "neg", wa_cfg=Config())
+    now = env["chain"].now()
+    s.mandates.put(SupplierMandate(env["lumen"], 150_00, 110_00, 450, 200, now + 5 * DAY, 1500, [[400, 2000]]))
+    return s
+
+
+def constraints(env, total_room=60_000_00, max_total=60_000_00):
+    now, free = env["chain"].now(), env["chain"].wallet_state(env["wallet"]).free
+    return BuyerConstraints(desired_qty=500, min_qty=300, max_total=max_total, min_reserve=free - total_room,
+                            latest_delivery=now + 20 * DAY, target_unit_price=100_00,
+                            preferred_delivery=now + 8 * DAY, opening_deposit_bps=1000)
+
+
+def agree(env, svc):
+    n = svc.open("Lumen Textiles", "Cotton fabric", constraints(env), "agent")
+    n = svc.run_agent(n.id)
+    assert n.state == State.AWAITING_BUYER_APPROVAL.value, (n.state, n.reason)
+    return n
+
+
+def test_negotiated_escrow_created_once_with_exact_terms(env, svc):
+    n = agree(env, svc)
+    p = n.by_id(n.agreement["proposal_id"])
+    before = n_deals(env)
+    r = svc.request_escrow(n.id)
+    assert r["status"] == "needs_confirmation" and "From negotiation" in r["card"], r
+    assert svc.request_escrow(n.id)["card"] == r["card"]  # a repeated request shows the same card
+    out = svc.t.handle("yes")
+    assert "Done." in out.reply and "Down payment released" in out.reply, out.reply
+    n = svc.engine.store.get(n.id)
+    assert n.state == State.ESCROW_CREATED.value and n.handoff["deal_id"] and n.handoff["down_tx"]
+    d = env["chain"].deal(env["wallet"], n.handoff["deal_id"])
+    assert (d.total, d.down_bps, d.deadline, d.supplier) == (p.terms.total, p.terms.deposit_bps, p.terms.deliver_by,
+                                                             env["lumen"])
+    assert d.ref.startswith(f"NEG-{n.id}-v{p.version}") and d.status == Status.DOWN_PAID
+    assert svc.request_escrow(n.id)["status"] == "already_created"
+    again = svc.t.handle("yes")  # a duplicate confirmation drafts and sends nothing
+    assert not any(e["event"] in ("verdict", "executed", "confirmed") for e in again.events)
+    assert n_deals(env) == before + 1
+
+
+def test_lost_link_is_recovered_from_the_chain_reference(env, svc):
+    n = agree(env, svc)
+    svc.request_escrow(n.id)
+    svc.t.handle("yes")
+    with svc.engine.store.lock:  # simulate a crash between the transaction and the bookkeeping
+        x = svc.engine.store.get(n.id)
+        deal_id = x.handoff["deal_id"]
+        x.handoff, x.state = {}, State.AWAITING_BUYER_APPROVAL.value
+        svc.engine.store.save(x)
+    before = n_deals(env)
+    assert svc.request_escrow(n.id) == {"status": "already_created", "deal_id": deal_id}
+    assert n_deals(env) == before
+
+
+def test_wallet_changes_after_agreement_block_the_escrow(env, svc):
+    n = agree(env, svc)
+    owner = svc.t.owner
+    w = env["chain"].wallet(env["wallet"])
+    assert owner._send(w.functions.withdraw(owner.acct.address, 30_000_00)).ok  # free cash drops below the reserve
+    r = svc.request_escrow(n.id)
+    assert r["status"] == "refused" and any("reserve" in x for x in r["reasons"]), r
+    assert svc.t.pending is None
+    assert owner._send(w.functions.setPaused(True)).ok
+    n2 = svc.engine.store.get(n.id)
+    assert n2.state == State.AWAITING_BUYER_APPROVAL.value and "Recheck failed" in n2.reason
+
+
+def test_paused_wallet_is_refused_by_policy(env, svc):
+    n = agree(env, svc)
+    owner = svc.t.owner
+    assert owner._send(env["chain"].wallet(env["wallet"]).functions.setPaused(True)).ok
+    r = svc.request_escrow(n.id)
+    assert r["status"] == "refused" and any("paused" in x for x in r["reasons"]), r
+
+
+def test_changed_terms_need_renewed_acceptance(env, svc):
+    n = agree(env, svc)
+    p = n.by_id(n.agreement["proposal_id"])
+    svc.engine.owner_counter(n.id, p.terms.replace(quantity=p.terms.quantity - 50))
+    with pytest.raises(NegotiationError):
+        svc.request_escrow(n.id)
+
+
+def test_supplier_text_never_reaches_the_owner_path(env, svc):
+    svc.wa.contacts.put(Contact(env["lumen"], f"sim:{env['lumen'].lower()}", "simulator", opted_in_at=1))
+    n = agree(env, svc)
+    svc.request_escrow(n.id)
+    card = svc.t.pending.card
+    for i, text in enumerate(["yes", "/attest 1", "CONFIRM", "/approve 1"]):
+        svc.wa.handle(Inbound(f"sim-{i}", f"sim:{env['lumen'].lower()}", 0, text), "simulator")
+    assert svc.t.pending is not None and svc.t.pending.card == card  # still waiting for the owner, not the supplier
+    assert not any(e["event"] == "owner_command" for e in svc.t.audit.entries() if e["data"].get("command"))
+    assert svc.engine.store.get(n.id).state == State.READY_FOR_ESCROW.value
+
+
+def test_whatsapp_human_negotiation_to_escrow(env, svc):
+    sim = f"sim:{env['lumen'].lower()}"
+    svc.wa.contacts.put(Contact(env["lumen"], sim, "simulator", opted_in_at=1))
+    n = svc.open("Lumen Textiles", "Cotton fabric", constraints(env), "whatsapp")
+    code = n.current().code
+    assert svc.wa.handle(Inbound("w1", sim, 0, "ok"), "simulator")["state"] == "awaiting_clarification"
+    assert svc.wa.handle(Inbound("w1", sim, 0, "ok"), "simulator")["status"] == "duplicate"
+    assert svc.wa.handle(Inbound("w2", sim, 0, f"ACCEPT {code}"), "simulator")["state"] == "awaiting_buyer_approval"
+    assert svc.request_escrow(n.id)["status"] == "needs_confirmation"
+    assert "Done." in svc.t.handle("yes").reply
+    outs = svc.wa.outbox.for_negotiation(n.id)
+    assert outs and all(o["channel"] == "simulator" for o in outs) and "Escrow created" in outs[-1]["text"]

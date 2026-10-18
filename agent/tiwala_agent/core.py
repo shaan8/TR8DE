@@ -183,6 +183,8 @@ class Tiwala:
         self.pending_payee: Optional[PendingPayee] = None
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
+        self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
+        self.on_executed: list = []  # callbacks(action, result) after an owner-confirmed action executes
 
     # ------------------------------------------------------------ data
 
@@ -269,6 +271,9 @@ class Tiwala:
         if a.origin.kind == "user":
             said = "\n".join(f'Owner said: "{t}"' for t in self.ledger[-6:]) or "(no request)"
             return said + (f"\nSystem (not the owner): {system_note}" if system_note else "")
+        if a.origin.kind == "negotiation":
+            base = self.agreements.get(a.origin.detail, {}).get("summary", "Negotiated agreement (no summary on record)")
+            return base + (f"\nSystem (not the owner): {system_note}" if system_note else "")
         rule, _ = a.origin.detail.split(":", 1)
         if rule == "overdue_cancel" and deal:
             return (f"Monitor rule overdue_cancel fired for deal {deal.id}: deadline {_when(deal.deadline)} plus grace "
@@ -281,10 +286,14 @@ class Tiwala:
 
     # ------------------------------------------------------------ pipeline
 
+    def _intent(self, a: Action, texts: list[str], deal):
+        if a.origin.kind == "user":
+            return verify_intent(a, texts, self.names(), deal)
+        return verify_intent(a, [], {}, deal, self.agreements.get(a.origin.detail))
+
     def propose(self, a: Action, then_release_down: bool = False, system_note: str = "") -> dict:
         ctx, deal = self._context(a)
-        intent = verify_intent(a, self.ledger[-6:], self.names(), deal) if a.origin.kind == "user" else \
-            verify_intent(a, [], {}, deal)
+        intent = self._intent(a, self.ledger[-6:], deal)
         ctx.intent_mismatches = intent.mismatches
         view = self._action_view(a, ctx, deal)
         request = self._request_desc(a, deal, system_note)
@@ -324,7 +333,7 @@ class Tiwala:
         self.ledger = p.texts
         try:
             ctx, deal = self._context(p.action)  # fresh chain state at confirmation time
-            intent = verify_intent(p.action, p.texts[-6:], self.names(), deal)
+            intent = self._intent(p.action, p.texts[-6:], deal)
             ctx.intent_mismatches = intent.mismatches
             ctx.checker_approved, ctx.checker_reason = p.checker
             verdict = decide(p.action, ctx, self.settings)
@@ -339,6 +348,9 @@ class Tiwala:
                         f"\"Down payment: {c.down_bps / 100:g}% = {php(c.total * c.down_bps // 10_000)}, released right "
                         f"after creation\". That deal is now deal {out['deal_id']}; this action is that release.")
                 out["down_payment"] = self.propose(rel, system_note=note)
+            if out["status"] == "executed":
+                for cb in self.on_executed:
+                    cb(p.action, out)
             return out
         finally:
             self.ledger = saved
@@ -371,6 +383,10 @@ class Tiwala:
         else:
             lines += [f"CONFIRM {a.kind.value.replace('_', ' ').upper()} for deal {a.deal_id}",
                       f"Supplier: {names.get(deal.supplier, deal.supplier) if deal else '?'}"]
+        if a.origin.kind == "negotiation":
+            ag = self.agreements.get(a.origin.detail, {})
+            lines.append(f"From negotiation {ag.get('label', a.origin.detail)}; supplier accepted these exact terms "
+                         f"({ag.get('supplier_via', 'unknown channel')}). Your yes is the payment approval.")
         if v.flags:
             lines.append("Risk flags: " + ", ".join(v.flags))
         if filled:
@@ -525,6 +541,24 @@ class Tiwala:
         if name in kinds:
             return self.propose(Action(kinds[name], self._origin([]), deal_id=int(a["deal_id"])))
         return {"error": f"unknown tool {name}"}
+
+    # ------------------------------------------------------------ negotiated deals
+
+    def propose_negotiated(self, detail: str, supplier: str, total: int, down_bps: int, deadline: int, ref: str,
+                           summary: str, label: str, supplier_via: str) -> dict:
+        """Draft the escrow for an agreed negotiation. Same pipeline as a chat request: intent (the action must equal
+        the agreement), Checker, policy, then a confirmation card the owner answers in their own words."""
+        if self.pending:
+            self._log("pending_dropped", action=self.pending.action.to_dict())
+            self.pending = None
+        self.pending_payee = None
+        self.agreements[detail] = {"supplier": supplier, "total": total, "down_bps": down_bps, "deadline": deadline,
+                                   "ref": ref, "summary": summary, "label": label, "supplier_via": supplier_via}
+        a = Action(ActionKind.CREATE_DEAL, Origin("negotiation", detail), supplier=supplier, total=total,
+                   down_bps=down_bps, deadline=deadline, ref=ref)
+        self._events = []
+        self.ledger = []
+        return self.propose(a, then_release_down=True)
 
     # ------------------------------------------------------------ payees
 

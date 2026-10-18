@@ -76,9 +76,12 @@ def verify(
     request_texts: list[str],
     supplier_names_by_addr: dict[str, str],
     deal: Deal | None = None,
+    agreement: dict | None = None,
 ) -> IntentResult:
     if action.origin.kind == "monitor":
         return _verify_monitor(action)
+    if action.origin.kind == "negotiation":
+        return _verify_negotiation(action, agreement, deal)
 
     parsed = parse(request_texts, list(supplier_names_by_addr.values()))
     mm: list[str] = []
@@ -123,6 +126,24 @@ def verify(
     if action.kind == ActionKind.CREATE_DEAL:
         filled.append("deadline")
     return IntentResult(ok=not mm, mismatches=mm, agent_filled=filled)
+
+
+def _verify_negotiation(action: Action, agreement: dict | None, deal: Deal | None = None) -> IntentResult:
+    """A negotiated deal must carry exactly the agreed terms: payee, total, deposit, deadline and reference."""
+    if not agreement:
+        return IntentResult(False, ["no agreement on record for this negotiation"])
+    mm = []
+    if action.kind == ActionKind.RELEASE_DOWN:  # only the agreed deposit of the deal this agreement created
+        if deal is None:
+            return IntentResult(False, ["deal not found"])
+        for f, dv in (("supplier", deal.supplier), ("total", deal.total), ("down_bps", deal.down_bps), ("ref", deal.ref)):
+            if dv != agreement.get(f):
+                mm.append(f"deal {deal.id} {f.replace('_', ' ')} is {dv}, agreement has {agreement.get(f)}")
+        return IntentResult(ok=not mm, mismatches=mm)
+    for f in ("supplier", "total", "down_bps", "deadline", "ref"):
+        if getattr(action, f) != agreement.get(f):
+            mm.append(f"{f.replace('_', ' ')}: agreed {agreement.get(f)}, action uses {getattr(action, f)}")
+    return IntentResult(ok=not mm, mismatches=mm)
 
 
 def _verify_monitor(action: Action) -> IntentResult:

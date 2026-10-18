@@ -1,0 +1,659 @@
+{
+ "meta": {
+  "name": "neg_impossible",
+  "title": "No feasible agreement",
+  "validation": "local anvil chain, scripted supplier agent (not AI), rules-based buyer"
+ },
+ "buyer": {
+  "id": "692273EC",
+  "buyer": "0xCafac3dD18aC6c6e92c921884f9E4176737C052c",
+  "supplier_name": "Lumen Textiles",
+  "supplier_address": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+  "product": "Cotton fabric (metres)",
+  "mode": "agent",
+  "channel": "local",
+  "controller": "agent",
+  "supplier_identity": "+\u2022\u2022\u2022\u20226283",
+  "agent_kind": "scripted",
+  "constraints": {
+   "desired_qty": 500,
+   "min_qty": 300,
+   "max_total": 6000000,
+   "min_reserve": 8500000,
+   "latest_delivery": 1794153540,
+   "target_unit_price": 10000,
+   "preferred_delivery": 1793116740,
+   "opening_deposit_bps": 1000
+  },
+  "state": "rejected",
+  "created": 1792340885,
+  "expires": 1792600085,
+  "max_rounds": 8,
+  "proposal_ttl": 3600,
+  "proposals": [
+   {
+    "id": "692273EC-v1",
+    "version": 1,
+    "by": "buyer",
+    "terms": {
+     "quantity": 500,
+     "unit_price": 10000,
+     "deposit_bps": 1000,
+     "deliver_by": 1793116740,
+     "total": 5000000,
+     "deposit": 500000
+    },
+    "terms_hash": "6ee7b30d109f1d20e9c00c5aaeb594884f1bad5b7f772318c1966013f77db88f",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "owner",
+    "note": "Opening offer.",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792340885,
+      "via": "owner"
+     }
+    },
+    "final": false,
+    "code": "6EE7B3"
+   },
+   {
+    "id": "692273EC-v2",
+    "version": 2,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 21000,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 9450000,
+     "deposit": 1890000
+    },
+    "terms_hash": "c50662b1452168069de78cd1abc4ea18d741227dc6566f525c95514208346b34",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "supplier_agent_scripted",
+    "note": "We can move a little on price.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792340885,
+      "via": "supplier_agent_scripted"
+     }
+    },
+    "final": false,
+    "code": "C50662"
+   },
+   {
+    "id": "692273EC-v3",
+    "version": 3,
+    "by": "buyer",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 11600,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 5220000,
+     "deposit": 1044000
+    },
+    "terms_hash": "ebcef6f15556d0450fbba4e5d2ff8785e3204d6a47c309a3fafdd11a7541a229",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "buyer_rules",
+    "note": "",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792340885,
+      "via": "buyer_rules"
+     }
+    },
+    "final": false,
+    "code": "EBCEF6"
+   },
+   {
+    "id": "692273EC-v4",
+    "version": 4,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 20000,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 9000000,
+     "deposit": 1800000
+    },
+    "terms_hash": "26b261385830f3e4287e237fc5b035dffffd1277d01589bdabd65f9a5853c33e",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "supplier_agent_scripted",
+    "note": "We can move a little on price.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792340885,
+      "via": "supplier_agent_scripted"
+     }
+    },
+    "final": false,
+    "code": "26B261"
+   },
+   {
+    "id": "692273EC-v5",
+    "version": 5,
+    "by": "buyer",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 12400,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 5580000,
+     "deposit": 1116000
+    },
+    "terms_hash": "fc8b2fd7adb6fbb93067331eb49e1b3100f13a1d48f9c72b3bbc5a89395b175e",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "buyer_rules",
+    "note": "",
+    "status": "superseded",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792340885,
+      "via": "buyer_rules"
+     }
+    },
+    "final": false,
+    "code": "FC8B2F"
+   },
+   {
+    "id": "692273EC-v6",
+    "version": 6,
+    "by": "supplier",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 19500,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 8775000,
+     "deposit": 1755000
+    },
+    "terms_hash": "1785df48c49781a309981546ac9f11a53fb4edc155cb39f77f87c774b4440f72",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "supplier_agent_scripted",
+    "note": "We can move a little on price.",
+    "status": "superseded",
+    "accepted_by": {
+     "supplier": {
+      "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+      "at": 1792340885,
+      "via": "supplier_agent_scripted"
+     }
+    },
+    "final": false,
+    "code": "1785DF"
+   },
+   {
+    "id": "692273EC-v7",
+    "version": 7,
+    "by": "buyer",
+    "terms": {
+     "quantity": 450,
+     "unit_price": 12800,
+     "deposit_bps": 2000,
+     "deliver_by": 1793116740,
+     "total": 5760000,
+     "deposit": 1152000
+    },
+    "terms_hash": "b2645127bdf8583bfdbb00f0636bf208056ee4e2f616bcabf2f8363ac8a4688e",
+    "created": 1792340885,
+    "expires": 1792344485,
+    "source": "buyer_rules",
+    "note": "",
+    "status": "rejected",
+    "accepted_by": {
+     "buyer": {
+      "identity": "tiwala:buyer",
+      "at": 1792340885,
+      "via": "buyer_rules"
+     }
+    },
+    "final": false,
+    "code": "B26451"
+   }
+  ],
+  "messages": [
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at \u20b1100.00 each = \u20b150,000.00, 10% deposit (\u20b15,000.00), delivery by 2026-10-27. Offer v1, code 6EE7B3. Reply ACCEPT 6EE7B3 to accept, send a counteroffer, or REJECT.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v1"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1210.00 each = \u20b194,500.00, 20% deposit (\u20b118,900.00), delivery by 2026-10-27. Offer v2, code C50662. We can move a little on price.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v2",
+    "via": "supplier_agent_scripted"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1116.00 each = \u20b152,200.00, 20% deposit (\u20b110,440.00), delivery by 2026-10-27. Offer v3, code EBCEF6. Reply ACCEPT EBCEF6 to accept.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v3"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1200.00 each = \u20b190,000.00, 20% deposit (\u20b118,000.00), delivery by 2026-10-27. Offer v4, code 26B261. We can move a little on price.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v4",
+    "via": "supplier_agent_scripted"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1124.00 each = \u20b155,800.00, 20% deposit (\u20b111,160.00), delivery by 2026-10-27. Offer v5, code FC8B2F. Reply ACCEPT FC8B2F to accept.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v5"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Cotton fabric (metres): 450 units at \u20b1195.00 each = \u20b187,750.00, 20% deposit (\u20b117,550.00), delivery by 2026-10-27. Offer v6, code 1785DF. We can move a little on price.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v6",
+    "via": "supplier_agent_scripted"
+   },
+   {
+    "dir": "out",
+    "party": "buyer",
+    "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1128.00 each = \u20b157,600.00, 20% deposit (\u20b111,520.00), delivery by 2026-10-27. Offer v7, code B26451. Reply ACCEPT B26451 to accept.",
+    "channel": "local",
+    "ts": 1792340885,
+    "proposal": "692273EC-v7"
+   },
+   {
+    "dir": "in",
+    "party": "supplier",
+    "text": "Rejected: We cannot meet these terms.",
+    "channel": "local",
+    "ts": 1792340885,
+    "via": "supplier_agent_scripted"
+   }
+  ],
+  "timeline": [
+   {
+    "ts": 1792340885,
+    "event": "opened",
+    "detail": "Cotton fabric (metres) with Lumen Textiles (agent, local)"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "negotiating"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "awaiting_acceptance"
+   },
+   {
+    "ts": 1792340885,
+    "event": "state",
+    "detail": "the supplier rejected the offer"
+   }
+  ],
+  "agreement": null,
+  "handoff": {},
+  "reason": "the supplier rejected the offer",
+  "escalated": false,
+  "view": null,
+  "checks": null,
+  "cash": null,
+  "diff": {},
+  "outbox": [],
+  "running": false,
+  "pending_card": null
+ },
+ "supplier": {
+  "supplier": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+  "name": "Lumen Textiles",
+  "mandate": {
+   "supplier_address": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+   "list_unit_price": 23000,
+   "min_unit_price": 19000,
+   "available_qty": 450,
+   "min_order_qty": 200,
+   "earliest_delivery": 1792773084,
+   "min_deposit_bps": 1500,
+   "deposit_tiers": [
+    [
+     400,
+     2000
+    ]
+   ],
+   "agent_may_accept": true
+  },
+  "negotiations": [
+   {
+    "id": "692273EC",
+    "product": "Cotton fabric (metres)",
+    "buyer": "0xCafac3dD18aC6c6e92c921884f9E4176737C052c",
+    "supplier_name": "Lumen Textiles",
+    "state": "rejected",
+    "proposals": [
+     {
+      "id": "692273EC-v1",
+      "version": 1,
+      "by": "buyer",
+      "terms": {
+       "quantity": 500,
+       "unit_price": 10000,
+       "deposit_bps": 1000,
+       "deliver_by": 1793116740,
+       "total": 5000000,
+       "deposit": 500000
+      },
+      "terms_hash": "6ee7b30d109f1d20e9c00c5aaeb594884f1bad5b7f772318c1966013f77db88f",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "owner",
+      "note": "Opening offer.",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792340885,
+        "via": "owner"
+       }
+      },
+      "final": false,
+      "code": "6EE7B3"
+     },
+     {
+      "id": "692273EC-v2",
+      "version": 2,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 21000,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 9450000,
+       "deposit": 1890000
+      },
+      "terms_hash": "c50662b1452168069de78cd1abc4ea18d741227dc6566f525c95514208346b34",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "supplier_agent_scripted",
+      "note": "We can move a little on price.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792340885,
+        "via": "supplier_agent_scripted"
+       }
+      },
+      "final": false,
+      "code": "C50662"
+     },
+     {
+      "id": "692273EC-v3",
+      "version": 3,
+      "by": "buyer",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 11600,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 5220000,
+       "deposit": 1044000
+      },
+      "terms_hash": "ebcef6f15556d0450fbba4e5d2ff8785e3204d6a47c309a3fafdd11a7541a229",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "buyer_rules",
+      "note": "",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792340885,
+        "via": "buyer_rules"
+       }
+      },
+      "final": false,
+      "code": "EBCEF6"
+     },
+     {
+      "id": "692273EC-v4",
+      "version": 4,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 20000,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 9000000,
+       "deposit": 1800000
+      },
+      "terms_hash": "26b261385830f3e4287e237fc5b035dffffd1277d01589bdabd65f9a5853c33e",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "supplier_agent_scripted",
+      "note": "We can move a little on price.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792340885,
+        "via": "supplier_agent_scripted"
+       }
+      },
+      "final": false,
+      "code": "26B261"
+     },
+     {
+      "id": "692273EC-v5",
+      "version": 5,
+      "by": "buyer",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 12400,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 5580000,
+       "deposit": 1116000
+      },
+      "terms_hash": "fc8b2fd7adb6fbb93067331eb49e1b3100f13a1d48f9c72b3bbc5a89395b175e",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "buyer_rules",
+      "note": "",
+      "status": "superseded",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792340885,
+        "via": "buyer_rules"
+       }
+      },
+      "final": false,
+      "code": "FC8B2F"
+     },
+     {
+      "id": "692273EC-v6",
+      "version": 6,
+      "by": "supplier",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 19500,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 8775000,
+       "deposit": 1755000
+      },
+      "terms_hash": "1785df48c49781a309981546ac9f11a53fb4edc155cb39f77f87c774b4440f72",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "supplier_agent_scripted",
+      "note": "We can move a little on price.",
+      "status": "superseded",
+      "accepted_by": {
+       "supplier": {
+        "identity": "agent:0x3ca6ed8319fcd6c42a90110d198ab32a68628af3",
+        "at": 1792340885,
+        "via": "supplier_agent_scripted"
+       }
+      },
+      "final": false,
+      "code": "1785DF"
+     },
+     {
+      "id": "692273EC-v7",
+      "version": 7,
+      "by": "buyer",
+      "terms": {
+       "quantity": 450,
+       "unit_price": 12800,
+       "deposit_bps": 2000,
+       "deliver_by": 1793116740,
+       "total": 5760000,
+       "deposit": 1152000
+      },
+      "terms_hash": "b2645127bdf8583bfdbb00f0636bf208056ee4e2f616bcabf2f8363ac8a4688e",
+      "created": 1792340885,
+      "expires": 1792344485,
+      "source": "buyer_rules",
+      "note": "",
+      "status": "rejected",
+      "accepted_by": {
+       "buyer": {
+        "identity": "tiwala:buyer",
+        "at": 1792340885,
+        "via": "buyer_rules"
+       }
+      },
+      "final": false,
+      "code": "B26451"
+     }
+    ],
+    "max_rounds": 8,
+    "messages": [
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "Hello, this is Tiwala for the buyer. Cotton fabric (metres): 500 units at \u20b1100.00 each = \u20b150,000.00, 10% deposit (\u20b15,000.00), delivery by 2026-10-27. Offer v1, code 6EE7B3. Reply ACCEPT 6EE7B3 to accept, send a counteroffer, or REJECT.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v1"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1210.00 each = \u20b194,500.00, 20% deposit (\u20b118,900.00), delivery by 2026-10-27. Offer v2, code C50662. We can move a little on price.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v2",
+      "via": "supplier_agent_scripted"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1116.00 each = \u20b152,200.00, 20% deposit (\u20b110,440.00), delivery by 2026-10-27. Offer v3, code EBCEF6. Reply ACCEPT EBCEF6 to accept.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v3"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1200.00 each = \u20b190,000.00, 20% deposit (\u20b118,000.00), delivery by 2026-10-27. Offer v4, code 26B261. We can move a little on price.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v4",
+      "via": "supplier_agent_scripted"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1124.00 each = \u20b155,800.00, 20% deposit (\u20b111,160.00), delivery by 2026-10-27. Offer v5, code FC8B2F. Reply ACCEPT FC8B2F to accept.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v5"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Cotton fabric (metres): 450 units at \u20b1195.00 each = \u20b187,750.00, 20% deposit (\u20b117,550.00), delivery by 2026-10-27. Offer v6, code 1785DF. We can move a little on price.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v6",
+      "via": "supplier_agent_scripted"
+     },
+     {
+      "dir": "out",
+      "party": "buyer",
+      "text": "Our counteroffer: Cotton fabric (metres): 450 units at \u20b1128.00 each = \u20b157,600.00, 20% deposit (\u20b111,520.00), delivery by 2026-10-27. Offer v7, code B26451. Reply ACCEPT B26451 to accept.",
+      "channel": "local",
+      "ts": 1792340885,
+      "proposal": "692273EC-v7"
+     },
+     {
+      "dir": "in",
+      "party": "supplier",
+      "text": "Rejected: We cannot meet these terms.",
+      "channel": "local",
+      "ts": 1792340885,
+      "via": "supplier_agent_scripted"
+     }
+    ],
+    "agreement": null,
+    "controller": "agent",
+    "mode": "agent",
+    "channel": "local",
+    "expires": 1792600085,
+    "agent_kind": "scripted",
+    "running": false
+   }
+  ]
+ },
+ "after": {}
+}

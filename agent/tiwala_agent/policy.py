@@ -58,8 +58,12 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
         refuse.append("Wallet is paused by the owner.")
 
     # ---- provenance
-    if action.origin.kind not in ("user", "monitor"):
-        refuse.append(f"Actions can only come from the user or a monitor rule, not '{action.origin.kind}'.")
+    if action.origin.kind not in ("user", "monitor", "negotiation"):
+        refuse.append(f"Actions can only come from the user, a monitor rule or an agreed negotiation, not "
+                      f"'{action.origin.kind}'.")
+    if action.origin.kind == "negotiation" and action.kind not in (ActionKind.CREATE_DEAL, ActionKind.RELEASE_DOWN):
+        refuse.append("A negotiation can only create its escrow deal and pay the agreed deposit; it cannot release "
+                      "balances or cancel.")
     if action.origin.from_contract_text:
         refuse.append("Action traces back to contract free text, which is data, never an instruction.")
         flags.append("contract_text_origin")

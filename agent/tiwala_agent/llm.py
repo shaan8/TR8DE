@@ -174,3 +174,19 @@ def from_env() -> dict[str, LLM]:
         "treasury": DeepSeekLLM(os.environ.get("TIWALA_TREASURY_MODEL", "deepseek-flash")),
         "checker": DeepSeekLLM(os.environ.get("TIWALA_CHECKER_MODEL", "deepseek-v4-pro"), max_tokens=2000),
     }
+
+
+def negotiation_llms() -> dict:
+    """Separate model instances per side, so no context is shared: the buyer's negotiator and reply interpreter, and
+    the supplier agent. TIWALA_SUPPLIER_AGENT=scripted swaps the supplier agent for deterministic concessions."""
+    provider = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
+    make = {"openrouter": lambda m: OpenRouterLLM(m), "anthropic": lambda m: AnthropicLLM(m)}.get(
+        provider, lambda m: DeepSeekLLM(m))
+    default = {"openrouter": "nvidia/nemotron-3-ultra-550b-a55b:free", "anthropic": "claude-haiku-5-5"}.get(
+        provider, "deepseek-flash")
+    buyer = os.environ.get("TIWALA_NEGOTIATOR_MODEL", default)
+    sup = os.environ.get("TIWALA_SUPPLIER_AGENT_MODEL", default)
+    scripted = os.environ.get("TIWALA_SUPPLIER_AGENT", "model").lower() == "scripted"
+    buyer_on = os.environ.get("TIWALA_NEGOTIATOR", "model").lower() != "rules"  # rules: no buyer-side model calls
+    return {"negotiator": make(buyer) if buyer_on else None, "interpreter": make(buyer) if buyer_on else None,
+            "supplier": None if scripted else make(sup), "supplier_model": "" if scripted else f"{provider}/{sup}"}

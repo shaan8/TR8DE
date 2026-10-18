@@ -48,10 +48,10 @@ MONEY_MOVING = {ActionKind.CREATE_DEAL, ActionKind.RELEASE_DOWN, ActionKind.RELE
 
 @dataclass(frozen=True)
 class Origin:
-    """Where an action came from. Only 'user' and 'monitor' may originate actions."""
+    """Where an action came from: 'user', 'monitor', or 'negotiation' (create_deal only, from an agreement)."""
 
-    kind: str  # "user" | "monitor"
-    detail: str  # the user's literal request text, or the monitor rule id
+    kind: str  # "user" | "monitor" | "negotiation"
+    detail: str  # the user's literal request text, the monitor rule id, or "<negotiation>:<proposal>:<terms hash>"
     from_contract_text: bool = False  # True if any field was taken from contract free text
 
 

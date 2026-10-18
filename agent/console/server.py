@@ -230,6 +230,10 @@ def verify(fixture: Optional[str] = Query(None)):
     return {"intact": log.verify(), "entries": len(log.entries()), "path": str(path.relative_to(fx.ROOT))}
 
 
+from .negotiation_api import router as negotiation_router  # noqa: E402
+
+app.include_router(negotiation_router)
+
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 

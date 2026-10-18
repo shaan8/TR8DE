@@ -5,6 +5,7 @@ import { Feed, NeedsYou } from "./components/Feed.jsx";
 import { DailyLimit, Deals, Payees, Suppliers, Wallet } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
 import { getJSON, postJSON, query, sendMessage } from "./lib.js";
+import { ViewNav } from "./Negotiate.jsx";
 
 function StatePicker({ fixture, list }) {
   if (!list.length) return null;
@@ -131,6 +132,7 @@ export default function App() {
           {audit && (audit.intact ? <Chip tone="ok" icon={ShieldCheck}>Audit chain intact · {audit.entries} entries</Chip>
             : <Chip tone="bad" icon={ShieldAlert}>Audit chain broken</Chip>)}
           <StatePicker fixture={fixture} list={list} />
+          <ViewNav active="" />
         </div>
       </header>
 
