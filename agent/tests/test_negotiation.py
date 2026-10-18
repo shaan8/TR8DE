@@ -373,3 +373,15 @@ def test_whatsapp_status_explains_what_is_missing():
     full = Config("tok", "pnid", "sec", "ver", template_name="tpl", live_send=True, allowed=("639170000000",)).status()
     assert full["send"] and full["receive"] and full["missing"] == []
     assert "tok" not in json.dumps(full) and "sec" not in json.dumps(full)
+
+
+def test_hello_world_template_is_sent_without_parameters(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_TEMPLATE_NAME", "hello_world")
+    monkeypatch.setenv("WHATSAPP_ALLOWED_RECIPIENTS", "+63 917 000 0000")
+    cfg = Config.from_env()
+    assert cfg.template_params == 0 and cfg.allowed == ("639170000000",)
+    cfg = Config("tok", "pnid", template_name="hello_world", live_send=True, allowed=cfg.allowed, template_params=0)
+    sent = []
+    ok, _, _ = CloudSender(cfg, post=lambda url, body, tok: sent.append(body) or {"messages": [{"id": "m1"}]}).send(
+        "639170000000", "offer text", template_params=[])
+    assert ok and "components" not in sent[0]["template"] and sent[0]["template"]["name"] == "hello_world"

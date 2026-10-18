@@ -55,6 +55,7 @@ class Config:
     template_lang: str = "en"
     live_send: bool = False
     allowed: tuple = ()
+    template_params: int = 1  # body parameters the template takes; Meta's sample hello_world takes 0
 
     @staticmethod
     def from_env() -> "Config":
@@ -63,7 +64,8 @@ class Config:
                       e("WHATSAPP_VERIFY_TOKEN", ""), e("WHATSAPP_GRAPH_VERSION", "v23.0"),
                       e("WHATSAPP_TEMPLATE_NAME", ""), e("WHATSAPP_TEMPLATE_LANG", "en"),
                       e("WHATSAPP_LIVE_SEND", "0") == "1",
-                      tuple(x.strip() for x in e("WHATSAPP_ALLOWED_RECIPIENTS", "").split(",") if x.strip()))
+                      tuple(re.sub(r"\D", "", x) for x in e("WHATSAPP_ALLOWED_RECIPIENTS", "").split(",") if x.strip()),
+                      int(e("WHATSAPP_TEMPLATE_PARAMS", "0" if e("WHATSAPP_TEMPLATE_NAME", "") == "hello_world" else "1")))
 
     @property
     def can_receive(self) -> bool:
@@ -281,10 +283,12 @@ class CloudSender:
             return False, "", "recipient is not in WHATSAPP_ALLOWED_RECIPIENTS"
         url = f"https://graph.facebook.com/{c.graph_version}/{c.phone_number_id}/messages"
         if template_params is not None:
+            tpl = {"name": c.template_name, "language": {"code": c.template_lang}}
+            if template_params:
+                tpl["components"] = [{"type": "body", "parameters": [{"type": "text", "text": p[:1000]}
+                                                                     for p in template_params]}]
             body = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": wa_id, "type": "template",
-                    "template": {"name": c.template_name, "language": {"code": c.template_lang},
-                                 "components": [{"type": "body", "parameters": [{"type": "text", "text": p[:1000]}
-                                                                                for p in template_params]}]}}
+                    "template": tpl}
         else:
             body = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": wa_id, "type": "text",
                     "text": {"preview_url": False, "body": text[:4096]}}
@@ -330,8 +334,11 @@ class Gateway:
             ok, pid, err = self.sender.send(c.wa_id, text)
             rec.update(status="sent" if ok else "failed", provider_id=pid, error=err)
         elif self.cfg.template_name:
-            ok, pid, err = self.sender.send(c.wa_id, text, template_params=[text[:1000]])
+            ok, pid, err = self.sender.send(c.wa_id, text, template_params=[text[:1000]][:self.cfg.template_params])
             rec.update(status="sent" if ok else "failed", provider_id=pid, error=err, kind="template")
+            if ok and not self.cfg.template_params:
+                rec["note"] = (f"sent template {self.cfg.template_name} without the offer text; the offer goes out as "
+                               "free text once the supplier replies")
         else:
             rec.update(status="blocked", error="outside the 24-hour window and no approved template configured")
         if rec["status"] in ("blocked", "failed"):
