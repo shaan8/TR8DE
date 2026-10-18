@@ -1,0 +1,227 @@
+"""FastAPI over the Tiwala core for the React console (ui/).
+
+    cd agent && ../.venv/bin/uvicorn console.server:app --port 8000
+
+Every endpoint takes ?fixture=<name>: it then replays audit.jsonl slices and reports/live transcripts
+(see fixtures.py) with no LLM or chain call. Without it the endpoint drives the live agent, built the
+same way as the Streamlit app.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import threading
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from . import fixtures as fx
+
+HERE = Path(__file__).resolve().parent
+DIST = HERE.parents[1] / "ui" / "dist"
+PUBLIC_RPC = "https://ethereum-sepolia-rpc.publicnode.com"
+STAGE = {"LOCKED": "Locked", "DOWN_PAID": "DP paid", "DELIVERED": "Delivered", "COMPLETED": "Completed",
+         "REFUNDED": "Refunded", "DISPUTED": "Disputed"}
+
+app = FastAPI(title="Tiwala console")
+
+
+class Msg(BaseModel):
+    text: str
+
+
+# ---------------------------------------------------------------- live agent
+
+_live = None
+_live_lock = threading.Lock()
+_alerts: list[dict] = []
+
+
+def _load_env() -> None:
+    env = HERE.parents[1] / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            line = "" if line.lstrip().startswith("#") else line.split("#", 1)[0].strip()
+            if "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+    os.environ.setdefault("RPC_URL", os.environ.get("AGENT_RPC_URL") or PUBLIC_RPC)
+    if not os.environ.get("DEEPSEEK_API_KEY") and os.environ.get("OPENROUTER_API_KEY"):
+        os.environ.setdefault("TIWALA_LLM_PROVIDER", "openrouter")
+
+
+def live():
+    global _live
+    with _live_lock:
+        if _live is None:
+            from tiwala_agent.audit import AuditLog
+            from tiwala_agent.chain import Chain, OwnerConsole
+            from tiwala_agent.core import Tiwala
+            from tiwala_agent.llm import from_env
+            _load_env()
+            root = HERE.parents[1]
+            dep = json.loads(Path(os.environ.get("TIWALA_DEPLOYMENT", root / "deployments" / "11155111.json")).read_text())
+            chain = Chain(os.environ["RPC_URL"], dep, os.environ["AGENT_PRIVATE_KEY"])
+            owner = OwnerConsole(chain, dep["demoWallet"], os.environ["OWNER_PRIVATE_KEY"]) \
+                if os.environ.get("OWNER_PRIVATE_KEY") else None
+            audit = AuditLog(os.environ.get("TIWALA_AUDIT", str(root / "agent" / "logs" / "audit.jsonl")))
+            data = os.environ.get("TIWALA_DATA", str(root / "agent" / "data"))
+            _live = Tiwala(chain, dep["demoWallet"], data, from_env(), audit, owner)
+        return _live
+
+
+def _live_state() -> dict:
+    from tiwala_agent.guard import tag_contract
+    from tiwala_agent.models import PHP
+    t = live()
+    ws = t.chain.wallet_state(t.wallet)
+    names = t.names()
+    deals = []
+    for d in t.chain.deals(t.wallet):
+        tag = tag_contract(d.ref)
+        deals.append({"id": d.id, "supplier": names.get(d.supplier, d.supplier), "ref": tag.text,
+                      "ref_flags": list(tag.flags), "total_php": d.total / PHP, "down_pct": d.down_bps / 100,
+                      "deadline": d.deadline, "stage": STAGE[d.status.name]})
+    links = t.registry.links() if hasattr(t, "registry") else []
+    accounts = t.accounts() if hasattr(t, "accounts") else []
+    pending = {"card": fx.parse_card(t.pending.card)} if t.pending else None
+    return {
+        "fixture": None, "title": "Live", "synthetic": False,
+        "wallet": {"free": ws.free / PHP, "locked": ws.locked / PHP, "balance": ws.balance / PHP,
+                   "daily_left": ws.daily_remaining / PHP, "daily_cap": ws.daily_cap / PHP,
+                   "per_deal_cap": ws.per_deal_cap / PHP, "paused": ws.paused, "underfunded": ws.underfunded,
+                   "source": "Sepolia, live"},
+        "accounts": [{"provider": a.provider, "balance_php": a.balance / PHP, "read_only": True} for a in accounts],
+        "links": links, "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
+        "turns": [], "pending": pending, "explorer": "https://sepolia.etherscan.io",
+    }
+
+
+def _attach_card(events: list[dict]) -> None:
+    t = live()
+    if t.pending:
+        v = [e for e in events if e.get("event") == "verdict" and e["verdict"].get("needs_confirmation")]
+        if v:
+            v[-1]["card"] = fx.parse_card(t.pending.card)
+
+
+def _remember_alerts(notes: list[str]) -> None:
+    _alerts.clear()
+    for n in notes:
+        if m := fx.SHORT_RX.search(n):
+            _alerts.append({"kind": "shortfall", "amount_php": fx._money(m[1]), "date": m[2], "text": n})
+        elif n.startswith("HALTED"):
+            _alerts.append({"kind": "halt", "text": n})
+
+
+# ---------------------------------------------------------------- helpers
+
+
+def _fixture(name: str) -> dict:
+    if name not in fx.SPECS:
+        raise HTTPException(404, f"unknown fixture {name!r}")
+    return fx.build(name)
+
+
+def _sse(kind: str, data) -> str:
+    return f"event: {kind}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+# ---------------------------------------------------------------- API
+
+
+@app.get("/api/fixtures")
+def list_fixtures():
+    return fx.names()
+
+
+@app.get("/api/state")
+def state(fixture: Optional[str] = Query(None)):
+    return _fixture(fixture) if fixture else _live_state()
+
+
+@app.post("/api/message")
+async def message(m: Msg, fixture: Optional[str] = Query(None)):
+    """SSE: one `step` per pipeline event as it happens, then one `reply`."""
+    if fixture:
+        f = _fixture(fixture)
+        last = f["turns"][-1] if f["turns"] else {"events": [], "reply": "Nothing to replay."}
+
+        async def replay():
+            for e in last["events"]:
+                await asyncio.sleep(0.35)
+                yield _sse("step", e)
+            yield _sse("reply", {"reply": last["reply"], "turn": last})
+        return StreamingResponse(replay(), media_type="text/event-stream")
+
+    t = live()
+    box: dict = {}
+
+    def run():
+        try:
+            box["res"] = t.handle(m.text)
+        except Exception as e:  # surface, never retry
+            box["err"] = f"{type(e).__name__}: {e}"[:300]
+
+    async def stream():
+        th = threading.Thread(target=run, daemon=True)
+        th.start()
+        sent = 0
+        while th.is_alive() or sent < len(t._events):
+            evs = t._events  # core resets this list at the start of each turn
+            while sent < len(evs):
+                yield _sse("step", evs[sent])
+                sent += 1
+            await asyncio.sleep(0.15)
+        if "err" in box:
+            yield _sse("error", {"error": box["err"]})
+            return
+        res = box["res"]
+        events = [dict(e) for e in res.events]
+        _attach_card(events)
+        yield _sse("reply", {"reply": fx.strip_card(res.reply), "turn": {
+            "user": m.text, "reply": fx.strip_card(res.reply), "events": events}})
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/confirm")
+def confirm(fixture: Optional[str] = Query(None)):
+    """The owner's Confirm button sends their own "yes": the core matches it deterministically."""
+    if fixture:
+        f = _fixture("executed" if fixture in ("approval", "correction") else fixture)
+        return {"turn": f["turns"][-1]}
+    res = live().handle("yes")
+    return {"turn": {"user": "yes", "reply": fx.strip_card(res.reply), "events": res.events}}
+
+
+@app.post("/api/tick")
+def tick(fixture: Optional[str] = Query(None)):
+    if fixture:
+        f = _fixture(fixture)
+        return {"notes": [], "activity": f["activity"], "alerts": f["alerts"]}
+    t = live()
+    t._events = []
+    notes = t.tick()
+    _remember_alerts(notes)
+    return {"notes": notes, "events": t._events}
+
+
+@app.get("/api/verify")
+def verify(fixture: Optional[str] = Query(None)):
+    from tiwala_agent.audit import AuditLog
+    path = fx.AUDIT if fixture else Path(live().audit.path)
+    log = AuditLog(path)
+    return {"intact": log.verify(), "entries": len(log.entries()), "path": str(path.relative_to(fx.ROOT))}
+
+
+if DIST.exists():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    @app.get("/{path:path}")
+    def spa(path: str):
+        return FileResponse(DIST / "index.html")

@@ -1,0 +1,104 @@
+[
+    {
+        "name": "empty",
+        "n": 1,
+        "title": "First load",
+        "synthetic": false
+    },
+    {
+        "name": "loading",
+        "n": 2,
+        "title": "Loading, step by step",
+        "synthetic": false
+    },
+    {
+        "name": "clarify",
+        "n": 3,
+        "title": "Clarifying question",
+        "synthetic": false
+    },
+    {
+        "name": "approval",
+        "n": 4,
+        "title": "Approval needed (Tier 2)",
+        "synthetic": false
+    },
+    {
+        "name": "correction",
+        "n": 5,
+        "title": "Correction re-checked",
+        "synthetic": false
+    },
+    {
+        "name": "executed",
+        "n": 6,
+        "title": "Executed with receipt",
+        "synthetic": false
+    },
+    {
+        "name": "owner",
+        "n": 7,
+        "title": "Owner-key action",
+        "synthetic": false
+    },
+    {
+        "name": "autonomous",
+        "n": 8,
+        "title": "Autonomous action",
+        "synthetic": false
+    },
+    {
+        "name": "injection",
+        "n": 9,
+        "title": "Injection caught",
+        "synthetic": false
+    },
+    {
+        "name": "refused",
+        "n": 10,
+        "title": "Refused (Tier 3)",
+        "synthetic": false
+    },
+    {
+        "name": "mismatch",
+        "n": 11,
+        "title": "Intent mismatch",
+        "synthetic": false
+    },
+    {
+        "name": "revert",
+        "n": 12,
+        "title": "Contract revert",
+        "synthetic": true
+    },
+    {
+        "name": "ratelimited",
+        "n": 13,
+        "title": "Rate-limited / model down",
+        "synthetic": false
+    },
+    {
+        "name": "shortfall",
+        "n": 14,
+        "title": "Shortfall alert",
+        "synthetic": false
+    },
+    {
+        "name": "reputation",
+        "n": 15,
+        "title": "Reputation update",
+        "synthetic": false
+    },
+    {
+        "name": "halted",
+        "n": 16,
+        "title": "Halted (underfunded)",
+        "synthetic": true
+    },
+    {
+        "name": "account",
+        "n": 17,
+        "title": "Account linked",
+        "synthetic": false
+    }
+]

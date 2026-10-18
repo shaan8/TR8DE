@@ -96,6 +96,18 @@ cd agent
 The UI (`agent/app.py`) reads `../.env` itself and shows free vs locked funds, read-only connected accounts,
 the agent's daily limit left and open deals beside the chat. It uses OpenRouter when no DeepSeek key is set.
 
+### Agent console (FastAPI + React)
+
+```bash
+cd ui && npm install && npm run build                                # builds ui/dist
+cd ../agent && ../.venv/bin/uvicorn console.server:app --port 8000   # API + page on :8000
+```
+
+Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 17 states in the header) to replay
+`agent/logs/audit.jsonl` slices and `reports/live` transcripts with no model or chain calls. Without
+`?fixture=` the page drives the live agent. `cd ui && npm run shots` renders every state at 1440 and 390 into
+`reports/ui/` and runs axe on each (spec: `docs/ui-spec.md`).
+
 ### Connected accounts
 
 **Connect account** in the UI links an off-chain account so the forecast sees the owner's whole cash position.

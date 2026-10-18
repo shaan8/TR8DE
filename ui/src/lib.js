@@ -1,0 +1,70 @@
+export const EXPLORER = "https://sepolia.etherscan.io";
+export const txUrl = (h) => `${EXPLORER}/tx/${h}`;
+export const short = (h, n = 10) => (h ? `${h.slice(0, n)}…${h.slice(-4)}` : "");
+export const peso = (v, dp = 0) =>
+  v == null ? "n/a" : "₱" + Number(v).toLocaleString("en-PH", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+const fmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+});
+export const when = (ts) => (ts ? fmt.format(new Date(ts * 1000)).replace(",", "") : "");
+export const day = (ts) => when(ts).slice(0, 10);
+
+export const KIND = {
+  create_deal: "Create escrow deal",
+  release_down_payment: "Release down payment",
+  release_balance: "Release balance",
+  cancel_deal: "Cancel and refund",
+};
+export const RULE = { overdue_cancel: "Overdue past grace", attested_release: "Owner attested delivery" };
+
+export function query() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get("fixture");
+}
+const q = (fixture) => (fixture ? `?fixture=${encodeURIComponent(fixture)}` : "");
+
+export async function getJSON(path, fixture) {
+  const r = await fetch(path + q(fixture));
+  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  return r.json();
+}
+export async function postJSON(path, fixture, body) {
+  const r = await fetch(path + q(fixture), {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}),
+  });
+  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  return r.json();
+}
+
+/** POST /api/message and read the SSE stream: onStep per event, resolves with the reply payload. */
+export async function sendMessage(text, fixture, onStep) {
+  const r = await fetch("/api/message" + q(fixture), {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+  });
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", result = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + 2);
+      const kind = /^event: (.+)$/m.exec(chunk)?.[1];
+      const data = JSON.parse(/^data: (.+)$/m.exec(chunk)?.[1] || "null");
+      if (kind === "step") onStep(data);
+      else if (kind === "reply") result = data;
+      else if (kind === "error") throw new Error(data.error);
+    }
+  }
+  return result;
+}
+
+/** "down payment: you said 50%, action uses 25%" -> {field, said, drafted} */
+export function parseMismatch(s) {
+  const m = /^(.+?): you said (.+?), action uses (.+)$/.exec(s);
+  return m ? { field: m[1], said: m[2], drafted: m[3] } : { field: s, said: "", drafted: "" };
+}

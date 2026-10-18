@@ -1,7 +1,7 @@
 web3>=7,<9
 openai>=1.40
-requests>=2.31
-cryptography>=42  # vault for linked-account credentials
 anthropic>=0.40  # optional, only for TIWALA_LLM_PROVIDER=anthropic
 pytest>=8
 streamlit>=1.40  # optional, only for the chat UI (agent/app.py)
+fastapi>=0.116,<0.117  # console API (agent/console/server.py)
+uvicorn>=0.32

@@ -13,3 +13,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .claude/
+ui/dist/
+ui/test-results/
+ui/playwright-report/

@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { background: #0F0E47; color: #F2F2F8; }
+:focus-visible { outline: 2px solid #8686AC; outline-offset: 2px; border-radius: 4px; }
+a { color: #A9A8D9; text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: #F2F2F8; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+.pulse { animation: pulse-dot 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
