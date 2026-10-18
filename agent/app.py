@@ -17,6 +17,7 @@ import streamlit as st
 
 from tiwala_agent.audit import AuditLog
 from tiwala_agent.chain import Chain, OwnerConsole
+from tiwala_agent.connectors import CONSENT_SCOPE, PLAID_SANDBOX_BANKS, PROVIDER_LABEL, ConnectorError
 from tiwala_agent.core import Tiwala, user_tz
 from tiwala_agent.llm import from_env
 from tiwala_agent.models import PHP, Status
@@ -67,6 +68,7 @@ CSS = """
 .tw-bar { display:flex; height:8px; border-radius:6px; overflow:hidden; background:#505081; margin:8px 0 6px; }
 .tw-free { background:#8686AC; }
 .tw-locked { background:#F5F5FA; }
+.tw-ver { color:#8FE0B0 !important; }
 </style>
 """
 
@@ -186,8 +188,9 @@ def wallet_sidebar(t: Tiwala, version: int) -> None:
            f'<div class="tw-locked" style="width:{ws.locked * 100 / total:.1f}%"></div></div>')
     card("On-chain escrow wallet", peso(ws.free + ws.locked),
          f"Free {peso(ws.free)} · Locked {peso(ws.locked)}", bar)
+    lines = "<br>".join(f'{escape(a.provider)} {peso(a.balance)} <span class="tw-ver">✓ live</span>' for a in accounts)
     card("Connected accounts · read-only", peso(sum(a.balance for a in accounts)),
-         " · ".join(f"{a.provider} {peso(a.balance)}" for a in accounts) or "none consented")
+         lines or "None linked yet. Use Connect account.")
     card("Agent daily limit left", peso(ws.daily_remaining),
          ("PAUSED · " if ws.paused else "") + f"per deal up to {peso(ws.per_deal_cap)}")
     if ws.underfunded:
@@ -201,6 +204,76 @@ def wallet_sidebar(t: Tiwala, version: int) -> None:
         card(f"Deal {d.id} · {STATUS[d.status]}", escape(names.get(d.supplier, d.supplier[:10])),
              f"{peso(d.total)} · {d.down_bps / 100:g}% down · due {due}")
     st.markdown(f"[Wallet on Etherscan](https://sepolia.etherscan.io/address/{t.wallet})")
+
+
+# ------------------------------------------------------------------ connected accounts
+
+def _linked(t: Tiwala, audit: AuditLog) -> None:
+    status = t.registry.status(refresh=True)
+    if not status:
+        st.caption("No accounts linked yet.")
+    for s in status:
+        c1, c2 = st.columns([5, 1])
+        total = sum(b.balance for b in s.balances)
+        c1.markdown(f"**{escape(s.label)}** · {PROVIDER_LABEL.get(s.provider, s.provider)} · "
+                    f"{peso(total) if s.balances else '–'}" + (" · ✓ live from the provider" if s.balances else ""))
+        for b in s.balances:
+            if b.detail:
+                c1.caption(b.detail)
+        for w in s.warnings:
+            c1.caption(f"⚠ {w}")
+        if s.error:
+            c1.error(s.error)
+        if c2.button("Remove", key=f"rm-{s.id}", help="Unlink, delete stored credentials, revoke at the provider"):
+            t.registry.remove(s.id)
+            audit.write("account_unlinked", link_id=s.id, provider=s.provider)
+            st.session_state.version += 1
+            st.rerun()
+
+
+@st.dialog("Connected accounts", width="large")
+def accounts_dialog(t: Tiwala, audit: AuditLog) -> None:
+    st.caption("Balances come only from the provider's read-only API and cannot be typed in or edited. "
+               "Tiwala can never move money from these accounts; payments only leave the on-chain escrow.")
+    _linked(t, audit)
+    st.divider()
+    st.markdown("**Connect an account**")
+    kind = st.selectbox("Provider", ["Bank via Plaid", "PayPal", "Stripe"])
+    label = st.text_input("Name shown in Tiwala", max_chars=40)
+    reg, form = t.registry, {}
+    if kind == "Bank via Plaid":
+        env = os.environ.get("PLAID_ENV", "sandbox")
+        if not (os.environ.get("PLAID_CLIENT_ID") and os.environ.get("PLAID_SECRET")):
+            st.info("Add PLAID_CLIENT_ID and PLAID_SECRET (free sandbox keys from dashboard.plaid.com) to .env.")
+        elif env != "sandbox":
+            st.info("Production links open Plaid Link in the bank's own login screen; this console runs the sandbox.")
+        form["bank"] = st.selectbox("Bank (Plaid sandbox)", list(PLAID_SANDBOX_BANKS))
+    elif kind == "PayPal":
+        st.caption("Your PayPal REST app with Transaction Search enabled (developer.paypal.com).")
+        form["env"] = st.radio("Environment", ["sandbox", "live"], horizontal=True)
+        form["cid"] = st.text_input("Client ID")
+        form["sec"] = st.text_input("Secret", type="password")
+    else:
+        st.caption("A restricted key with only Balance: Read (Dashboard › Developers › API keys). Full keys are refused.")
+        form["key"] = st.text_input("Restricted key (rk_...)", type="password")
+    consent = st.checkbox(f"I consent. {CONSENT_SCOPE}")
+    if st.button("Connect", type="primary"):
+        try:
+            if kind == "Bank via Plaid":
+                rec = reg.link_plaid_sandbox(PLAID_SANDBOX_BANKS[form["bank"]], label or form["bank"], consent)
+            elif kind == "PayPal":
+                rec = reg.link_paypal(form["cid"], form["sec"], form["env"], label, consent)
+            else:
+                rec = reg.link_stripe(form["key"], label, consent)
+        except ConnectorError as e:
+            st.error(str(e))
+            return
+        except Exception:
+            st.error("The provider could not be reached. Check the keys and your connection.")
+            return
+        audit.write("account_linked", link_id=rec["id"], provider=rec["provider"], warnings=rec.get("warnings", []))
+        st.session_state.version += 1
+        st.rerun()
 
 
 # ------------------------------------------------------------------ app
@@ -245,12 +318,15 @@ def main() -> None:
         except Exception as e:  # RPC hiccup: keep the chat usable
             st.warning(f"Could not read the chain: {e}")
 
-    b1, b2, _ = st.columns([1, 1, 4])
+    b1, b2, b3, _ = st.columns([1, 1, 1, 3])
     cmd = None
     if b1.button("Run monitor", help="/tick: check deadlines, attestations and balances now", use_container_width=True):
         cmd = "/tick"
     if b2.button("Verify audit log", help="/verify: recompute the hash chain", use_container_width=True):
         cmd = "/verify"
+    if b3.button("Connect account", help="Link a bank, PayPal or Stripe (read-only)",
+                 use_container_width=True):
+        accounts_dialog(t, audit)
     st.markdown(LEGEND, unsafe_allow_html=True)
 
     for i, (role, text, events) in enumerate(chat):

@@ -1,61 +1,103 @@
-tests/test_deepseek.py::test_history_conversion_round_trip PASSED
-tests/test_deepseek.py::test_tool_calls_parsed_and_model_sent PASSED
-tests/test_deepseek.py::test_checker_on_deepseek_fails_closed_on_empty_content PASSED
-tests/test_integration.py::test_network_reputation_from_factory_wallets PASSED
-tests/test_integration.py::test_lookalike_wallet_cannot_inflate_reputation PASSED
-tests/test_integration.py::test_happy_path_create_confirm_then_release_down_payment PASSED
-tests/test_integration.py::test_confirmation_card_shows_cap_forecast_and_flags PASSED
-tests/test_integration.py::test_correction_redraft_then_confirm PASSED
-tests/test_integration.py::test_rt_direct_prompt_injection PASSED
-tests/test_integration.py::test_rt_indirect_injection_from_contract_text PASSED
-tests/test_integration.py::test_rt_coordinator_manipulation_checker_and_policy PASSED
-tests/test_integration.py::test_rt_payout_redirection PASSED
-tests/test_integration.py::test_rt_fake_delivery_then_real_attestation PASSED
-tests/test_integration.py::test_rt_amount_tampering PASSED
-tests/test_integration.py::test_rt_key_compromise_contract_backstop PASSED
-tests/test_integration.py::test_rt_confirmation_only_from_owner_message PASSED
-tests/test_integration.py::test_rt_pending_confirmation_expires PASSED
-tests/test_integration.py::test_rt_offchain_data_minimized PASSED
-tests/test_integration.py::test_monitor_cancels_overdue_deal_at_tier1 PASSED
-tests/test_integration.py::test_monitor_waits_on_disputed_overdue_deal PASSED
-tests/test_integration.py::test_monitor_halts_when_underfunded PASSED
-tests/test_integration.py::test_audit_log_covers_every_step_and_verifies PASSED
-tests/test_integration.py::test_print_demo_transcript PASSED
-tests/test_integration.py::test_full_flow_through_deepseek_adapter PASSED
-tests/test_units.py::test_worked_example_from_doc PASSED
-tests/test_units.py::test_new_supplier_starts_at_zero_trust PASSED
-tests/test_units.py::test_stranger_cap_binds_for_new_buyer PASSED
-tests/test_units.py::test_dispute_release_and_pre_dp_cancel_are_neutral PASSED
-tests/test_units.py::test_non_delivery_counts_double PASSED
-tests/test_units.py::test_sybil_buyers_get_quarter_weight PASSED
-tests/test_units.py::test_value_weighting_caps_large_deals PASSED
-tests/test_units.py::test_forecast_finds_first_shortfall_and_fixes PASSED
-tests/test_units.py::test_guard_flags_injection_and_wraps_contract_text PASSED
-tests/test_units.py::test_intent_correction_latest_percent_wins PASSED
-tests/test_units.py::test_intent_catches_wrong_supplier_amount_and_po PASSED
-tests/test_units.py::test_intent_lists_agent_filled_fields PASSED
-tests/test_units.py::test_intent_monitor_rule_must_match_action PASSED
-tests/test_units.py::test_policy_new_deal_is_tier2 PASSED
-tests/test_units.py::test_policy_refusals[change0-cap] PASSED
-tests/test_units.py::test_policy_refusals[change1-per-deal cap] PASSED
-tests/test_units.py::test_policy_refusals[change2-not a registered supplier] PASSED
-tests/test_units.py::test_policy_refusals[change3-future] PASSED
-tests/test_units.py::test_policy_refusals[change4-contract free text] PASSED
-tests/test_units.py::test_policy_refusals[change5-only come from] PASSED
-tests/test_units.py::test_policy_halts_when_underfunded_or_paused PASSED
-tests/test_units.py::test_policy_checker_reject_or_missing_blocks PASSED
-tests/test_units.py::test_policy_release_balance_needs_attestation PASSED
-tests/test_units.py::test_policy_daily_cap PASSED
-tests/test_units.py::test_policy_monitor_cancel_only_after_grace_and_not_disputed PASSED
-tests/test_units.py::test_policy_monitor_cannot_create_or_release_down PASSED
-tests/test_units.py::test_policy_recent_address_change_forces_confirmation_flag PASSED
-tests/test_units.py::test_policy_blocklist_and_exposure PASSED
-tests/test_units.py::test_checker_fails_closed_on_bad_output[sure, looks fine] PASSED
-tests/test_units.py::test_checker_fails_closed_on_bad_output[{"approve": "yes"}] PASSED
-tests/test_units.py::test_checker_fails_closed_on_bad_output[{broken] PASSED
-tests/test_units.py::test_checker_fails_closed_on_bad_output[] PASSED
-tests/test_units.py::test_checker_sees_only_request_and_action PASSED
-tests/test_units.py::test_gate_rejects_forged_or_stale_authorization PASSED
-tests/test_units.py::test_audit_chain_detects_tampering PASSED
-tests/test_units.py::test_connector_reads_only_consented_allowlisted_fields PASSED
-============================= 60 passed in 18.08s ==============================
+tests/test_connectors.py::test_plaid_link_keeps_only_liquid_accounts_and_allowlisted_fields PASSED [  0%]
+tests/test_connectors.py::test_secrets_never_in_links_file_audit_or_overview_and_vault_is_encrypted PASSED [  1%]
+tests/test_connectors.py::test_vault_with_wrong_key_refuses PASSED       [  2%]
+tests/test_connectors.py::test_vault_key_file_is_owner_only PASSED       [  3%]
+tests/test_connectors.py::test_remove_revokes_at_plaid_and_deletes_secret PASSED [  4%]
+tests/test_connectors.py::test_revoked_token_shows_error_and_contributes_nothing PASSED [  5%]
+tests/test_connectors.py::test_paypal_reads_available_balance PASSED     [  6%]
+tests/test_connectors.py::test_paypal_without_read_scope_is_refused PASSED [  7%]
+tests/test_connectors.py::test_paypal_payment_scopes_recorded_as_warning PASSED [  8%]
+tests/test_connectors.py::test_stale_balance_is_left_out PASSED          [  9%]
+tests/test_connectors.py::test_stripe_refuses_keys_that_are_not_restricted[sk_test_abc] PASSED [ 10%]
+tests/test_connectors.py::test_stripe_refuses_keys_that_are_not_restricted[sk_live_abc] PASSED [ 11%]
+tests/test_connectors.py::test_stripe_refuses_keys_that_are_not_restricted[pk_test_abc] PASSED [ 12%]
+tests/test_connectors.py::test_stripe_refuses_keys_that_are_not_restricted[whatever] PASSED [ 13%]
+tests/test_connectors.py::test_stripe_refuses_restricted_key_with_extra_permissions PASSED [ 14%]
+tests/test_connectors.py::test_stripe_counts_available_only_and_handles_zero_decimal PASSED [ 15%]
+tests/test_connectors.py::test_pinned_egress_blocks_non_provider_hosts[http://api.stripe.com/v1/balance] PASSED [ 16%]
+tests/test_connectors.py::test_pinned_egress_blocks_non_provider_hosts[https://evil.example/v1/balance] PASSED [ 17%]
+tests/test_connectors.py::test_pinned_egress_blocks_non_provider_hosts[https://api.stripe.com.evil.example/v1/balance] PASSED [ 18%]
+tests/test_connectors.py::test_pinned_egress_blocks_non_provider_hosts[https://169.254.169.254/latest] PASSED [ 19%]
+tests/test_connectors.py::test_every_link_path_requires_consent PASSED   [ 20%]
+tests/test_connectors.py::test_no_way_to_enter_an_amount PASSED          [ 21%]
+tests/test_connectors.py::test_hand_written_links_yield_no_balance[record0] PASSED [ 22%]
+tests/test_connectors.py::test_hand_written_links_yield_no_balance[record1] PASSED [ 23%]
+tests/test_connectors.py::test_hand_written_links_yield_no_balance[record2] PASSED [ 24%]
+tests/test_connectors.py::test_legacy_accounts_file_is_ignored PASSED    [ 25%]
+tests/test_connectors.py::test_amounts_never_written_to_disk PASSED      [ 26%]
+tests/test_connectors.py::test_fx_is_fixed_in_code PASSED                [ 27%]
+tests/test_deepseek.py::test_history_conversion_round_trip PASSED        [ 28%]
+tests/test_deepseek.py::test_tool_calls_parsed_and_model_sent PASSED     [ 29%]
+tests/test_deepseek.py::test_checker_on_deepseek_fails_closed_on_empty_content PASSED [ 30%]
+tests/test_deepseek.py::test_openrouter_retries_429_then_succeeds PASSED [ 31%]
+tests/test_deepseek.py::test_openrouter_429_exhausted_fails_closed PASSED [ 32%]
+tests/test_deepseek.py::test_openrouter_provider_defaults PASSED         [ 33%]
+tests/test_deepseek.py::test_daily_quota_429_is_not_retried PASSED       [ 34%]
+tests/test_integration.py::test_network_reputation_from_factory_wallets PASSED [ 35%]
+tests/test_integration.py::test_lookalike_wallet_cannot_inflate_reputation PASSED [ 36%]
+tests/test_integration.py::test_happy_path_create_confirm_then_release_down_payment PASSED [ 37%]
+tests/test_integration.py::test_confirmation_card_shows_cap_forecast_and_flags PASSED [ 38%]
+tests/test_integration.py::test_correction_redraft_then_confirm PASSED   [ 39%]
+tests/test_integration.py::test_rt_direct_prompt_injection PASSED        [ 40%]
+tests/test_integration.py::test_rt_indirect_injection_from_contract_text PASSED [ 41%]
+tests/test_integration.py::test_rt_coordinator_manipulation_checker_and_policy PASSED [ 42%]
+tests/test_integration.py::test_rt_payout_redirection PASSED             [ 43%]
+tests/test_integration.py::test_rt_fake_delivery_then_real_attestation PASSED [ 44%]
+tests/test_integration.py::test_rt_amount_tampering PASSED               [ 45%]
+tests/test_integration.py::test_rt_key_compromise_contract_backstop PASSED [ 46%]
+tests/test_integration.py::test_rt_confirmation_only_from_owner_message PASSED [ 47%]
+tests/test_integration.py::test_rt_pending_confirmation_expires PASSED   [ 48%]
+tests/test_integration.py::test_rt_offchain_data_minimized PASSED        [ 49%]
+tests/test_integration.py::test_monitor_cancels_overdue_deal_at_tier1 PASSED [ 50%]
+tests/test_integration.py::test_monitor_waits_on_disputed_overdue_deal PASSED [ 50%]
+tests/test_integration.py::test_monitor_halts_when_underfunded PASSED    [ 51%]
+tests/test_integration.py::test_audit_log_covers_every_step_and_verifies PASSED [ 52%]
+tests/test_integration.py::test_print_demo_transcript PASSED             [ 53%]
+tests/test_integration.py::test_full_flow_through_deepseek_adapter PASSED [ 54%]
+tests/test_integration.py::test_timed_deadline_overdue_counts_as_non_delivery PASSED [ 55%]
+tests/test_integration.py::test_coordinator_outage_drops_turn_and_drafts_nothing PASSED [ 56%]
+tests/test_integration.py::test_down_payment_followup_tells_checker_about_confirmed_card PASSED [ 57%]
+tests/test_units.py::test_worked_example_from_doc PASSED                 [ 58%]
+tests/test_units.py::test_new_supplier_starts_at_zero_trust PASSED       [ 59%]
+tests/test_units.py::test_stranger_cap_binds_for_new_buyer PASSED        [ 60%]
+tests/test_units.py::test_dispute_release_and_pre_dp_cancel_are_neutral PASSED [ 61%]
+tests/test_units.py::test_non_delivery_counts_double PASSED              [ 62%]
+tests/test_units.py::test_sybil_buyers_get_quarter_weight PASSED         [ 63%]
+tests/test_units.py::test_value_weighting_caps_large_deals PASSED        [ 64%]
+tests/test_units.py::test_forecast_finds_first_shortfall_and_fixes PASSED [ 65%]
+tests/test_units.py::test_guard_flags_injection_and_wraps_contract_text PASSED [ 66%]
+tests/test_units.py::test_intent_correction_latest_percent_wins PASSED   [ 67%]
+tests/test_units.py::test_intent_catches_wrong_supplier_amount_and_po PASSED [ 68%]
+tests/test_units.py::test_intent_lists_agent_filled_fields PASSED        [ 69%]
+tests/test_units.py::test_intent_monitor_rule_must_match_action PASSED   [ 70%]
+tests/test_units.py::test_policy_new_deal_is_tier2 PASSED                [ 71%]
+tests/test_units.py::test_policy_refusals[change0-cap] PASSED            [ 72%]
+tests/test_units.py::test_policy_refusals[change1-per-deal cap] PASSED   [ 73%]
+tests/test_units.py::test_policy_refusals[change2-not a registered supplier] PASSED [ 74%]
+tests/test_units.py::test_policy_refusals[change3-future] PASSED         [ 75%]
+tests/test_units.py::test_policy_refusals[change4-contract free text] PASSED [ 76%]
+tests/test_units.py::test_policy_refusals[change5-only come from] PASSED [ 77%]
+tests/test_units.py::test_policy_halts_when_underfunded_or_paused PASSED [ 78%]
+tests/test_units.py::test_policy_checker_reject_or_missing_blocks PASSED [ 79%]
+tests/test_units.py::test_policy_release_balance_needs_attestation PASSED [ 80%]
+tests/test_units.py::test_policy_daily_cap PASSED                        [ 81%]
+tests/test_units.py::test_policy_monitor_cancel_only_after_grace_and_not_disputed PASSED [ 82%]
+tests/test_units.py::test_policy_monitor_cannot_create_or_release_down PASSED [ 83%]
+tests/test_units.py::test_policy_recent_address_change_forces_confirmation_flag PASSED [ 84%]
+tests/test_units.py::test_policy_blocklist_and_exposure PASSED           [ 85%]
+tests/test_units.py::test_checker_fails_closed_on_bad_output[sure, looks fine] PASSED [ 86%]
+tests/test_units.py::test_checker_fails_closed_on_bad_output[{"approve": "yes"}] PASSED [ 87%]
+tests/test_units.py::test_checker_fails_closed_on_bad_output[{broken] PASSED [ 88%]
+tests/test_units.py::test_checker_fails_closed_on_bad_output[] PASSED    [ 89%]
+tests/test_units.py::test_checker_sees_only_request_and_action PASSED    [ 90%]
+tests/test_units.py::test_gate_rejects_forged_or_stale_authorization PASSED [ 91%]
+tests/test_units.py::test_audit_chain_detects_tampering PASSED           [ 92%]
+tests/test_units.py::test_deadline_accepts_date_or_date_and_time_in_user_tz[Asia/Manila-UTC+08:00-8] PASSED [ 93%]
+tests/test_units.py::test_deadline_accepts_date_or_date_and_time_in_user_tz[Asia/Singapore-UTC+08:00-8] PASSED [ 94%]
+tests/test_units.py::test_deadline_accepts_date_or_date_and_time_in_user_tz[Europe/London-UTC+01:00-1] PASSED [ 95%]
+tests/test_units.py::test_non_delivery_never_raises_r[500] PASSED        [ 96%]
+tests/test_units.py::test_non_delivery_never_raises_r[5000] PASSED       [ 97%]
+tests/test_units.py::test_non_delivery_never_raises_r[50000] PASSED      [ 98%]
+tests/test_units.py::test_non_delivery_never_raises_r[120000] PASSED     [ 99%]
+tests/test_units.py::test_non_delivery_never_raises_r[1000000] PASSED    [100%]
+============================= 102 passed in 39.17s =============================

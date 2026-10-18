@@ -1,6 +1,6 @@
 """Write the demo data directory from a deployment file:
-suppliers.json (registered payout addresses), accounts.json (mock read-only connectors,
-with consent), plans.json (receivables and planned POs), blocklist.json.
+suppliers.json (registered payout addresses), plans.json (receivables and planned POs), blocklist.json.
+Off-chain balances are not seeded: they come only from accounts linked in the UI (connectors.py).
 
     python -m tiwala_agent.setup_data ../deployments/11155111.json data/
 """
@@ -20,13 +20,6 @@ def write(deployment: dict, out: Path, now: int | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     sup = [{"name": n, "address": a, "address_changed_at": 0} for n, a in deployment["suppliers"].items()]
     (out / "suppliers.json").write_text(json.dumps(sup, indent=2))
-    accounts = [
-        {"provider": "GCash", "balance": 48_000_00, "currency": "PHP", "as_of": now, "consent": True},
-        {"provider": "BPI savings", "balance": 112_000_00, "currency": "PHP", "as_of": now, "consent": True,
-         "account_number": "never-read"},
-        {"provider": "Maya", "balance": 9_000_00, "currency": "PHP", "as_of": now, "consent": False},
-    ]
-    (out / "accounts.json").write_text(json.dumps(accounts, indent=2))
     plans = {
         "buffer": 20_000_00,
         "inflows": [{"day": today + 24, "amount": 90_000_00, "label": "Receivable from SM store"}],

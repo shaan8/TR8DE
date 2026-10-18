@@ -8,7 +8,6 @@ from tiwala_agent import forecast as fc
 from tiwala_agent.agents import checker_review
 from tiwala_agent.audit import AuditLog
 from tiwala_agent.core import Gate, Executor
-from tiwala_agent.data import load_accounts
 from tiwala_agent.guard import as_data, tag_contract, tag_user
 from tiwala_agent.intent import verify
 from tiwala_agent.llm import LLMResponse, ScriptedLLM
@@ -318,17 +317,6 @@ def test_audit_chain_detects_tampering(tmp_path):
     lines[1] = json.dumps(e, sort_keys=True)
     (tmp_path / "a.jsonl").write_text("\n".join(lines) + "\n")
     assert not AuditLog(tmp_path / "a.jsonl").verify()
-
-
-def test_connector_reads_only_consented_allowlisted_fields(tmp_path):
-    p = tmp_path / "accounts.json"
-    p.write_text(json.dumps([
-        {"provider": "GCash", "balance": 100, "currency": "PHP", "consent": True, "account_number": "0917"},
-        {"provider": "Maya", "balance": 50, "currency": "PHP", "consent": False},
-    ]))
-    accts = load_accounts(p)
-    assert [a.provider for a in accts] == ["GCash"]
-    assert not hasattr(accts[0], "account_number")
 
 
 @pytest.mark.parametrize("tz,label,offset_h", [("Asia/Manila", "UTC+08:00", 8), ("Asia/Singapore", "UTC+08:00", 8),

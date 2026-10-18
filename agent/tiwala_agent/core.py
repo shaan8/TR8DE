@@ -30,7 +30,8 @@ from . import forecast as fc
 from .agents import COORDINATOR_SYSTEM, COORDINATOR_TOOLS, checker_review, treasury_plan
 from .audit import AuditLog
 from .chain import Chain, OwnerConsole
-from .data import Plans, load_accounts, load_blocklist, load_directory, load_plans
+from .connectors import Registry
+from .data import Plans, load_blocklist, load_directory, load_plans
 from .guard import as_data, tag_contract, tag_user
 from .intent import verify as verify_intent
 from .llm import LLM
@@ -169,6 +170,7 @@ class Tiwala:
         self.pending: Optional[Pending] = None
         self._contract_texts: set[str] = set()
         self._events: list[dict] = []
+        self.registry = Registry(self.data)
 
     # ------------------------------------------------------------ data
 
@@ -183,7 +185,8 @@ class Tiwala:
         return load_plans(self.data / "plans.json")
 
     def accounts(self):
-        return load_accounts(self.data / "accounts.json")
+        """Off-chain balances in PHP units, fetched read-only from Plaid, PayPal and Stripe. Never carries a secret."""
+        return self.registry.balances()
 
     def _supplier_by_name(self, name: str) -> Optional[str]:
         n = (name or "").strip().lower()

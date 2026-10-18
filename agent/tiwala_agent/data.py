@@ -1,4 +1,4 @@
-"""Off-chain inputs: supplier directory, read-only account connectors (mocked), user plans,
+"""Off-chain inputs: supplier directory, account balances (see connectors.py), user plans,
 and the sanctions/blocklist. All read-only; the agent never moves fiat."""
 from __future__ import annotations
 
@@ -11,30 +11,15 @@ from web3 import Web3
 from .forecast import Flow
 from .models import SupplierEntry
 
-ALLOWED_ACCOUNT_FIELDS = ("provider", "balance", "currency", "as_of")  # data minimization (RA 10173)
-
 
 @dataclass
 class AccountBalance:
+    """One off-chain balance in PHP units, built only by connectors.py from a provider API response."""
     provider: str
     balance: int  # units
     currency: str
     as_of: int
-
-
-def load_accounts(path: Path) -> list[AccountBalance]:
-    """Mock open-finance connector. Reads only consented accounts and only allowlisted fields."""
-    if not path.exists():
-        return []
-    out = []
-    for raw in json.loads(path.read_text()):
-        if not raw.get("consent", False):
-            continue
-        r = {k: raw[k] for k in ALLOWED_ACCOUNT_FIELDS if k in raw}
-        if r.get("currency") != "PHP":
-            continue
-        out.append(AccountBalance(r["provider"], int(r["balance"]), r["currency"], int(r.get("as_of", 0))))
-    return out
+    detail: str = ""
 
 
 @dataclass

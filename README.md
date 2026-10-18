@@ -18,7 +18,7 @@ Source: https://github.com/shaan8/TR8DE
 | `script/` | `Deploy.s.sol` (deploy + seed network history), `Finish.s.sol` (close the 2 late deals) |
 | `scripts/` | `deploy-sepolia.sh` (one-command deploy), `evidence_table.py` (builds the evidence report from broadcasts) |
 | `agent/tiwala_agent/` | Agent core (Python) |
-| `agent/tests/` | 75 tests: deterministic layer + end-to-end red-team on anvil |
+| `agent/tests/` | 102 tests: deterministic layer, account connectors, end-to-end red-team on anvil |
 | `reports/` | Test, coverage and Slither output; `live/` holds live agent transcripts and the audit log |
 
 ## Agent core
@@ -34,6 +34,7 @@ Source: https://github.com/shaan8/TR8DE
 | `guard.py` | Input guard: source tagging, injection flags, contract text wrapped as data | no |
 | `reputation.py` | Network reputation, buyer-history weight, DP cap, 25% stranger cap | no |
 | `forecast.py` | Liquidity forecast H(t) and candidate fixes | no |
+| `connectors.py` | Read-only balances from banks (Plaid), PayPal and Stripe; encrypted vault | no |
 | `chain.py` | Indexer (factory wallets only), simulator, scoped agent signer, owner console | no |
 | `audit.py` | Hash-chained, redacted JSONL audit log | no |
 
@@ -94,6 +95,30 @@ cd agent
 
 The UI (`agent/app.py`) reads `../.env` itself and shows free vs locked funds, read-only connected accounts,
 the agent's daily limit left and open deals beside the chat. It uses OpenRouter when no DeepSeek key is set.
+
+### Connected accounts
+
+**Connect account** in the UI links an off-chain account so the forecast sees the owner's whole cash position.
+Tiwala reads balances only; money moves only through the on-chain escrow. Balances come only from the
+providers' read-only APIs: there is no manual entry, and no amount is stored on disk or accepted from a user,
+a file or a model.
+
+| Provider | What the owner supplies | API | Read-only enforcement |
+| --- | --- | --- | --- |
+| Banks via Plaid (US, CA, UK, EU) | Picks a bank (sandbox) or logs in through Plaid Link (production) | `/accounts/balance/get` | Plaid access token with no money-movement product; revoked at Plaid on unlink |
+| PayPal | Their REST app's client ID and secret | `GET /v1/reporting/balances` | Link refused without the reporting read scope; extra payment scopes shown as a warning |
+| Stripe | A restricted key with only Balance: Read | `GET /v1/balance` | Full `sk_` keys refused; a probe refuses any key that can also read charges |
+
+Balances are fetched live over pinned HTTPS and held in memory for two minutes. `links.json` holds only link
+metadata, so editing it cannot create a balance; balances older than 24 hours are left out. Credentials are
+Fernet-encrypted in `agent/data/vault.bin` and never reach the LLM or the audit log. Non-PHP balances use
+indicative rates fixed in code, for the forecast only.
+
+Sandbox setup (free): Plaid keys from dashboard.plaid.com into `.env` (`PLAID_CLIENT_ID`, `PLAID_SECRET`);
+a PayPal sandbox business app with Transaction Search enabled; a Stripe test-mode restricted key. Stripe test
+balances start at zero until you make a test charge with card `4000 0000 0000 0077` (funds available at once).
+Alipay and WeChat Pay expose balance queries only to approved merchant accounts, so they slot in as further
+adapters once a merchant account exists.
 
 Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
