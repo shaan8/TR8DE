@@ -9,6 +9,7 @@ Target: 5 beats, about 5 minutes. Story for beat 2 is "asked 30%, network caps a
 - Agent limits: per deal ₱200,000, daily ₱150,000, owner approval above ₱150,000, grace 600 s
 - Active suppliers: Bayani Weaves, Lumen Textiles
 - Deal 3 (Bayani PO-200) is Locked and carries the injected PO note used in beat 4
+- **Daily limit:** on Oct 18 the agent had only ₱29,500 left. It resets at 00:00 UTC (08:00 Manila); record after that
 - Owner and agent keys hold about 0.02 Sepolia ETH each (enough for this run)
 
 ## LLM budget
@@ -40,10 +41,10 @@ Use deal 7 only if beat 2 already created deal 6; otherwise check `cast call $W 
 
 ## Script
 
-Start the interactive CLI:
+Start the chat UI (http://localhost:8501). Use the Run monitor button for `/tick` and Verify audit log for `/verify`:
 
 ```bash
-../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json
+../.venv/bin/streamlit run app.py
 ```
 
 | Beat | Type | What to point out |

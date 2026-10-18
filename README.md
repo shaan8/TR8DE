@@ -24,6 +24,7 @@ Security self-assessment: [`SECURITY.md`](SECURITY.md).
 
 | Module | Role | LLM? |
 | --- | --- | --- |
+| `app.py` (in `agent/`) | Streamlit chat UI with free vs locked funds panel | n/a |
 | `core.py` | Orchestrator, Gate (HMAC authorizations), Executor, confirmations, monitor tick, owner commands | no |
 | `agents.py` | Coordinator, Treasury planner, Checker prompts and tools | yes |
 | `llm.py` | Providers: DeepSeek (default), OpenRouter, Anthropic | n/a |
@@ -85,9 +86,13 @@ set -a; source .env; set +a
 export RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 cd agent
 ../.venv/bin/python -m tiwala_agent.setup_data ../deployments/11155111.json data/
-../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json       # interactive
+../.venv/bin/streamlit run app.py                                                     # chat UI + funds panel
+../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json       # terminal
 ../.venv/bin/python -m tiwala_agent.drive --deployment ../deployments/11155111.json "What's open?" "/tick"   # scripted
 ```
+
+The UI (`agent/app.py`) reads `../.env` itself and shows free vs locked funds, read-only connected accounts,
+the agent's daily limit left and open deals beside the chat. It uses OpenRouter when no DeepSeek key is set.
 
 Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
