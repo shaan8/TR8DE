@@ -34,7 +34,8 @@ def main() -> None:
     ap.add_argument("--escrow", action="store_true", help="also draft the escrow card (one Checker call)")
     args = ap.parse_args()
 
-    if not os.environ.get("DEEPSEEK_API_KEY") and os.environ.get("OPENROUTER_API_KEY"):  # same fallback as the console
+    if not os.environ.get("TIWALA_LLM_PROVIDER") and not os.environ.get("DEEPSEEK_API_KEY") and \
+            os.environ.get("OPENROUTER_API_KEY"):  # same fallback as the console; an explicit provider wins
         os.environ["TIWALA_LLM_PROVIDER"] = "openrouter"
     dep = json.loads(Path(args.deployment).read_text())
     chain = Chain(os.environ["RPC_URL"], dep, os.environ["AGENT_PRIVATE_KEY"])
