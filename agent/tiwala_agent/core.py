@@ -181,16 +181,16 @@ def llms_or_offline(make) -> dict:
     tell the negotiation side through TIWALA_LLM_PROVIDER); with no key at all, offline stand-ins naming the gap."""
     first = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
     tried = [first] + [p for p in PROVIDER_KEYS if p != first and os.environ.get(PROVIDER_KEYS[p])]
-    err: Optional[KeyError] = None
+    err: Optional[Exception] = None
     for p in tried:
         os.environ["TIWALA_LLM_PROVIDER"] = p
         try:
             return make()
-        except KeyError as e:
+        except (KeyError, ValueError) as e:  # a missing key (DeepSeek, OpenRouter, Anthropic: KeyError; Qwen: ValueError)
             err = err or e
     os.environ["TIWALA_LLM_PROVIDER"] = first
     if err is not None:
-        off = OfflineLLM(str(err).strip("'"))
+        off = OfflineLLM(str(err).strip("'").split(". Run:")[0])
         checker = RulesOnlyChecker() if os.environ.get("TIWALA_CHECKER") == "rules" else off
         return {"coordinator": off, "checker": checker, "treasury": None}
 
