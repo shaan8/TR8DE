@@ -101,6 +101,7 @@ and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` a
 | A receipt timeout after broadcast lost the transaction hash (high) | Fixed: the hash is returned and logged as `tx_pending`, and the reply says to check it before asking again. Test: `test_receipt_timeout_must_leave_a_recoverable_transaction_hash` |
 | A negotiated card still executed after the agreement expired, or below the negotiated reserve (high) | Fixed: just before the owner's yes signs, the negotiation re-checks expiry, the agreed terms hash and every hard buyer constraint on chain state read then. Tests: `test_negotiated_expiry_is_rechecked_when_owner_confirms`, `test_negotiated_min_reserve_is_rechecked_when_owner_confirms` |
 | Concurrent appends forked the audit hash chain (medium) | Fixed: appends hold a thread lock and an exclusive file lock, and re-read the head hash if another process wrote. Test: `test_audit_log_survives_concurrent_writers` |
+| The public WhatsApp tunnel reached the console's webhook with any request; only the console checked Meta's token and signature | Hardened: the gate now checks the verify token and the HMAC signature itself, accepts JSON only, rate-limits to 120 requests a minute, drops slow clients after 10 s and will not start without both secrets. Tests: `test_forged_calls_stop_at_the_gate`, `test_a_flood_is_rate_limited` |
 | Off-chain evidence does not pin the agent revision that produced it | Open. Deployed bytecode matches the pinned build; regenerated evidence should record the commit |
 
 ## Judge walkthrough (19 October 2026)
@@ -176,10 +177,11 @@ The login is a second layer for any exposure, not a reason to publish the consol
   `maxDownBps` is the hard ceiling.
 - **Sybil resistance comes from onboarding, not from the score.** `createWallet` is `onlyPlatform`, so only buyers
   the platform admits can record outcomes. The reputation formula itself would credit any wallet that trades.
-- **Reputation weighs wins and losses by size alike.** Each outcome counts `min(3, total / median)`, so a supplier
-  who fails only on small orders keeps a higher deposit cap (45%) than one with the same record failing on large
-  ones (15%). The deposit is the part a cancel does not refund. Clamping wins to at most 1 and losses to at least 1
-  removes the gap and leaves the four demo suppliers' caps unchanged; not shipped yet.
+- **Reputation size weighting (fixed 20 October 2026).** Each outcome used to count `min(3, total / median)` for wins
+  and losses alike, so a supplier failing only small orders kept a 45% deposit cap where the same record failing
+  large ones got 15%. Wins now count at most 1 and failures at least 1, so failing small earns no more than an
+  honest record (30%). The four demo suppliers' caps are unchanged. Test:
+  `test_failing_only_small_orders_does_not_buy_a_higher_cap`
 - **No recency decay.** Outcomes carry a block and log index but no age weight, so a record from long ago counts
   the same as last week's.
 - **Forecast inflows are the owner's own assertions.** `data/plans.json` receivables have no haircut, so one

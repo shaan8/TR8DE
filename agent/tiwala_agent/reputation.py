@@ -1,8 +1,9 @@
 """Network supplier reputation and down-payment cap. Pure, deterministic.
 
-    w_j = v_j * beta_b          v_j = min(3, T_j / median_T_b(j))
+    w_j = v_j * beta_b          v_j = min(3, T_j / median_T_b(j)), then min(v_j, 1) for a success, max(v_j, 1) for a failure
     median_T_b(j) = median of buyer b's counted deals closed up to and including j (causal), so a later
-    deal can never re-weight an earlier one and a failure can never raise R.
+    deal can never re-weight an earlier one and a failure can never raise R. The clamp stops a supplier from
+    banking large successes while failing only small orders: size can make a failure count more, never less.
     p   = (s + a) / (n + a + b)  a = 1, b = 3
     d   = min(1, k_eff / 5)     R = d * p
     beta_b = 0.25 + 0.75 * min(1, h_b / 3)
@@ -87,7 +88,8 @@ def score(deals: list[ClosedDeal], supplier: str) -> Reputation:
         if c.supplier != supplier:
             continue
         all_buyers.add(c.buyer)
-        w = v * betas.get(c.buyer, BETA_FLOOR)
+        beta = betas.get(c.buyer, BETA_FLOOR)
+        w = (min(v, 1.0) if c.outcome == Outcome.ON_TIME else max(v, 1.0)) * beta
         if c.outcome == Outcome.ON_TIME:
             s += w
             n += w

@@ -10,8 +10,11 @@ Meta -> https://<random>.trycloudflare.com -> webhook gate 127.0.0.1:8001 -> con
 
 The gate (`scripts/webhook_gate.py`) forwards only `GET` and `POST /webhooks/whatsapp`, passes only the
 `Content-Type` and `X-Hub-Signature-256` headers (no cookies), caps bodies at 1 MB, and returns 404 for every other
-path. The login page, chat, negotiations and supplier API are not reachable through the tunnel at all. The console
-still checks the verify token and Meta's HMAC signature on every call.
+path. It checks the verify token on `GET` and Meta's HMAC signature on `POST` itself, so a forged call is dropped
+before the console sees it; it accepts JSON bodies only, allows 120 requests a minute and drops a client that takes
+longer than 10 s to send. It reads `WHATSAPP_APP_SECRET` and `WHATSAPP_VERIFY_TOKEN` from the environment or `.env`
+and will not start without them. The login page, chat, negotiations and supplier API are not reachable through the
+tunnel at all. The console checks the token and signature again on every call.
 
 ## Setup
 

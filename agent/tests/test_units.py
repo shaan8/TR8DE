@@ -49,6 +49,20 @@ def test_worked_example_from_doc():
     assert not cap.stranger
 
 
+def test_failing_only_small_orders_does_not_buy_a_higher_cap():
+    """4 on time and 2 late from one buyer: whether the late ones were the small or the large orders, the cap matches."""
+    def cap(late_size, on_time_size):
+        deals = established_buyers()
+        for i in range(4):
+            deals.append(ClosedDeal(f"buyer{i}", S, on_time_size, Outcome.ON_TIME))
+        deals += [ClosedDeal(f"buyer{i}", S, late_size, Outcome.LATE) for i in range(2)]
+        return dp_cap(score(deals, S), "buyer0", deals).network_cap_bps
+    gamed, penalised = cap(late_size=20, on_time_size=300), cap(late_size=300, on_time_size=20)
+    honest = cap(late_size=100, on_time_size=100)
+    assert gamed <= honest
+    assert penalised <= honest
+
+
 def test_new_supplier_starts_at_zero_trust():
     rep = score(established_buyers(), S)
     assert rep.r == 0
@@ -96,8 +110,10 @@ def test_sybil_buyers_get_quarter_weight():
 def test_value_weighting_caps_large_deals():
     deals = established_buyers(1)
     deals += [ClosedDeal("buyer0", S, 100, Outcome.ON_TIME)] * 5 + [ClosedDeal("buyer0", S, 10_000, Outcome.ON_TIME)]
+    assert score(deals, S).s == pytest.approx(5 + 1)  # a success never counts more than an ordinary order
+    deals[-1] = ClosedDeal("buyer0", S, 10_000, Outcome.LATE)
     rep = score(deals, S)
-    assert rep.s == pytest.approx(5 + 3)  # the huge deal counts at most 3x the buyer's median
+    assert rep.n - rep.s == pytest.approx(3)  # a huge failure counts at most 3x the buyer's median
 
 
 # ------------------------------------------------------------------ forecast
