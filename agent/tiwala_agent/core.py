@@ -947,13 +947,29 @@ class Tiwala:
             return "Unknown owner command."
         self._log("owner_command", command=cmd, ok=r.ok, tx=r.tx_hash, error=r.error)
         if not r.ok:
-            return f"Owner action failed: {r.error}"
+            return f"Owner action failed: {r.error}" + self._status_hint(op, n, r.error or "")
         msg = f"Signed by you. Tx {r.tx_hash}"
         if op == "/attest":
             notes = self.tick()
             if notes:
                 msg += "\n" + "\n".join(notes)
         return msg
+
+    def _status_hint(self, op: str, n: int, error: str) -> str:
+        """Plain-words reason for a contract status revert, with the deals the command can act on."""
+        if "WrongStatus" not in error and "NotFound" not in error:
+            return ""
+        want = {"/attest": ("DOWN_PAID",), "/approve": ("LOCKED",), "/dispute": ("DOWN_PAID",),
+                "/resolve": ("DISPUTED",)}.get(op, ())
+        try:
+            deals = self.chain.deals(self.wallet)
+        except Exception:
+            return ""
+        cur = next((d for d in deals if d.id == n), None)
+        ok = [str(d.id) for d in deals if d.status.name in want]
+        have = f"Deal {n} is {cur.status.name.replace('_', ' ').lower()}. " if cur else f"There is no deal {n}. "
+        return (f"\n{have}{op} works on deals that are {' or '.join(w.replace('_', ' ').lower() for w in want)}: "
+                f"{', '.join(ok) if ok else 'none right now'}.")
 
     def anchor_audit(self) -> str:
         from .audit import anchor_payload

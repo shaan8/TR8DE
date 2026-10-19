@@ -33,14 +33,19 @@ git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-dem
 The script installs what it needs, starts a private chain, deploys the same contracts used on Sepolia with
 seeded suppliers and trade history, and opens the console with a one-time login it prints. Ctrl+C stops it.
 
-Then try:
+Then try (all of this works without a model key):
 
-1. Payments chat: "Create escrow for Lumen PO-104, PHP 120,000, 20% down, delivery in 10 days", then reply "yes".
-2. `/attest <deal>` to confirm delivery: the balance is released and Lumen's record updates from the chain.
-3. Negotiations tab: negotiate with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator), then lock the
-   agreement in escrow.
-4. Your own supplier agent: the script prints a command for
+1. Negotiations tab: start one with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator, where you type
+   as the supplier). When both sides agree, press "Recheck and prepare escrow", then confirm with "yes" in
+   Payments. The full amount is locked on the chain, the down payment goes out, and the reply names the deal number.
+2. Payments: `/attest <deal>` with that number to confirm delivery. The balance is released and Lumen's record
+   updates from the chain.
+3. Your own supplier agent: the script prints a command for
    [`scripts/supplier_agent_example.py`](scripts/supplier_agent_example.py); see [`docs/supplier-api.md`](docs/supplier-api.md).
+4. With a model key in `.env`, ask in plain words: "Create escrow for Lumen PO-104, PHP 120,000, 20% down,
+   delivery in 10 days", then reply "yes". Without a key the chat says it is off; owner commands still work.
+
+Red-team notes, what we tried and what was fixed: [`SECURITY.md`](SECURITY.md#judge-walkthrough-19-october-2026).
 
 **What the demo can and cannot do, compared with live**
 
