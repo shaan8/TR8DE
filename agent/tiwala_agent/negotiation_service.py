@@ -46,6 +46,7 @@ class NegotiationService:
                          lambda a: self.t.directory[a].name if a in self.t.directory else a, **tg_kw)
         self.t.on_executed.append(self._on_executed)
         self.t.before_confirm.append(self._recheck_before_confirm)
+        self.t.on_pending_dropped.append(self._card_dropped)
         self.t.negotiations = self
         self._runs: dict[str, threading.Thread] = {}
         self._views: dict[str, tuple[float, BuyerView]] = {}  # supplier -> (read at, view); escrow always reads fresh
@@ -390,6 +391,25 @@ class NegotiationService:
             self._log("negotiation_handoff", negotiation=n.id, proposal=p.id, status=out["status"], ref=ref)
             return {**out, "events": t._events}
 
+    def _card_dropped(self, action: Action) -> None:
+        """The owner said no to the escrow card, or moved on: the agreement goes back to waiting for them, so they
+        can send it to escrow again or close the negotiation."""
+        if action.origin.kind != "negotiation":
+            return
+        nid = action.origin.detail.split(":", 1)[0]
+        with self.engine.store.lock:
+            try:
+                n = self.engine.store.get(nid)
+            except NegotiationError:
+                return
+            if State(n.state) != State.READY_FOR_ESCROW or n.handoff.get("deal_id"):
+                return
+            n.state, n.handoff = State.AWAITING_BUYER_APPROVAL.value, {}
+            n.reason = "You did not confirm the escrow card. Send it to escrow again, or close the negotiation."
+            n.note("escrow_declined", "the escrow card was declined or replaced", self.engine.now())
+            self.engine.store.save(n)
+        self._log("negotiation_escrow_declined", negotiation=nid)
+
     def _recheck_before_confirm(self, action: Action) -> list[str]:
         """The owner's yes may come minutes after the card. Re-run expiry and the buyer's hard constraints on chain
         state read now, so a card cannot outlive the agreement it was raised for."""
@@ -473,8 +493,8 @@ class NegotiationService:
                             if prev.terms.to_dict()[k] != cur.terms.to_dict()[k]} if prev else {})
         out["outbox"] = self.wa.outbox.for_negotiation(n.id)
         out["running"] = self.running(n.id)
-        out["pending_card"] = self.t.pending.card if self.t.pending and self.t.pending.action.origin.detail.startswith(
-            f"{n.id}:") else None
+        mine = self.t.pending if self.t.pending and self.t.pending.action.origin.detail.startswith(f"{n.id}:") else None
+        out["pending_card"], out["pending_card_id"] = (mine.card, mine.id) if mine else (None, None)
         return out
 
     def supplier_dict(self, n: Negotiation) -> dict:

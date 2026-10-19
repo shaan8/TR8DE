@@ -86,7 +86,7 @@ export default function App() {
   const confirm = async () => {
     setBusy(true);
     try {
-      const { turn } = await postJSON("/api/confirm", fixture);
+      const { turn } = await postJSON("/api/confirm", fixture, { card_id: pendingCard?.card?.id });
       setConfirmed((s) => new Set([...s, pendingLine]));
       setPendingLine(null);
       setTurns((ts) => [...ts, turn]);

@@ -104,6 +104,21 @@ and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` a
 | The public WhatsApp tunnel reached the console's webhook with any request; only the console checked Meta's token and signature | Hardened: the gate now checks the verify token and the HMAC signature itself, accepts JSON only, rate-limits to 120 requests a minute, drops slow clients after 10 s and will not start without both secrets. Tests: `test_forged_calls_stop_at_the_gate`, `test_a_flood_is_rate_limited` |
 | Off-chain evidence does not pin the agent revision that produced it | Open. Deployed bytecode matches the pinned build; regenerated evidence should record the commit |
 
+## Third independent audit (20 October 2026)
+
+A third external audit of commit `a61a4ff` reproduced six failures on a local Anvil chain with scripted models. Its
+probes are kept as `agent/tests/test_audit_focus.py` and all pass now. They show a missing deterministic boundary,
+not a measured attack rate against the live models.
+
+| Finding | Outcome |
+| --- | --- |
+| A question ("What is Lumen's delivery record?") led a scripted model to create and fund an escrow on its own (high) | Fixed: a chat-requested deal runs without a card only when the owner's own words name the supplier, total, down payment % and PO reference. Any term the model filled in sends it to a confirmation card that lists those terms. Test: `test_read_question_must_not_create_model_invented_deal` |
+| The Confirm button sent a bare "yes", so it could approve a card that had replaced the one on screen (high) | Fixed: every card has an id, the console and Streamlit buttons send it, and a yes for any other card approves nothing. Test: `test_stale_card_confirmation_must_not_approve_replacement` |
+| Declining a negotiated escrow card left the negotiation stuck waiting for it (high) | Fixed: a declined or replaced card hands the agreement back, so it can be sent to escrow again or closed. Test: `test_declining_escrow_must_allow_negotiation_to_close` |
+| Two requests before mining created two escrows for one PO (high) | Fixed: a create whose receipt has not come back is recorded on disk with its tx hash, and any further create for that PO waits until it is mined or has been gone for 10 minutes. Test: `test_pending_create_must_not_be_broadcast_again` |
+| Hitting the tool-step limit replied "Nothing was paid" after a deposit (high) | Fixed: every exit path lists the transactions this turn sent, read from the audit events. Test: `test_step_limit_must_report_already_sent_payment` |
+| The forecast added past receipts to today's balance again (medium) | Fixed: inflows dated before today are already in the on-chain balance and are ignored. The contract still refuses an unfunded escrow. Test: `test_past_inflow_must_not_inflate_current_balance` |
+
 ## Judge walkthrough (19 October 2026)
 
 We cloned the public repository into an empty folder, ran `./scripts/local-demo.sh` exactly as the README says

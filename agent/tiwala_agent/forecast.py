@@ -39,6 +39,7 @@ class Option:
 def project(
     b_free: int, inflows: list[Flow], outflows: list[Flow], buffer: int, today: int
 ) -> Forecast:
+    inflows = [f for f in inflows if f.date >= today]  # a past receipt is already in b_free; counting it again hides a gap
     days = sorted({today} | {f.date for f in inflows} | {f.date for f in outflows})
     h0 = b_free - buffer
     points, short_day, short = [], None, 0

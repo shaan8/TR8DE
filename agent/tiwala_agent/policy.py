@@ -38,6 +38,7 @@ class PolicyContext:
     checker_approved: Optional[bool] = None
     checker_reason: str = ""
     intent_mismatches: list[str] = field(default_factory=list)
+    agent_filled: list[str] = field(default_factory=list)  # create terms the model supplied, not the owner's words
     input_flags: tuple = ()
 
 
@@ -140,6 +141,9 @@ def agent_authority(action: Action, ctx: PolicyContext) -> Optional[str]:
     agent key create a deal at or below `approvalThreshold` without the owner; the policy stays inside that same
     boundary and adds the checks the contract cannot make for itself."""
     w, total, addr = ctx.wallet, action.total or 0, action.supplier or ""
+    unsaid = [f for f in ctx.agent_filled if f != "deadline"]  # dates are not parsed; the card shows the deadline
+    if action.origin.kind == "user" and unsaid:
+        return f"you did not state the {', '.join(unsaid)} yourself"
     if total > w.approval_threshold:
         return (f"{php(total)} is above the {php(w.approval_threshold)} the contract lets the agent "
                 f"commit on its own")

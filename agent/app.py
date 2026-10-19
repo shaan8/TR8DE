@@ -203,14 +203,14 @@ def wallet_sidebar(t: Tiwala, version: int) -> None:
 
 # ------------------------------------------------------------------ app
 
-def run_turn(t: Tiwala, audit: AuditLog, msg: str) -> tuple[str, list[dict]]:
+def run_turn(t: Tiwala, audit: AuditLog, msg: str, card_id: str | None = None) -> tuple[str, list[dict]]:
     if msg == "/tick":
         t._events = []
         notes = t.tick()
         return "\n\n".join(notes) or "Monitor: nothing to do.", list(t._events)
     if msg == "/verify":
         return ("Audit chain intact." if audit.verify() else "AUDIT CHAIN BROKEN."), []
-    r = t.handle(msg)
+    r = t.handle(msg, card_id=card_id)
     return r.reply, r.events
 
 
@@ -270,7 +270,7 @@ def main() -> None:
             st.warning(f"Could not read the chain: {e}")
 
     b1, b2, _ = st.columns([1, 1, 4])
-    cmd = None
+    cmd = card_id = None
     if b1.button("Run monitor", help="/tick: check deadlines, attestations and balances now", use_container_width=True):
         cmd = "/tick"
     if b2.button("Verify audit log", help="/verify: recompute the hash chain", use_container_width=True):
@@ -289,9 +289,9 @@ def main() -> None:
                     'confirmation. Nothing moves until you say yes.</div>', unsafe_allow_html=True)
         c1, c2, _ = st.columns([1, 1, 4])
         if c1.button("Yes, confirm", type="primary", use_container_width=True):
-            cmd = "yes"
+            cmd, card_id = "yes", t.pending.id  # the card this button was drawn with
         if c2.button("Cancel", use_container_width=True):
-            t.pending = None
+            t.drop_pending()
             st.rerun()
 
     msg = st.chat_input("Ask Tiwala, or type /guide for everything it can do")
@@ -302,7 +302,7 @@ def main() -> None:
             st.markdown(msg)
         with st.chat_message("assistant", avatar="🤝"):
             with st.status("Coordinator, Checker and policy engine at work…", expanded=False):
-                reply, events = run_turn(t, audit, msg)
+                reply, events = run_turn(t, audit, msg, card_id)
             st.markdown(reply)
         chat.append(("assistant", reply, events))
         st.session_state.version += 1

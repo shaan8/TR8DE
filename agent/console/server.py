@@ -39,6 +39,7 @@ class Msg(BaseModel):
 
 class Confirm(BaseModel):
     code: Optional[str] = None  # last 4 characters of a payee address
+    card_id: Optional[str] = None  # the card the button was on; required for a payment card
 
 
 # ---------------------------------------------------------------- owner login
@@ -162,7 +163,7 @@ def _live_state() -> dict:
         deals.append({"id": d.id, "supplier": names.get(d.supplier, d.supplier), "ref": tag.text,
                       "ref_flags": list(tag.flags), "total_php": d.total / PHP, "down_pct": d.down_bps / 100,
                       "deadline": d.deadline, "stage": STAGE[d.status.name]})
-    pending = {"card": fx.parse_card(t.pending.card)} if t.pending else None
+    pending = {"card": {**fx.parse_card(t.pending.card), "id": t.pending.id}} if t.pending else None
     payees = []
     for addr, e in t.directory.items():
         listed, active_at = t.chain.supplier_onchain(t.wallet, addr)
@@ -186,7 +187,7 @@ def _attach_card(events: list[dict]) -> None:
     if t.pending:
         v = [e for e in events if e.get("event") == "verdict" and e["verdict"].get("needs_confirmation")]
         if v:
-            v[-1]["card"] = fx.parse_card(t.pending.card)
+            v[-1]["card"] = {**fx.parse_card(t.pending.card), "id": t.pending.id}
 
 
 def _remember_alerts(notes: list[str]) -> None:
@@ -277,13 +278,14 @@ async def message(m: Msg, fixture: Optional[str] = Query(None)):
 @app.post("/api/confirm")
 def confirm(body: Optional[Confirm] = None, fixture: Optional[str] = Query(None)):
     """The owner's Confirm button sends their own "yes" (plus the 4 characters they typed, for a payee):
-    the core matches it deterministically."""
+    the core matches it deterministically. A payment card's button also names the card it was on, and a yes for
+    any other card approves nothing."""
     code = (body.code or "").strip() if body else ""
     text = f"yes {code}" if code else "yes"
     if fixture:
         f = _fixture(fx.CONFIRMS_TO.get(fixture, fixture))
         return {"turn": {**f["turns"][-1], "user": text}}
-    res = live().handle(text)
+    res = live().handle(text, card_id=None if code else ((body.card_id if body else None) or ""))
     return {"turn": {"user": text, "reply": fx.strip_card(res.reply), "events": res.events}}
 
 

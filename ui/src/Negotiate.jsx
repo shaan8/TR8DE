@@ -299,7 +299,7 @@ export default function Negotiate() {
   const counter = (f) => act(() => call(`/api/negotiations/${n.id}/counter`, "POST", f));
   const close = (what) => act(() => call(`/api/negotiations/${n.id}/${what}`, "POST"));
   const escrow = () => act(() => call(`/api/negotiations/${n.id}/escrow`, "POST"));
-  const confirm = () => act(() => call("/api/confirm", "POST", {}));
+  const confirm = () => act(() => call("/api/confirm", "POST", { card_id: n.pending_card_id }));
   const simSend = (text) => act(() => call("/api/sim/whatsapp/inbound", "POST", { supplier: n.supplier_address, text }));
 
   if (err && !data) return <main className="p-6 text-bad">Could not load negotiations: {err}</main>;

@@ -249,6 +249,7 @@ class Gate:
         return True
 
 
+UNRESOLVED_GRACE_S = 600  # a broadcast create unknown to the node is treated as gone only after this long
 OPEN_STATUSES = {Status.LOCKED, Status.DOWN_PAID, Status.DELIVERED, Status.DISPUTED}
 
 
@@ -274,6 +275,12 @@ class Pending:
     card: str
     created: float
     then_release_down: bool = False
+    id: str = ""  # names this card; a Confirm button sends it back, so a yes can only approve the card it was on
+
+    def __post_init__(self):
+        if not self.id:
+            body = json.dumps(self.action.to_dict(), sort_keys=True, default=str) + f"|{self.created}"
+            self.id = hashlib.sha256(body.encode()).hexdigest()[:12]
 
 
 @dataclass
@@ -324,6 +331,7 @@ class Tiwala:
         self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
         self.on_executed: list = []  # callbacks(action, result) after an owner-confirmed action executes
         self._created_this_turn: set[str] = set()  # gate digests of creates broadcast in the current turn
+        self.on_pending_dropped: list = []  # callbacks(action) when a card is declined or replaced unanswered
         self.before_confirm: list = []  # callbacks(action) -> reasons to refuse, run on fresh state before a yes signs
 
     # ------------------------------------------------------------ data
@@ -459,13 +467,62 @@ class Tiwala:
             return "Circuit breaker tripped: the agent is now frozen until the owner types /unfreeze."
         return None
 
+    def drop_pending(self) -> None:
+        """The owner declined the card, moved on, or a new card replaced it: forget it and tell whoever raised it."""
+        p, self.pending = self.pending, None
+        if p is None:
+            return
+        self._log("pending_dropped", action=p.action.to_dict(), card=p.id)
+        for cb in self.on_pending_dropped:
+            cb(p.action)
+
+    def _create_key(self, a: Action) -> str:
+        return f"ref:{a.ref.strip().lower()}" if a.ref and a.ref.strip() else f"digest:{self.gate.digest(a)}"
+
+    def _unresolved(self) -> dict:
+        """Creates that were broadcast but whose receipt never came back, kept on disk so a restart remembers them."""
+        try:
+            return json.loads((self.data / "unresolved_tx.json").read_text())
+        except (OSError, ValueError):
+            return {}
+
+    def _save_unresolved(self, u: dict) -> None:
+        (self.data / "unresolved_tx.json").write_text(json.dumps(u, indent=1))
+
+    def _still_unresolved(self, key: str) -> Optional[str]:
+        """The tx hash of an earlier create for this key that is neither mined nor provably gone, else None."""
+        u = self._unresolved()
+        rec = u.get(key)
+        if not rec:
+            return None
+        w3 = self.chain.w3
+        try:
+            w3.eth.get_transaction_receipt(rec["tx"])
+            mined = True
+        except Exception:
+            mined = False
+        if not mined:
+            try:
+                w3.eth.get_transaction(rec["tx"])
+                return rec["tx"]  # in the mempool: wait for it
+            except Exception:
+                if time.time() - rec["at"] < UNRESOLVED_GRACE_S:
+                    return rec["tx"]  # a node may not have seen it yet
+        u.pop(key, None)  # mined (the open-deal check sees it now) or dropped long ago
+        self._save_unresolved(u)
+        return None
+
     def _duplicate(self, a: Action) -> Optional[str]:
-        """A create is once-only: the same action twice in one turn, or a PO reference that already has an open deal
-        on chain, is refused. The chain is the record, so this holds across restarts and processes too."""
+        """A create is once-only: the same action twice in one turn, a create still waiting for its receipt, or a PO
+        reference that already has an open deal on chain, is refused. Waiting creates are kept on disk and open deals
+        are read from the chain, so this holds across turns, restarts and processes."""
         if a.kind != ActionKind.CREATE_DEAL:
             return None
         if self.gate.digest(a) in self._created_this_turn:
             return "That exact deal was already created in this request. Nothing was created twice."
+        if tx := self._still_unresolved(self._create_key(a)):
+            return (f"An earlier create for {a.ref or 'this deal'} was sent as tx {tx} and is not confirmed yet. "
+                    "Nothing new was sent; check that transaction first.")
         if a.ref:
             try:
                 dup = next((d for d in self.chain.deals(self.wallet)
@@ -484,7 +541,7 @@ class Tiwala:
             return {"status": "refused", "reasons": [dup]}
         ctx, deal = self._context(a)
         intent = self._intent(a, self.ledger[-6:], deal)
-        ctx.intent_mismatches = intent.mismatches
+        ctx.intent_mismatches, ctx.agent_filled = intent.mismatches, intent.agent_filled
         view = self._action_view(a, ctx, deal)
         request = self._request_desc(a, deal, system_note)
         ok, reason = checker_review(RedactingLLM(self.llms["checker"], self._redactor), request, view)
@@ -500,6 +557,7 @@ class Tiwala:
             return out
         if verdict.needs_confirmation:
             card = self._card(a, ctx, deal, verdict, intent.agent_filled, then_release_down)
+            self.drop_pending()
             self.pending = Pending(a, request, list(self.ledger), (ok, reason), card, time.time(), then_release_down)
             return {"status": "needs_confirmation", "card": card, "flags": verdict.flags}
         return self._after_execute(a, self._execute(a, verdict, confirmed=False), then_release_down, False)
@@ -510,6 +568,10 @@ class Tiwala:
         if a.kind == ActionKind.CREATE_DEAL and res.tx_hash:  # broadcast: never send this one again this turn
             self._created_this_turn.add(self.gate.digest(a))
         if res.pending:
+            if a.kind == ActionKind.CREATE_DEAL:
+                u = self._unresolved()
+                u[self._create_key(a)] = {"tx": res.tx_hash, "at": time.time(), "ref": a.ref}
+                self._save_unresolved(u)
             self._log("tx_pending", action=a.to_dict(), tx=res.tx_hash, error=res.error)
             return {"status": "pending", "error": res.error, "tx": res.tx_hash}
         if not res.ok:
@@ -553,7 +615,7 @@ class Tiwala:
         try:
             ctx, deal = self._context(p.action)  # fresh chain state at confirmation time
             intent = self._intent(p.action, p.texts[-6:], deal)
-            ctx.intent_mismatches = intent.mismatches
+            ctx.intent_mismatches, ctx.agent_filled = intent.mismatches, intent.agent_filled
             ctx.checker_approved, ctx.checker_reason = p.checker
             verdict = decide(p.action, ctx, self.settings)
             self._log("confirmed", action=p.action.to_dict(), verdict=verdict.to_dict())
@@ -611,8 +673,16 @@ class Tiwala:
 
     # ------------------------------------------------------------ chat
 
-    def handle(self, text: str) -> TurnResult:
+    def handle(self, text: str, card_id: Optional[str] = None) -> TurnResult:
+        """card_id: the card a Confirm button was on. A typed yes answers the card just shown; a button names its own,
+        so a yes can never approve a card that replaced the one the owner was looking at."""
         with self.turn_lock:
+            if card_id is not None and CONFIRM_RX.match(text) and not self.pending_payee:
+                if not self.pending or self.pending.id != card_id:
+                    self._events = []
+                    self._log("confirm_stale_card", card=card_id, current=self.pending.id if self.pending else None)
+                    return TurnResult("That card is no longer the one waiting for you, so nothing was approved. "
+                                      "Review the current card and confirm it there.", self._events)
             return self._handle(text)
 
     def _handle(self, text: str) -> TurnResult:
@@ -646,8 +716,7 @@ class Tiwala:
             self.ledger = []
             return TurnResult(self._render_result(out), self._events)
         if self.pending:
-            self._log("pending_dropped", action=self.pending.action.to_dict())
-            self.pending = None
+            self.drop_pending()
 
         self.ledger.append(t.text)
         self._contract_texts = set()
@@ -663,15 +732,14 @@ class Tiwala:
             except Exception as e:  # model down or rate-limited: nothing was drafted, so drop the turn
                 del self.history[turn_start:]
                 self._log("coordinator_error", error=f"{type(e).__name__}: {str(e)[:200]}")
-                acted = [ev for ev in self._events if ev["event"] in ("executed", "tx_pending")]
-                if acted or cards:  # say what already happened; never reassure after money moved
-                    done = [f"{'Sent' if ev['event'] == 'executed' else 'Sent, receipt pending'}: tx {ev.get('tx')}"
-                            + (f" (deal {ev['deal_id']})" if ev.get("deal_id") else "") for ev in acted]
-                    if acted:
-                        self.ledger = []
+                if done := self._sent_this_turn():  # say what already happened; never reassure after money moved
+                    self.ledger = []
                     return TurnResult("\n\n".join([f"The assistant model stopped responding ({type(e).__name__}) "
                                                     "after I had already acted on your request:"] + done + cards),
                                       self._events)
+                if cards:
+                    return TurnResult("\n\n".join([f"The assistant model stopped responding ({type(e).__name__}). "
+                                                    "This is waiting for you:"] + cards), self._events)
                 if isinstance(e, ModelOffline):
                     return TurnResult(str(e), self._events)
                 return TurnResult(f"The assistant model is unavailable right now ({type(e).__name__}). "
@@ -694,7 +762,9 @@ class Tiwala:
                 results.append({"type": "tool_result", "tool_use_id": c.id, "content": json.dumps(res, default=str)})
             self.history.append({"role": "user", "content": results})
         else:
-            reply = "I could not finish that safely in one go. Nothing was paid. Could you say it more simply?"
+            done = self._sent_this_turn()
+            reply = ("I stopped before finishing, after these were already sent:\n" + "\n".join(done) if done else
+                     "I could not finish that safely in one go. Nothing was paid. Could you say it more simply?")
         if any(e["event"] == "executed" for e in self._events):
             self.ledger = []
         reply = self._ground(reply)
@@ -702,6 +772,12 @@ class Tiwala:
             cards.append("Circuit breaker: I have frozen myself after repeated refused payment requests. Nothing "
                          "moves until you type /unfreeze. Type /freeze to also pause the wallet on-chain.")
         return TurnResult("\n\n".join([reply] + cards).strip(), self._events)
+
+    def _sent_this_turn(self) -> list[str]:
+        """One line per transaction this turn broadcast, from the audit events, not from the model."""
+        return [f"{'Sent' if ev['event'] == 'executed' else 'Sent, receipt pending'}: tx {ev.get('tx')}"
+                + (f" (deal {ev['deal_id']})" if ev.get("deal_id") else "")
+                for ev in self._events if ev["event"] in ("executed", "tx_pending")]
 
     def _grounding_text(self) -> str:
         """Everything TR8DE's code or the owner said in this conversation: tool results and user turns, not the
@@ -907,8 +983,7 @@ class Tiwala:
         """Draft the escrow for an agreed negotiation. Same pipeline as a chat request: intent (the action must equal
         the agreement), Checker, policy, then a confirmation card the owner answers in their own words."""
         if self.pending:
-            self._log("pending_dropped", action=self.pending.action.to_dict())
-            self.pending = None
+            self.drop_pending()
         self.pending_payee = None
         self.agreements[detail] = {"supplier": supplier, "total": total, "down_bps": down_bps, "deadline": deadline,
                                    "ref": ref, "summary": summary, "label": label, "supplier_via": supplier_via}
@@ -941,8 +1016,7 @@ class Tiwala:
 
     def propose_payee(self, name: str, address: str) -> dict:
         if self.pending:
-            self._log("pending_dropped", action=self.pending.action.to_dict())
-            self.pending = None
+            self.drop_pending()
         untrusted = sorted(self._contract_texts)
         v = check_payee(name, address, self.ledger[-6:], untrusted, self.directory,
                         load_blocklist(self.data / "blocklist.json"), self._reserved())
