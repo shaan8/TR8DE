@@ -93,3 +93,15 @@ def test_past_inflow_must_not_inflate_current_balance():
     f=with_new_deal(10000,[Flow(99,10000,'already received')],[],0,100,15000,101)
     print('PAST_INFLOW',f)
     assert not f.ok, 'historical inflow counted again on top of current on-chain balance'
+
+
+def test_owner_stated_in_budget_deal_still_runs_on_its_own(env):
+    """The fix above must not cost the autonomy: all four terms in the owner's words, inside the contract's
+    approvalThreshold, creates the deal and pays the deposit with no card and no yes."""
+    clean(env)
+    t = env['make'](coord(('tool', 'draft_create_deal', fields(env)), ('text', 'Done')))
+    before = n_deals(env)
+    r = t.handle(request())
+    made = [d for d in env['chain'].deals(env['wallet']) if d.ref == 'PO-880']
+    assert t.pending is None and n_deals(env) == before + 1
+    assert made[0].status.name == 'DOWN_PAID', r.reply
