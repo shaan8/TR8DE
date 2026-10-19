@@ -17,3 +17,6 @@ ui/dist/
 ui/test-results/
 ui/playwright-report/
 .local-demo/
+.live-deploy.log
+.live-console.log
+deployments/11155111.reference.json

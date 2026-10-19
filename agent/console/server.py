@@ -112,7 +112,10 @@ def _load_env() -> None:
             line = "" if line.lstrip().startswith("#") else line.split("#", 1)[0].strip()
             if "=" in line:
                 k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
+                v = v.strip()
+                if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":  # quoted, so a shell can source .env safely
+                    v = v[1:-1]
+                os.environ.setdefault(k.strip(), v)
     os.environ.setdefault("RPC_URL", os.environ.get("AGENT_RPC_URL") or PUBLIC_RPC)
     if not os.environ.get("DEEPSEEK_API_KEY") and os.environ.get("OPENROUTER_API_KEY"):
         os.environ.setdefault("TIWALA_LLM_PROVIDER", "openrouter")

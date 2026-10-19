@@ -215,7 +215,7 @@ def write_env(values: dict[str, str], env: Path = Path(__file__).resolve().paren
     lines = env.read_text().splitlines() if env.exists() else []
     keys = set(values)
     out = [l for l in lines if l.split("=", 1)[0].strip() not in keys]
-    out += [f"{k}={v}" for k, v in values.items()]
+    out += [f"{k}='{v}'" for k, v in values.items()]  # quoted: the scrypt hash contains "$"
     env.write_text("\n".join(out) + "\n")
 
 
