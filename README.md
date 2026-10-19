@@ -12,6 +12,18 @@ Security self-assessment: [`SECURITY.md`](SECURITY.md).
 Submission map (every deliverable and where to find it): [`SUBMISSION.md`](SUBMISSION.md). Execution evidence: [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md).
 Source: https://github.com/shaan8/TR8DE
 
+## Try it on your machine (one command)
+
+```bash
+git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-demo.sh
+```
+
+Needs git, Node 18+ and Python 3.11+ (macOS or Linux). The script installs what it needs, starts a private local
+Ethereum chain, deploys the real contracts with seeded suppliers and history, and opens the console with a
+one-time login. No testnet funds, wallets or WhatsApp needed. Add a model key to `.env` (`DEEPSEEK_API_KEY`,
+`OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY`) for the chat assistant; without one, negotiations, escrow and owner
+commands still work. To negotiate from your own supplier-side agent, see [`docs/supplier-api.md`](docs/supplier-api.md).
+
 ## Layout
 
 | Path | What |

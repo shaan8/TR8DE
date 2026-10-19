@@ -12,6 +12,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | Payee list | Injected, poisoned or mistyped payout addresses | Payee checks in code (`payee.py`): the address must be in the owner's own words, EIP-55 checksum, no lookalike of a saved address or name, no wallet roles or blocklist; owner types its last 4 characters; owner key signs `addSupplier`; contract waits `supplierDelay` |
 | Negotiated terms | Supplier text injection, stale or ambiguous acceptance, duplicate webhooks, human and agent answering at once | Supplier text never reaches the owner path; acceptance must name the open version and terms hash; counters supersede; lock plus version check; message-ID dedup; escrow handoff idempotent by on-chain reference; agreement rechecked on fresh chain data and confirmed by the owner ([`docs/negotiation.md`](docs/negotiation.md)) |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
+| Supplier API | Another supplier, a leaked token, stale or replayed moves | Per-supplier Bearer token scoped to that supplier's own negotiations; moves must name the open version and terms hash; the buyer's limits are never returned |
 | Owner console | Anyone who reaches the console URL | Login (`agent/console/auth.py`): salted scrypt hash in `.env`, no plaintext; 256-bit server-side sessions in an HttpOnly, SameSite=Strict cookie (Secure on HTTPS), 2 h idle and 12 h absolute expiry; lockout after 5 failures per client and 30 overall per 15 min; same-origin plus `X-Tiwala` header on every write; CSP, frame-deny and HSTS headers; API docs disabled. The supplier console uses its own per-supplier token and the WhatsApp webhook its Meta signature |
 | Audit trail | Tampering after the fact | Hash-chained JSONL; `/anchor` writes the head hash and entry count to Sepolia from the owner key, so edits, deletions and tail truncation up to the last anchor are detected by [`scripts/verify_audit.py`](scripts/verify_audit.py) (standard library only, works offline) |
 
@@ -90,8 +91,12 @@ The login is a second layer for any exposure, not a reason to publish the consol
   owner key on a separate device or hardware wallet so a compromised agent host cannot attest.
 - **Owner attestation is trusted.** The contract cannot verify physical delivery; a careless `/attest` releases funds.
   Disputes stop a release but rely on off-chain resolution.
-- **Reputation is off-chain and computed by the agent.** A bug in `reputation.py` could set a wrong cap; the
-  contract's `maxDownBps` is the hard ceiling. Sybil resistance depends on the platform's account dedup.
+- **Reputation is computed off-chain from on-chain events.** Each time it is needed, the agent reads every deal
+  outcome (on time, late, cancelled after a deposit, disputes) emitted by factory wallets on Sepolia through a public
+  RPC endpoint; nothing is hard-coded. The starting history is seeded: the deploy script creates four network
+  buyer wallets and records synthetic trades so suppliers have a record. Treat those scores as demo data, not
+  independent trade history (audit F4). A bug in `reputation.py` could set a wrong cap; the contract's
+  `maxDownBps` is the hard ceiling. Sybil resistance depends on the platform's account dedup.
 - **LLM provider sees conversation content, minimised.** Phones, e-mails and account numbers are masked and wallet
   addresses replaced by placeholders before any model call (`privacy.py`); names, amounts and dates still go to the
   provider.
@@ -99,5 +104,14 @@ The login is a second layer for any exposure, not a reason to publish the consol
 - **Single chain, test token, no upgrade path.** Contracts are not upgradeable; a fix means a new deployment.
 - **WhatsApp live integration is untested.** No Meta credentials were available. Eligibility of an escrow-linked
   use case under the WhatsApp Business Messaging Policy is unresolved ([`docs/negotiation.md`](docs/negotiation.md)).
-- **Supplier console auth is a per-supplier token**, and in the local demo the supplier agent runs on the buyer's server.
+- **Supplier side.** Real suppliers join through WhatsApp, the supplier web page or the supplier API
+  ([`docs/supplier-api.md`](docs/supplier-api.md)), each authorised by a per-supplier token (HMAC of the address
+  under a key in the buyer's data directory; revoke all by deleting that key). The "supplier agent" option is a
+  simulated supplier that runs on the buyer's server with its own private mandate, for demos and tests; it is not
+  another party's agent.
+- **No wallet connect.** Buyer wallets are created by the platform through the factory, and the console signs with
+  the owner and agent keys configured on the device. A visitor cannot attach their own browser wallet.
+- **Local demo without a model key** (`scripts/local-demo.sh`) replaces the model Checker with a labelled
+  rules-only pass so payments can be tried; intent, policy, Gate and contract checks still apply. Outside that
+  explicit setting, a missing model key makes the Checker fail closed.
 - **Novelty and prior art** have not been formally checked.

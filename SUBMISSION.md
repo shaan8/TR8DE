@@ -9,7 +9,8 @@ limits the contract enforces and the owner approves.
 | Technical documentation: architecture, core algorithms, security design | [`README.md`](README.md) (layout, agent core, run and deploy), [`docs/negotiation.md`](docs/negotiation.md) (negotiation engine, WhatsApp), [`SECURITY.md`](SECURITY.md) (security design) |
 | Presentation deck | `docs/deck.pdf` (to be added: exported from the team's deck before submission) |
 | Source code | `src/` (Solidity contracts), `agent/` (Python agent and console API), `ui/` (React console) |
-| Deployment instructions | [`README.md`](README.md#deploy-to-sepolia), [`scripts/deploy-sepolia.sh`](scripts/deploy-sepolia.sh) |
+| Deployment instructions | One-command local demo: [`scripts/local-demo.sh`](scripts/local-demo.sh) ([README](README.md#try-it-on-your-machine-one-command)); Sepolia: [`README.md`](README.md#deploy-to-sepolia), [`scripts/deploy-sepolia.sh`](scripts/deploy-sepolia.sh) |
+| Integration for suppliers' own agents | [`docs/supplier-api.md`](docs/supplier-api.md), example agent [`scripts/supplier_agent_example.py`](scripts/supplier_agent_example.py) |
 | Test cases | `test/` (Foundry: unit, fuzz, invariants), `agent/tests/` (agent, red team, pentest regressions, policy fuzz, login), `ui/tests/` (UI states, Playwright); contract and agent tests plus the UI build run in [CI](.github/workflows/ci.yml) |
 | Security self-assessment | [`SECURITY.md`](SECURITY.md): threat model, layered controls, independent testing and outcomes, deployment model, known limitations |
 | Execution evidence (on-chain) | [`reports/sepolia-evidence.md`](reports/sepolia-evidence.md): contracts and every transaction on Sepolia; [`reports/live/`](reports/live) agent transcripts and hash-chained audit log from the live runs |
