@@ -69,16 +69,6 @@ Implemented against Meta's documentation (checked October 2026; recheck before g
   escalates to the owner. Status updates (sent, delivered, read, failed) update the outbox.
 - Sending needs `WHATSAPP_LIVE_SEND=1`, a token, a phone number ID, and the recipient in `WHATSAPP_ALLOWED_RECIPIENTS`.
 
-**Unresolved policy question.** The WhatsApp Business Messaging Policy restricts "real, virtual, or fake currency"
-and prohibits some lending; it does not mention escrow or money transmission. TR8DE settles in a test token on
-Sepolia. Whether a business using WhatsApp to negotiate terms that end in on-chain escrow is eligible is not settled.
-Keeping settlement outside WhatsApp does not by itself answer it. Get Meta's (or a BSP's) written confirmation before
-live use.
-
-**Not verified live.** No Meta credentials were available, so live webhook delivery and live sends have not been
-tested. The adapter is covered by unit tests (signature, verification, parsing, dedup, window, template, allowlist,
-opt-out) and the simulator runs the same engine.
-
 ### Why a message does not send
 
 The Negotiations page lists what is missing ("Why live WhatsApp cannot send yet"), and each blocked or failed
