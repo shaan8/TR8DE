@@ -9,7 +9,7 @@ limits the contract enforces and the owner approves.
 | Technical documentation: architecture, core algorithms, security design | [`README.md`](README.md) (layout, agent core, run and deploy), [`docs/negotiation.md`](docs/negotiation.md) (negotiation engine, WhatsApp), [`SECURITY.md`](SECURITY.md) (security design) |
 | Presentation deck | Submitted with the entry form |
 | Source code | `src/` (Solidity contracts), `agent/` (Python agent and console API), `ui/` (React console) |
-| Deployment instructions | One-command local demo: [`scripts/local-demo.sh`](scripts/local-demo.sh) ([README](README.md#try-it-on-your-machine-one-command)); Sepolia: [`README.md`](README.md#deploy-to-sepolia), [`scripts/deploy-sepolia.sh`](scripts/deploy-sepolia.sh) |
+| Deployment instructions | [Two ways to run it](README.md#two-ways-to-run-it): local demo [`scripts/local-demo.sh`](scripts/local-demo.sh) (one command, no accounts) and live Sepolia [`scripts/live.sh`](scripts/live.sh) (one funded test key) |
 | Integration for suppliers' own agents | [`docs/supplier-api.md`](docs/supplier-api.md), example agent [`scripts/supplier_agent_example.py`](scripts/supplier_agent_example.py) |
 | Test cases | `test/` (Foundry: unit, fuzz, invariants), `agent/tests/` (agent, red team, pentest regressions, policy fuzz, login), `ui/tests/` (UI states, Playwright); contract and agent tests plus the UI build run in [CI](.github/workflows/ci.yml) |
 | Security self-assessment | [`SECURITY.md`](SECURITY.md): threat model, layered controls, independent testing and outcomes, deployment model, known limitations |

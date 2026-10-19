@@ -12,17 +12,66 @@ Security self-assessment: [`SECURITY.md`](SECURITY.md).
 Submission map (every deliverable and where to find it): [`SUBMISSION.md`](SUBMISSION.md). Execution evidence: [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md).
 Source: https://github.com/shaan8/TR8DE
 
-## Try it on your machine (one command)
+## Two ways to run it
+
+| | Demo (local) | Live (Sepolia) |
+| --- | --- | --- |
+| Chain | A private Ethereum chain on your machine | Sepolia, Ethereum's public test network |
+| You need | git, Node 18+, Python 3.11+ | The same, plus one Sepolia key with about 0.1 test ETH |
+| Setup time | About 2 minutes | About 50 minutes the first time, then instant |
+| Proof | Disappears when you stop it | Public transactions anyone can open on Etherscan |
+
+A model key is optional for both: put one in `.env` (`DASHSCOPE_API_KEY` for Qwen Cloud, or `DEEPSEEK_API_KEY`,
+`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`) to talk to the agent in plain words. OpenRouter has free models.
+
+### Demo: one command, no accounts
 
 ```bash
 git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-demo.sh
 ```
 
-Needs git, Node 18+ and Python 3.11+ (macOS or Linux). The script installs what it needs, starts a private local
-Ethereum chain, deploys the real contracts with seeded suppliers and history, and opens the console with a
-one-time login. No testnet funds, wallets or WhatsApp needed. Add a model key to `.env` (`DASHSCOPE_API_KEY` for
-Qwen Cloud, or `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`) for the chat assistant; without one, negotiations, escrow and owner
-commands still work. To negotiate from your own supplier-side agent, see [`docs/supplier-api.md`](docs/supplier-api.md).
+The script installs what it needs, starts a private chain, deploys the same contracts used on Sepolia with
+seeded suppliers and trade history, and opens the console with a one-time login it prints. Ctrl+C stops it.
+
+Then try:
+
+1. Payments chat: "Create escrow for Lumen PO-104, PHP 120,000, 20% down, delivery in 10 days", then reply "yes".
+2. `/attest <deal>` to confirm delivery: the balance is released and Lumen's record updates from the chain.
+3. Negotiations tab: negotiate with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator), then lock the
+   agreement in escrow.
+4. Your own supplier agent: the script prints a command for
+   [`scripts/supplier_agent_example.py`](scripts/supplier_agent_example.py); see [`docs/supplier-api.md`](docs/supplier-api.md).
+
+**What the demo can and cannot do, compared with live**
+
+| | Demo | Live |
+| --- | --- | --- |
+| Contracts, limits, escrow, deposits, attestation, refunds | Same contracts and rules | Same |
+| Transactions | On a throwaway chain; hashes are not public proof | On Sepolia; every hash opens on Etherscan |
+| Supplier reputation | Read from the chain, from seeded history plus your demo deals | Read from Sepolia, from seeded history plus your real test deals |
+| Keys | Public Anvil test keys (worthless) | Your own keys, kept in `.env` |
+| Paying addresses outside the demo | No: only addresses on the local chain | Yes: any Sepolia address you save as a payee (24 h waiting period) |
+| WhatsApp | Simulator only, never sends | Live sending if you configure Meta credentials |
+| Without a model key | Chat assistant off; negotiations use rules and a scripted supplier; payments use a labelled rules-only Checker | Chat assistant off; the Checker fails closed, so no payments |
+| Persistence | Everything resets on each run | Contracts and history stay on Sepolia |
+
+### Live: your own deployment on Sepolia
+
+1. Create a fresh key for testing only, fund it with about 0.1 Sepolia ETH from a faucet
+   ([Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia),
+   [Alchemy](https://www.alchemy.com/faucets/ethereum-sepolia)), and add it to `.env` as `PRIVATE_KEY=0x...`.
+   Never use a key that holds real funds.
+2. Run:
+
+```bash
+./scripts/live.sh
+```
+
+The script creates the owner and agent keys in `.env` if they are missing, deploys the token, factory and
+wallets, seeds supplier history, asks you to choose a console password, and starts the console. Leave it running
+for the first deployment; later runs reuse it and start in seconds. Payments, attestations and refunds then happen
+as Sepolia transactions, linked to Etherscan from the console. Our own deployment and its transactions are listed
+in [`reports/sepolia-evidence.md`](reports/sepolia-evidence.md).
 
 ## Layout
 

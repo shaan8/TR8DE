@@ -65,7 +65,7 @@ chmod 600 .env
 RPC="${SEPOLIA_RPC_URL:-$(envval SEPOLIA_RPC_URL)}"
 RPC="${RPC:-https://ethereum-sepolia-rpc.publicnode.com}"
 PK="$(envval PRIVATE_KEY)"
-[ -n "$PK" ] || fail "Add PRIVATE_KEY=0x... to .env: a Sepolia key with about 0.1 test ETH (faucets: https://sepoliafaucet.com, https://www.alchemy.com/faucets/ethereum-sepolia). Use a fresh key, never one with real funds."
+[ -n "$PK" ] || fail "Add PRIVATE_KEY=0x... to .env: a Sepolia key with about 0.1 test ETH (faucets: https://cloud.google.com/application/web3/faucet/ethereum/sepolia, https://www.alchemy.com/faucets/ethereum-sepolia). Use a fresh key, never one with real funds."
 CHAIN="$(cast chain-id --rpc-url "$RPC" 2>/dev/null)" || fail "Cannot reach the Sepolia RPC at $RPC. Set SEPOLIA_RPC_URL in .env."
 [ "$CHAIN" = "11155111" ] || fail "$RPC is chain $CHAIN, not Sepolia (11155111)."
 for k in OWNER_PRIVATE_KEY AGENT_PRIVATE_KEY; do
