@@ -6,6 +6,7 @@
 # The gate forwards only /webhooks/whatsapp. Start the console first, then run this and paste the printed
 # callback URL into the Meta app (WhatsApp > Configuration > Webhook), with WHATSAPP_VERIFY_TOKEN, and
 # subscribe to the "messages" field. Ctrl+C stops the tunnel and the gate.
+# TUNNEL=ngrok (or cloudflared) picks the tool; by default cloudflared is used when installed, else ngrok.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,7 +37,8 @@ pids+=($!)
 sleep 1
 
 url=""
-if command -v cloudflared >/dev/null; then
+TUNNEL="${TUNNEL:-$(command -v cloudflared >/dev/null && echo cloudflared || echo ngrok)}"
+if [ "$TUNNEL" = cloudflared ] && command -v cloudflared >/dev/null; then
   cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:$GATE_PORT" >"$LOG" 2>&1 &
   pids+=($!)
   for _ in $(seq 1 30); do
@@ -44,7 +46,7 @@ if command -v cloudflared >/dev/null; then
     [ -n "$url" ] && break
     sleep 1
   done
-elif command -v ngrok >/dev/null; then
+elif [ "$TUNNEL" = ngrok ] && command -v ngrok >/dev/null; then
   ngrok http "127.0.0.1:$GATE_PORT" --log=stdout >"$LOG" 2>&1 &
   pids+=($!)
   for _ in $(seq 1 30); do
@@ -53,8 +55,9 @@ elif command -v ngrok >/dev/null; then
     sleep 1
   done
 else
-  echo "No tunnel tool found. Install one:"
-  echo "  brew install cloudflared      # free, no account"
+  echo "Tunnel tool '$TUNNEL' not found. Install one:"
+  echo "  brew install ngrok            # then: ngrok config add-authtoken <token>; one fixed free domain"
+  echo "  brew install cloudflared      # free, no account; the address changes every run"
   exit 1
 fi
 

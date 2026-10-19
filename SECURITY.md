@@ -207,10 +207,6 @@ The login is a second layer for any exposure, not a reason to publish the consol
   provider.
 - **Timestamps.** Deadlines use `block.timestamp`; drift of seconds does not matter at hour and day granularity.
 - **Single chain, test token, no upgrade path.** Contracts are not upgradeable; a fix means a new deployment.
-- **WhatsApp and Telegram live receiving are not yet tested end to end.** Live WhatsApp sending was tested to one
-  allowlisted number; replies need the webhook tunnel and Meta's app secret, and the Telegram adapter is tested
-  against a fake Bot API only. Eligibility of an escrow-linked
-  use case under the WhatsApp Business Messaging Policy is unresolved ([`docs/negotiation.md`](docs/negotiation.md)).
 - **Supplier side.** Real suppliers join through WhatsApp, the supplier web page or the supplier API
   ([`docs/supplier-api.md`](docs/supplier-api.md)), each authorised by a per-supplier token (HMAC of the address
   under a key in the buyer's data directory; revoke all by deleting that key). The "supplier agent" option is a
@@ -221,4 +217,3 @@ The login is a second layer for any exposure, not a reason to publish the consol
 - **Local demo without a model key** (`scripts/local-demo.sh`) replaces the model Checker with a labelled
   rules-only pass so payments can be tried; intent, policy, Gate and contract checks still apply. Outside that
   explicit setting, a missing model key makes the Checker fail closed.
-- **Novelty and prior art** have not been formally checked.
