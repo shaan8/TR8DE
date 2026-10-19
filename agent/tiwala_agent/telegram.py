@@ -195,7 +195,7 @@ class Poller:
             text = cmd[1:]
         elif cmd == "/help":
             text = "talk to a person" if self.g.contacts.get_by_wa(m.wa_id) else text
-        return self.g.handle(Inbound(m.id, m.wa_id, m.ts, text, m.kind, m.context_id), "telegram")
+        return self.g.submit(Inbound(m.id, m.wa_id, m.ts, text, m.kind, m.context_id), "telegram")
 
     def run_once(self) -> int:
         with self.offset.lock:

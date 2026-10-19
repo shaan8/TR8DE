@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+os.environ.setdefault("CHAT_BURST_S", "0")  # tests send one message at a time; burst merging has its own test
+
 ROOT = Path(__file__).resolve().parents[2]  # repo root (foundry project)
 ANVIL_KEYS = [
     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",  # deployer / platform / issuer

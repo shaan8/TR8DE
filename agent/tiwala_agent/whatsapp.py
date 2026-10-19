@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 WINDOW_S = 24 * 3600
+BURST_S = float(os.environ.get("CHAT_BURST_S", "4"))  # messages this close together are read as one turn
 RATE_N, RATE_S = 20, 600  # per sender: at most 20 messages in 10 minutes reach the engine (and its models)
 STOP_RX = re.compile(r"^\s*(stop|unsubscribe|opt ?out|huwag na)\s*[.!]*\s*$", re.I)
 START_RX = re.compile(r"^\s*(start|subscribe|opt ?in)\s*[.!]*\s*$", re.I)
@@ -332,6 +333,8 @@ class Gateway:
         self.clock = clock
         self._recent: dict[str, list[int]] = {}
         self._notices: dict[str, int] = {}
+        self._burst: dict[str, list] = {}  # sender -> [messages, timer, channel]
+        self._burst_lock = threading.Lock()
 
     def now(self) -> int:
         return int(self.clock())
@@ -388,11 +391,57 @@ class Gateway:
 
     # ---------------------------------------------------------- inbound
 
-    def handle(self, m: Inbound, channel: str) -> dict:
-        """One inbound message, live or simulated. Idempotent on the message id."""
+    def submit(self, m: Inbound, channel: str, burst_s: Optional[float] = None) -> dict:
+        """Live channels: a person often sends a thought in pieces ("um", "let me think", "can you do 20%?"). Hold a
+        message for a few seconds and read everything that arrives meanwhile as one turn. Commands (ACCEPT, STOP,
+        START, REJECT) are never held or merged."""
+        wait = BURST_S if burst_s is None else burst_s
         if not m.id or not self.seen.first_time(f"{channel}:{m.id}"):
             self.log("whatsapp_duplicate", channel=channel, id=m.id[-12:])
             return {"status": "duplicate"}
+        from .negotiation import ACCEPT_RX, REJECT_RX
+        command = any(rx.match(m.text) for rx in (STOP_RX, START_RX, ACCEPT_RX, REJECT_RX))
+        if wait <= 0 or command:
+            self._flush(m.wa_id)
+            return self._process(m, channel)
+        with self._burst_lock:
+            b = self._burst.get(m.wa_id)
+            if b:
+                b[1].cancel()
+                b[0].append(m)
+            else:
+                b = self._burst[m.wa_id] = [[m], None, channel]
+            b[1] = threading.Timer(wait, self._flush, args=(m.wa_id,))
+            b[1].daemon = True
+            b[1].start()
+        return {"status": "held", "pieces": len(b[0])}
+
+    def _flush(self, wa_id: str) -> Optional[dict]:
+        with self._burst_lock:
+            b = self._burst.pop(wa_id, None)
+        if not b:
+            return None
+        b[1].cancel()
+        msgs, channel = b[0], b[2]
+        last = msgs[-1]
+        joined = Inbound(last.id, last.wa_id, last.ts, "\n".join(x.text for x in msgs)[:1000], last.kind,
+                         last.context_id, last.phone_number_id)
+        if len(msgs) > 1:
+            self.log("chat_burst_merged", channel=channel, sender=redact(wa_id), pieces=len(msgs))
+        try:
+            return self._process(joined, channel)
+        except Exception as e:
+            self.log("whatsapp_error", error=f"{type(e).__name__}: {str(e)[:160]}")
+            return None
+
+    def handle(self, m: Inbound, channel: str) -> dict:
+        """One inbound message, live or simulated, processed at once. Idempotent on the message id."""
+        if not m.id or not self.seen.first_time(f"{channel}:{m.id}"):
+            self.log("whatsapp_duplicate", channel=channel, id=m.id[-12:])
+            return {"status": "duplicate"}
+        return self._process(m, channel)
+
+    def _process(self, m: Inbound, channel: str) -> dict:
         c = self.contacts.get_by_wa(m.wa_id)
         if c is None or c.channel != channel:
             self.log("whatsapp_unknown_sender", channel=channel, sender=redact(m.wa_id))

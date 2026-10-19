@@ -1,7 +1,7 @@
 """Telegram adapter: invite binding, long-poll handling and sends, against a fake Bot API (no network)."""
 from tiwala_agent.negotiation import State
 from tiwala_agent.telegram import Invites, Poller, TelegramSender, TgConfig, parse_update
-from tiwala_agent.whatsapp import Gateway
+from tiwala_agent.whatsapp import Gateway, Inbound
 
 from .test_negotiation import LUMEN, T0, cons, world  # noqa: F401  (world is a fixture)
 
@@ -195,3 +195,42 @@ def test_needing_time_gets_a_polite_hold_not_a_vague_warning(world):  # noqa: F8
     n = eng.supplier_text(n.id, "Let me think about it", f"tg:{CHAT}", "m1", "telegram")
     last = n.messages[-1]["text"]
     assert "take your time" in last and "too vague" not in last and n.state == state
+
+
+def test_a_burst_is_one_turn_and_filler_is_not_answered_twice(world):  # noqa: F811
+    """Live run: "Um", "let me think about it", "can u do 20%?" each got a reply. A burst is now read as one turn,
+    the reply comes from the conversation, and a second filler right after a clarification gets no new message."""
+    import threading
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    bot, g, p, _ = setup(world)
+    bind(bot, p)
+    eng = world["eng"]
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none")
+    seen = []
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "counter", "deposit_pct": 20, "summary": "20%"}')])
+    orig = eng.supplier_text
+    g.on_text = lambda *a, **k: seen.append(a[1]) or orig(*a, **k)
+    done = threading.Event()
+    real_flush = g._flush
+    g._flush = lambda w: (real_flush(w), done.set())[0]
+    for piece in ("Um", "let me think about it", "can u do 20%?"):
+        g.submit(Inbound(f"x{piece}", f"tg:{CHAT}", T0, piece), "telegram", burst_s=0.2)
+    assert done.wait(3)
+    assert seen == ["Um\nlet me think about it\ncan u do 20%?"]  # one turn, all three pieces
+    assert [x for x in eng.store.get(n.id).props() if x.by == "supplier"][-1].terms.deposit_bps == 2000
+
+
+def test_reply_writer_is_guarded_and_repeats_are_skipped(world):  # noqa: F811
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    eng = world["eng"]
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "other"}')] * 3)
+    eng.negotiator = ScriptedLLM([LLMResponse(text='{"reply": "No worries! We can do 999 pesos instead."}'),
+                                  LLMResponse(text='{"reply": "Got it. What would you change?"}')])
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none")
+    n = eng.supplier_text(n.id, "hmm", f"tg:{CHAT}", "a", "telegram")
+    assert "999" not in n.messages[-1]["text"] and "too vague" in n.messages[-1]["text"]  # invented number: fallback
+    before = len(n.messages)
+    n = eng.supplier_text(n.id, "um", f"tg:{CHAT}", "b", "telegram")  # same goal within 10 minutes: no new message
+    assert len(n.messages) == before + 1 and n.messages[-1]["dir"] == "in"

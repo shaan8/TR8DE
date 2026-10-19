@@ -373,7 +373,7 @@ async def wa_event(request: Request):
     for m in msgs:
         if m.phone_number_id and s.wa.cfg.phone_number_id and m.phone_number_id != s.wa.cfg.phone_number_id:
             continue
-        s.wa.handle(m, "live")
+        s.wa.submit(m, "live")  # pieces sent within a few seconds are read as one turn
     for st in sts:
         s.wa.status(st)
     return {"ok": True}
