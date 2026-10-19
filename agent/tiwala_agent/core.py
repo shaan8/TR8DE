@@ -82,6 +82,7 @@ GUIDE = "\n".join([
     '**Your own commands (signed with your key, never by the agent)**',
     '- /attest N: confirm delivery of deal N, which releases its balance',
     '- /approve N: approve a deal above your approval threshold',
+    '- /limits: show the agent\'s spending envelope; /limits <per deal> <per day> <on its own up to> to change it',
     '- /dispute N: freeze deal N',
     '- /resolve N release or /resolve N refund: settle a dispute',
     '- /freeze: stop the agent and pause the wallet on-chain; /unfreeze to resume',
@@ -967,6 +968,8 @@ class Tiwala:
                 return self.negotiations.link_whatsapp(m.group(1), m.group(2))
             except Exception as e:
                 return f"Not linked: {str(e)[:200]}"
+        if op == "/limits":
+            return self._limits_command(parts[1:])
         try:
             n = int(parts[1])
         except (IndexError, ValueError):
@@ -990,6 +993,40 @@ class Tiwala:
             if notes:
                 msg += "\n" + "\n".join(notes)
         return msg
+
+    def _limits_command(self, args: list[str]) -> str:
+        """Read or set the agent's spending envelope, signed with the owner key. Typed only, never from a model:
+        an injected message must not be able to raise the authority the agent holds over the owner's money. The
+        payee waiting period is left as it is, since lowering it is what an attacker would want."""
+        ws = self.chain.wallet_state(self.wallet)
+        delay = self.chain.wallet(self.wallet).functions.supplierDelay().call()
+        now = (f"Per deal at most {php(ws.per_deal_cap)}, per day at most {php(ws.daily_cap)}, creates deals on "
+               f"its own up to {php(ws.approval_threshold)}, new payees wait {delay // 3600} h.")
+        usage = "Usage: /limits <per deal> <per day> <on its own up to>, in pesos, for example /limits 200000 150000 170000"
+        if not args:
+            return f"{now}\n{usage}"
+        if len(args) != 3:
+            return f"{usage}\n{now}"
+        try:
+            vals = [round(float(a.replace(",", "").replace("₱", "")) * PHP) for a in args]
+        except ValueError:
+            return f"Those are not amounts I can read.\n{usage}"
+        per_deal, per_day, alone = vals
+        if min(vals) < 0 or per_deal <= 0 or per_day <= 0:
+            return f"Per deal and per day must be above zero; on its own may be zero to stop the agent opening any deal by itself.\n{usage}"
+        r = self.owner.set_limits(per_deal, per_day, alone, delay)
+        self._log("owner_command", command="/limits", ok=r.ok, tx=r.tx_hash, error=r.error,
+                  per_deal_cap=per_deal, daily_cap=per_day, approval_threshold=alone)
+        if not r.ok:
+            return f"Owner action failed: {r.error}"
+        out = [f"Signed by you. Tx {r.tx_hash}",
+               f"Per deal at most {php(per_deal)}, per day at most {php(per_day)}, creates deals on its own up to "
+               f"{php(alone)}, new payees still wait {delay // 3600} h."]
+        if alone > per_deal:
+            out.append(f"{php(alone)} is above the {php(per_deal)} per-deal cap, so the cap is what binds.")
+        if alone == 0:
+            out.append("Every new deal will now wait for you.")
+        return "\n".join(out)
 
     def _status_hint(self, op: str, n: int, error: str) -> str:
         """Plain-words reason for a contract status revert, with the deals the command can act on."""

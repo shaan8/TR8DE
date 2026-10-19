@@ -29,7 +29,11 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
    contract's own `approvalThreshold`: inside it the agent creates the deal and releases the deposit itself, and
    above it the owner confirms. The policy never reaches past that line, and it tightens on its own terms, asking
    the owner whenever a deal is flagged, the payee is not yet active, today's limit would be exceeded or the
-   Checker declines. `agent_authority()` in `policy.py` is the single place that decides this. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
+   Checker declines. `agent_authority()` in `policy.py` is the single place that decides this. The owner moves that line with the
+   typed `/limits` command, signed with the owner key; there is no tool for it, so no model and no injected
+   message can raise the authority the agent holds over the owner's money
+   (`test_the_agent_cannot_raise_its_own_authority`). `/limits` deliberately leaves the payee waiting period
+   alone, since lowering it is what an attacker would want. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
    payee checks pass and the owner types the address's last 4 characters; the owner key signs it.
    Each Gate authorization is single-use. Model replies are grounded: a transaction hash not produced here
    replaces the reply, and peso amounts not taken from wallet data are flagged. Three refused payment requests

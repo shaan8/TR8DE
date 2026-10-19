@@ -211,7 +211,7 @@ Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in 
 The console runs the monitor on its own clock every `MONITOR_INTERVAL_S` seconds (default 300, `0` turns it off),
 so overdue refunds and the underfunded halt do not wait for anyone to open the page. `/tick` runs it on demand.
 
-`/guide` lists what TR8DE can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
+`/guide` lists what TR8DE can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/limits` (show or set the agent's spending envelope, including how much it may commit on its own), `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
 Deadlines accept `YYYY-MM-DD` (23:59) or `YYYY-MM-DD HH:MM` in the device timezone (`TIWALA_TZ` overrides).
 
