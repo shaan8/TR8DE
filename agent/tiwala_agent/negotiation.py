@@ -606,7 +606,7 @@ class Engine:
             n.put(p)
             n.agreement = {"proposal_id": p.id, "terms_hash": p.terms_hash, "buyer": p.accepted_by["buyer"],
                            "supplier": p.accepted_by["supplier"], "expires": p.expires}
-            self._set(n, State.AWAITING_BUYER_APPROVAL, f"Both parties accepted v{p.version}. Waiting for your review.")
+            self._set(n, State.AWAITING_BUYER_APPROVAL, f"Both parties accepted v{p.version}. Taking it to escrow.")
 
     def _hand_to_owner(self, n: Negotiation, reason: str) -> None:
         """The buyer's agent may not end a negotiation on its own: only the owner, or the supplier saying no, closes

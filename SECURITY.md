@@ -25,7 +25,11 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
    closed on errors or unparseable output. Neither can sign.
 2. **Deterministic gate (`core.py`, `policy.py`, `intent.py`, `guard.py`).** Every action needs an HMAC Gate
    authorization minted only after the policy engine allows it. Tier 2 actions need a confirmation matched on the
-   owner's own next message, not on model output. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
+   owner's own next message, not on model output. The line between Tier 1 and Tier 2 for a new deal is the
+   contract's own `approvalThreshold`: inside it the agent creates the deal and releases the deposit itself, and
+   above it the owner confirms. The policy never reaches past that line, and it tightens on its own terms, asking
+   the owner whenever a deal is flagged, the payee is not yet active, today's limit would be exceeded or the
+   Checker declines. `agent_authority()` in `policy.py` is the single place that decides this. Owner-tier actions run only from typed slash commands. A new payee is saved only after the
    payee checks pass and the owner types the address's last 4 characters; the owner key signs it.
    Each Gate authorization is single-use. Model replies are grounded: a transaction hash not produced here
    replaces the reply, and peso amounts not taken from wallet data are flagged. Three refused payment requests
@@ -37,7 +41,9 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
      until it passes, so a payee added through phishing, injection or a stolen session can be removed before any
      money moves. Production setting 24 hours; the run scripts deploy with 10 minutes (`PAYEE_DELAY`) so judges
      can watch the rule work in one session. Our own Sepolia deployment uses 24 hours
-   - `perDealCap`, `dailyCap` (UTC day), `maxDownBps` and `approvalThreshold` bound every deal
+   - `perDealCap`, `dailyCap` (UTC day), `maxDownBps` and `approvalThreshold` bound every deal.
+     `approvalThreshold` is the owner's autonomy budget: `needsApproval = msg.sender != owner && total >
+     approvalThreshold`, so the agent commits funds alone only below it, and the owner sets it with `setLimits`
    - `releaseBalance` requires owner attestation (`confirmDelivery`); refunds before the deadline plus grace revert
    - `withdraw`, `setAgent`, `setLimits`, disputes and resolutions are owner-only
    - `pause` stops agent payouts; `SafeERC20` and `nonReentrant` on every transfer path

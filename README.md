@@ -137,7 +137,8 @@ in [`reports/sepolia-evidence.md`](reports/sepolia-evidence.md).
 | `negotiation_service.py` | Fresh buyer views from chain, idempotent escrow handoff | no |
 
 Guarantees enforced in code: the Coordinator can only draft; execution needs a Gate authorization minted after the
-policy engine allows it; Tier 2 confirmation is matched on the owner's own next message; owner-tier actions
+policy engine allows it; a new deal is created by the agent alone only within the contract's own
+`approvalThreshold`, and needs the owner above it; Tier 2 confirmation is matched on the owner's own next message; owner-tier actions
 (`/attest`, `/approve`, `/dispute`, `/resolve`) run only from typed commands; the Checker fails closed.
 
 ## Live agent run on Sepolia
@@ -206,6 +207,9 @@ Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in 
 `agent/logs/audit.jsonl` slices and `reports/live` transcripts with no model or chain calls. Without
 `?fixture=` the page drives the live agent. `cd ui && npm run shots` renders every state at 1440 and 390 into
 `reports/ui/` and runs axe on each (spec: `docs/ui-spec.md`).
+
+The console runs the monitor on its own clock every `MONITOR_INTERVAL_S` seconds (default 300, `0` turns it off),
+so overdue refunds and the underfunded halt do not wait for anyone to open the page. `/tick` runs it on demand.
 
 `/guide` lists what TR8DE can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.

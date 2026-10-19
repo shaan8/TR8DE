@@ -286,6 +286,7 @@ def supplier_act(request: Request, nid: str, what: str, supplier: str, token: st
                 act.update(terms=_terms(move.terms), note=move.terms.note[:200])
             via = "supplier_api" if n.mode == "api" else "supplier_console"
             n = s.engine.supplier_action(nid, act, n.supplier_identity, via, move.base_version)
+            s.settle_if_agreed(nid)
             if n.mode == "agent":
                 s.run_agent_background(nid)
         else:

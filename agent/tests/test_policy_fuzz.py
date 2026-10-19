@@ -65,7 +65,14 @@ def violations(a: Action, ctx: P.PolicyContext, v) -> list[str]:
     if a.kind != ActionKind.CREATE_DEAL:
         rules["wrong deal"] = d.id != a.deal_id
     if a.kind == ActionKind.CREATE_DEAL:
-        rules |= {"no confirmation on create": not v.needs_confirmation,
+        # The contract lets the agent key create a deal at or below approvalThreshold. The policy must never go
+        # further than that, and never act alone on a flagged deal, an unwaited payee or an unapproved Checker.
+        rules |= {"autonomous beyond agent authority": not v.needs_confirmation and (
+                      a.total > w.approval_threshold or a.total > w.daily_remaining
+                      or not ctx.onchain_listed.get(payee, False)
+                      or ctx.onchain_active_at.get(payee, 0) > w.now
+                      or ctx.checker_approved is not True),
+                  "autonomous with flags raised": not v.needs_confirmation and bool(v.flags),
                   "over per-deal cap": not 0 < a.total <= w.per_deal_cap, "over free balance": a.total > w.free,
                   "over contract down cap": a.down_bps > w.max_down_bps,
                   "over reputation cap": ctx.cap is None or a.down_bps > ctx.cap.cap_bps,

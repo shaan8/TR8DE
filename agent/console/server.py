@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -330,6 +331,37 @@ def _warm():
         except Exception as e:  # no .env or RPC down: the request path reports it when someone asks
             print(f"warm-up skipped: {type(e).__name__}: {e}")
     threading.Thread(target=run, daemon=True).start()
+    _start_monitor()
+
+
+MONITOR_S = int(os.environ.get("MONITOR_INTERVAL_S", "300") or 0)
+_monitor_thread: Optional[threading.Thread] = None
+
+
+def _start_monitor() -> None:
+    """Run the monitor on its own clock, so overdue refunds and the underfunded halt do not wait for someone to
+    open the console. The turn lock serialises it against chat, confirmations and the escrow handoff.
+    MONITOR_INTERVAL_S=0 turns it off for tests and UI shots."""
+    global _monitor_thread
+    if not MONITOR_S or (_monitor_thread and _monitor_thread.is_alive()):
+        return
+
+    def loop():
+        while True:
+            time.sleep(MONITOR_S)
+            try:
+                t = live()
+                with t.turn_lock:
+                    t._events = []
+                    notes = t.tick()
+                if notes:
+                    _remember_alerts(notes)
+                    print(f"monitor: {len(notes)} note(s)")
+            except Exception as e:  # a bad RPC read must not kill the loop
+                print(f"monitor skipped: {type(e).__name__}: {e}")
+    _monitor_thread = threading.Thread(target=loop, daemon=True, name="monitor")
+    _monitor_thread.start()
+    print(f"monitor: every {MONITOR_S}s")
 
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")

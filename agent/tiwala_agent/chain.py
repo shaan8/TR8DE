@@ -294,6 +294,13 @@ class OwnerConsole:
         r = w3.eth.wait_for_transaction_receipt(h, timeout=180)
         return TxResult(r["status"] == 1, "0x" + h.hex().removeprefix("0x"), None, r["blockNumber"])
 
+    def set_limits(self, per_deal_cap: int, daily_cap: int, approval_threshold: int,
+                   supplier_delay: int) -> TxResult:
+        """The owner's own autonomy budget. `approval_threshold` is the line the agent may commit up to on its
+        own; deals above it need the owner's on-chain approval before any payout."""
+        return self._send(self.chain.wallet(self.wallet).functions.setLimits(
+            int(per_deal_cap), int(daily_cap), int(approval_threshold), int(supplier_delay)))
+
     def set_paused(self, paused: bool) -> TxResult:
         return self._send(self.chain.wallet(self.wallet).functions.setPaused(paused))
 

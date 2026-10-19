@@ -190,9 +190,27 @@ def _create(**kw):
     return Action(**a)
 
 
-def test_policy_new_deal_is_tier2():
+def test_policy_new_deal_within_agent_authority_is_autonomous():
+    """The contract lets the agent key commit up to approvalThreshold alone; the policy stops at the same line."""
     v = decide(_create(), _ctx(_create()))
+    assert v.allowed and v.tier == Tier.AUTONOMOUS and not v.needs_confirmation
+
+
+@pytest.mark.parametrize("action_kw,ctx_kw,needle", [
+    (dict(total=160_000_00), {}, "commit on its own"),           # above the contract's own threshold
+    (dict(), dict(wallet=_wallet(spent_today=120_000_00)), "today's limit"),  # would exceed the daily cap
+])
+def test_policy_new_deal_beyond_agent_authority_needs_the_owner(action_kw, ctx_kw, needle):
+    a = _create(**action_kw)
+    v = decide(a, _ctx(a, **ctx_kw))
     assert v.allowed and v.tier == Tier.CONFIRM and v.needs_confirmation
+    assert any(needle in r for r in v.reasons), v.reasons
+
+
+def test_policy_never_acts_alone_on_a_flagged_deal():
+    a = _create()
+    v = decide(a, _ctx(a, buyer_median=1_000_00))  # 100k against a 1k median raises amount_spike
+    assert v.allowed and v.needs_confirmation and "amount_spike" in v.flags
 
 
 @pytest.mark.parametrize("change,needle", [

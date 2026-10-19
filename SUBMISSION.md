@@ -22,7 +22,7 @@ limits the contract enforces and the owner approves.
 | Area | Evidence |
 | --- | --- |
 | Task completion | Live Sepolia runs (deal creation, deposit, attestation, balance release, overdue refund, payee saving, negotiation to escrow); scenario group A |
-| Safe execution and owner control | Every new deal and payee needs the owner's own confirmation; contract caps, daily limit and supplier waiting period; circuit breaker and `/freeze`; scenario group B |
+| Safe execution and owner control | The agent executes within an autonomy budget the owner sets on the contract (`approvalThreshold`): inside it the agent negotiates, creates the escrow and releases the deposit on its own; above it, or for a flagged deal, an inactive payee or a declining Checker, the owner confirms. A new payee always needs the owner. Contract caps, daily limit and supplier waiting period; circuit breaker and `/freeze`; scenario group B |
 | Attack resistance | Prompt injection (direct, contract text, supplier messages), payout redirection, amount tampering, privilege claims, simulation pretexts, blocklisted and re-added suppliers, cross-site and brute-force login attempts; scenario group C, 200k-case policy fuzz, external pentest outcomes in `SECURITY.md` |
 | Privacy and integrity | Data minimised before model calls; private negotiation limits never leave the buyer side; hash-chained audit log anchored on Sepolia and verifiable offline with [`scripts/verify_audit.py`](scripts/verify_audit.py); scenario group D |
 

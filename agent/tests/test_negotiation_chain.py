@@ -1,5 +1,7 @@
 """Negotiation to escrow on a local anvil chain with the real contracts: the agreed terms go through Tiwala's
 policy, Checker, Gate and the owner's own confirmation, exactly once."""
+import json
+
 import pytest
 from web3 import Web3
 
@@ -31,6 +33,8 @@ def constraints(env, total_room=60_000_00, max_total=60_000_00):
 def agree(env, svc):
     n = svc.open("Lumen Textiles", "Cotton fabric", constraints(env), "agent")
     n = svc.run_agent(n.id)
+    svc.await_settlement(n.id)  # agreement settles itself when inside the agent's authority
+    n = svc.engine.store.get(n.id)
     assert n.state == State.AWAITING_BUYER_APPROVAL.value, (n.state, n.reason)
     return n
 
@@ -119,6 +123,7 @@ def test_whatsapp_human_negotiation_to_escrow(env, svc):
     assert svc.wa.handle(Inbound("w1", sim, 0, "ok"), "simulator")["state"] == "awaiting_clarification"
     assert svc.wa.handle(Inbound("w1", sim, 0, "ok"), "simulator")["status"] == "duplicate"
     assert svc.wa.handle(Inbound("w2", sim, 0, f"ACCEPT {code}"), "simulator")["state"] == "awaiting_buyer_approval"
+    svc.await_settlement(n.id)  # acceptance over chat tries to settle itself; this one needs the owner
     assert svc.request_escrow(n.id)["status"] == "needs_confirmation"
     assert "Done." in svc.t.handle("yes").reply
     outs = svc.wa.outbox.for_negotiation(n.id)
@@ -207,3 +212,23 @@ def test_supplier_own_system_negotiates_over_the_api(env, svc, monkeypatch):
     assert agreed.unit_price >= 110_00 and agreed.quantity <= 450 and agreed.deposit_bps >= 1500
     assert svc.request_escrow(n.id)["status"] == "needs_confirmation"
     assert "Done." in svc.t.handle("yes").reply
+
+
+
+def test_agreement_inside_the_agent_authority_needs_no_owner(env, tmp_path):
+    """Topic F's core claim: inside the budget the owner set on the wallet contract, the agent commits the funds
+    itself. No confirmation card is raised and the deposit goes out in the same run."""
+    (env["data"] / "plans.json").write_text(json.dumps({"buffer": 0, "inflows": [], "planned": []}))
+    t = env["make"](coord(("text", "unused")))
+    s = NegotiationService(t, tmp_path / "auto", wa_cfg=Config())
+    now = env["chain"].now()
+    s.mandates.put(SupplierMandate(env["lumen"], 150_00, 110_00, 450, 200, now + 5 * DAY, 1500, [[400, 2000]]))
+    before = n_deals(env)
+    n = s.run_agent(s.open("Lumen Textiles", "Cotton fabric", constraints(env), "agent").id)
+    s.await_settlement(n.id)
+    n = s.engine.store.get(n.id)
+    assert n.state == State.ESCROW_CREATED.value, (n.state, n.reason)
+    assert n_deals(env) == before + 1
+    assert t.pending is None  # the owner was never asked
+    assert n.handoff.get("deal_id") and n.handoff.get("tx"), n.handoff
+    assert n.handoff.get("down_tx"), n.handoff  # the deposit went out on the same autonomous run

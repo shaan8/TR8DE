@@ -40,7 +40,7 @@ from .llm import LLM, LLMResponse
 from .models import (MONEY_MOVING, PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier,
                      Verdict, php)
 from .payee import PayeeVerdict, check_payee, chunk
-from .policy import PolicyContext, PolicySettings, decide
+from .policy import PolicyContext, PolicySettings, agent_authority, decide
 from .privacy import RedactingLLM, Redactor
 from .reputation import DpPolicy, dp_cap, score
 
@@ -476,7 +476,7 @@ class Tiwala:
             card = self._card(a, ctx, deal, verdict, intent.agent_filled, then_release_down)
             self.pending = Pending(a, request, list(self.ledger), (ok, reason), card, time.time(), then_release_down)
             return {"status": "needs_confirmation", "card": card, "flags": verdict.flags}
-        return self._execute(a, verdict, confirmed=False)
+        return self._after_execute(a, self._execute(a, verdict, confirmed=False), then_release_down, False)
 
     def _execute(self, a: Action, verdict: Verdict, confirmed: bool) -> dict:
         auth = self.gate.mint(a, verdict, confirmed)
@@ -488,6 +488,26 @@ class Tiwala:
         if a.kind == ActionKind.CREATE_DEAL:
             out["deal_id"] = self.chain.deal_id_from_receipt(self.wallet, res.tx_hash)
         self._log("executed", action=a.to_dict(), tx=res.tx_hash, block=res.block, **{k: v for k, v in out.items() if k == "deal_id"})
+        return out
+
+    def _after_execute(self, a: Action, out: dict, then_release_down: bool, confirmed: bool) -> dict:
+        """What follows a created deal, whether the owner said yes to a card or the agent acted inside the authority
+        the owner set on the wallet contract: release the agreed deposit, then tell the callbacks the deal exists."""
+        if out["status"] != "executed":
+            return out
+        if then_release_down and out.get("deal_id"):
+            rel = Action(ActionKind.RELEASE_DOWN, a.origin, deal_id=out["deal_id"])
+            terms = (f"\"Down payment: {a.down_bps / 100:g}% = {php(a.total * a.down_bps // 10_000)}, released "
+                     f"right after creation\"")
+            lead = (f"the owner replied yes to a confirmation card for {a.ref or 'this PO'} that said"
+                    if confirmed else
+                    f"the agent created {a.ref or 'this PO'} inside the authority the owner set on the wallet "
+                    f"contract, on terms that said")
+            note = (f"{lead} {terms}. That deal is now deal {out['deal_id']}; this action is that release.")
+            out["down_payment"] = self.propose(rel, system_note=note)
+        if a.kind == ActionKind.CREATE_DEAL or confirmed:  # not the nested deposit release, which rides on the deal
+            for cb in self.on_executed:
+                cb(a, out)
         return out
 
     def confirm_pending(self) -> dict:
@@ -509,17 +529,7 @@ class Tiwala:
             if not verdict.allowed:
                 return {"status": "refused", "reasons": verdict.reasons}
             out = self._execute(p.action, verdict, confirmed=True)
-            if out["status"] == "executed" and p.then_release_down and out.get("deal_id"):
-                rel = Action(ActionKind.RELEASE_DOWN, p.action.origin, deal_id=out["deal_id"])
-                c = p.action
-                note = (f"the owner replied yes to a confirmation card for {c.ref or 'this PO'} that said "
-                        f"\"Down payment: {c.down_bps / 100:g}% = {php(c.total * c.down_bps // 10_000)}, released right "
-                        f"after creation\". That deal is now deal {out['deal_id']}; this action is that release.")
-                out["down_payment"] = self.propose(rel, system_note=note)
-            if out["status"] == "executed":
-                for cb in self.on_executed:
-                    cb(p.action, out)
-            return out
+            return self._after_execute(p.action, out, p.then_release_down, True)
         finally:
             self.ledger = saved
 
@@ -832,6 +842,16 @@ class Tiwala:
         sent = n.get("sent") or ""
         return (f"Opened negotiation NEG-{n['id']} with {p['spec']['supplier']} ({n['channel_label']}). {sent}"
                 " Follow it in the Negotiations tab.").replace("  ", " ")
+
+    def agent_may_create(self, supplier: str, total: int) -> bool:
+        """Whether the wallet contract's own authority covers this deal, so the agent may create it without the
+        owner. Asks the same policy helper the verdict uses, so there is one boundary, not two. The Checker still
+        runs for real in propose(); it can only tighten this, never loosen it."""
+        a = Action(ActionKind.CREATE_DEAL, Origin("negotiation", "authority_precheck"), supplier=supplier,
+                   total=total)
+        ctx, _ = self._context(a)
+        ctx.checker_approved = True
+        return agent_authority(a, ctx) is None
 
     def propose_negotiated(self, detail: str, supplier: str, total: int, down_bps: int, deadline: int, ref: str,
                            summary: str, label: str, supplier_via: str) -> dict:

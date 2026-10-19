@@ -74,6 +74,7 @@ def test_demo_successful_agreement_and_escrow(env, tmp_path):
     p = n.by_id(n.agreement["proposal_id"])
     assert p.terms.quantity == 450 and 110_00 <= p.terms.unit_price <= 130_00 and len(n.proposals) >= 4
     record("neg_success", "Agreement reached: your review", LOCAL, s, n)
+    s.await_settlement(n.id)  # agreement tries to settle itself first; this one still needs the owner
     assert s.request_escrow(n.id)["status"] == "needs_confirmation"
     record("neg_ready", "Escrow card waiting for your yes", LOCAL, s, n)
     out = s.t.handle("yes")

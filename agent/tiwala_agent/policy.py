@@ -81,9 +81,12 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
         refuse.append("No independent Checker review on record.")
 
     if action.kind == ActionKind.CREATE_DEAL:
-        tier = max(tier, Tier.CONFIRM)
-        notes.append("Every new deal needs your confirmation.")
         _check_create(action, ctx, settings, refuse, flags, notes)
+        if why := agent_authority(action, ctx):
+            tier = max(tier, Tier.CONFIRM)
+            notes.append(f"This deal needs your confirmation: {why}.")
+        else:
+            notes.append("Within the authority you set on the wallet contract, so the agent creates it itself.")
     elif action.kind == ActionKind.RELEASE_DOWN:
         _check_release_down(action, ctx, refuse, flags)
     elif action.kind == ActionKind.RELEASE_BALANCE:
@@ -130,6 +133,23 @@ def _payout_checks(addr: str, ctx: PolicyContext, refuse: list, flags: list, rem
             refuse.append("Supplier is not whitelisted on the wallet contract.")
     elif ctx.onchain_active_at.get(addr, 0) > ctx.wallet.now:
         refuse.append("Supplier is in its on-chain cooling period (added or re-added recently); no payouts until it ends.")
+
+
+def agent_authority(action: Action, ctx: PolicyContext) -> Optional[str]:
+    """Why this deal needs the owner, or None when the agent may create it alone. The wallet contract lets the
+    agent key create a deal at or below `approvalThreshold` without the owner; the policy stays inside that same
+    boundary and adds the checks the contract cannot make for itself."""
+    w, total, addr = ctx.wallet, action.total or 0, action.supplier or ""
+    if total > w.approval_threshold:
+        return (f"{php(total)} is above the {php(w.approval_threshold)} the contract lets the agent "
+                f"commit on its own")
+    if total > w.daily_remaining:
+        return f"{php(total)} is above the {php(w.daily_remaining)} left under today's limit"
+    if not ctx.onchain_listed.get(addr, False) or ctx.onchain_active_at.get(addr, 0) > w.now:
+        return "the payee is not whitelisted on the contract or is still in its waiting period"
+    if ctx.checker_approved is not True:
+        return "the Checker did not approve it"
+    return None
 
 
 def _check_create(action: Action, ctx: PolicyContext, s: PolicySettings, refuse: list, flags: list, notes: list) -> None:

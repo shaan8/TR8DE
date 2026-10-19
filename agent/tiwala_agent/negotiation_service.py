@@ -17,8 +17,8 @@ from . import forecast as fc
 from .core import Tiwala, _date, _when
 from .llm import LLM
 from .models import PHP, Action, php
-from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, NegotiationError, State, Store, TERMINAL,
-                          Terms, buyer_checks, cash_impact, escrow_ref, passes)
+from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, NegotiationError, Proposal, State, Store,
+                          TERMINAL, Terms, buyer_checks, cash_impact, escrow_ref, passes)
 from .privacy import RedactingLLM
 from .reputation import DpPolicy, dp_cap, score
 from .supplier_agent import MandateStore, SupplierAgent, SupplierMandate, run_agent_turns
@@ -40,7 +40,7 @@ class NegotiationService:
                              wrap(interpreter), send=self._send)
         self.tg_cfg = tg_cfg or TgConfig.from_env()
         tg_kw = {"call": tg_call} if tg_call else {}
-        self.wa = Gateway(root / "whatsapp", wa_cfg or Config.from_env(), self.engine.supplier_text, self.find_open,
+        self.wa = Gateway(root / "whatsapp", wa_cfg or Config.from_env(), self._supplier_text, self.find_open,
                           self._escalate, self._log, sender=wa_sender, tg=TelegramSender(self.tg_cfg, **tg_kw))
         self.tg = Poller(self.wa, self.tg_cfg, root / "whatsapp",
                          lambda a: self.t.directory[a].name if a in self.t.directory else a, **tg_kw)
@@ -241,7 +241,9 @@ class NegotiationService:
         n = self.engine.store.get(nid)
         if n.mode != "agent":
             raise NegotiationError("this negotiation has no supplier agent")
-        return run_agent_turns(self.engine, nid, self.agent_for(n.supplier_address))
+        n = run_agent_turns(self.engine, nid, self.agent_for(n.supplier_address))
+        self.settle_if_agreed(nid)
+        return n
 
     def run_agent_background(self, nid: str) -> bool:
         th = self._runs.get(nid)
@@ -262,7 +264,64 @@ class NegotiationService:
         th = self._runs.get(nid)
         return bool(th and th.is_alive())
 
+    def await_settlement(self, nid: str, timeout: float = 30.0) -> None:
+        """Block until the automatic escrow attempt for this negotiation has finished, for callers that need the
+        settled state at once rather than on the next refresh."""
+        if th := self._runs.get(f"settle-{nid}"):
+            th.join(timeout)
+
     # ---------------------------------------------------------- escrow handoff
+
+    def _supplier_text(self, nid: str, text: str, identity: str, msg_id: str, channel: str) -> Negotiation:
+        """The gateway's hook into the engine. Settlement is attempted only after the engine's own turn has
+        finished and saved, never from inside it, so nothing races the turn that produced the agreement."""
+        n = self.engine.supplier_text(nid, text, identity, msg_id, channel)
+        self.settle_if_agreed(n.id)
+        return n
+
+    def settle_if_agreed(self, nid: str) -> None:
+        """Both sides accepted and the deal is inside the authority the owner set on the wallet contract: the agent
+        settles it itself, off the caller's thread. Anything beyond that authority waits for the owner to send it to
+        escrow, exactly as before, so a confirmation card is never raised behind their back."""
+        try:
+            n = self.engine.store.get(nid)
+            if State(n.state) != State.AWAITING_BUYER_APPROVAL or not n.agreement:
+                return
+            p = n.by_id(n.agreement["proposal_id"])
+            if p is None or not self.t.agent_may_create(n.supplier_address, p.terms.total):
+                self._log("negotiation_settle_deferred", negotiation=nid, reason="beyond the agent's authority")
+                return
+        except Exception as e:
+            self._log("negotiation_settle_deferred", negotiation=nid, error=str(e)[:200])
+            return
+
+        def go():
+            try:
+                self._log("negotiation_settling", negotiation=nid)
+                if self.request_escrow(nid).get("status") == "needs_confirmation":
+                    self._hand_escrow_back(nid)
+            except Exception as e:  # a closed or expired negotiation must not take the caller down
+                self._log("negotiation_settle_failed", negotiation=nid, error=str(e)[:200])
+        th = threading.Thread(target=go, name=f"settle-{nid}", daemon=True)
+        self._runs[f"settle-{nid}"] = th
+        th.start()
+
+    def _hand_escrow_back(self, nid: str) -> None:
+        """The full review wanted the owner after the pre-check had let the agent through: the Checker said no, or a
+        flag was raised. Undo the automatic attempt, so the owner sends it to escrow themselves exactly as they would
+        have, rather than finding a confirmation card they never asked for."""
+        if (pend := self.t.pending) and pend.action.origin.detail.split(":", 1)[0] == nid:
+            self.t.pending = None
+        with self.engine.store.lock:
+            n = self.engine.store.get(nid)
+            if State(n.state) != State.READY_FOR_ESCROW:
+                return
+            n.state = State.AWAITING_BUYER_APPROVAL.value
+            n.handoff = {}
+            n.reason = "Both sides accepted. Send it to escrow when you are ready."
+            n.note("escrow_deferred", "the review asked for your confirmation; waiting for you", self.engine.now())
+            self.engine.store.save(n)
+        self._log("negotiation_settle_deferred", negotiation=nid, reason="the review asked for your confirmation")
 
     def request_escrow(self, nid: str) -> dict:
         with self.t.turn_lock:  # same order everywhere: owner turn first, then the negotiation store
@@ -313,6 +372,9 @@ class NegotiationService:
                        f"Terms hash {p.terms_hash[:16]}.")
             out = t.propose_negotiated(detail, n.supplier_address, tt.total, tt.deposit_bps, tt.deliver_by, ref,
                                        summary, f"NEG-{n.id} v{p.version}", via)
+            if out["status"] == "executed":  # within the agent's on-chain authority: _on_executed linked it
+                self._log("negotiation_handoff", negotiation=n.id, proposal=p.id, status=out["status"], ref=ref)
+                return {**out, "events": t._events}
             if out["status"] == "needs_confirmation":
                 n.state = State.READY_FOR_ESCROW.value
                 n.handoff = {"state": "pending", "ref": ref, "proposal": p.id}
