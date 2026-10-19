@@ -6,7 +6,8 @@
 #   2. ./scripts/live.sh
 #
 # The script creates the owner and agent keys if .env has none, deploys the token, factory and wallets, seeds
-# supplier history (about 5 minutes, mostly waiting for the seeded late deals' deadline), and starts the console.
+# supplier history, and starts the console. Expect about 50 minutes on the first run: Sepolia confirms one block every
+# 12 seconds, the deploy sends about 110 transactions, and two seeded "late" deals must pass their deadline.
 # A second run reuses your deployment. Test tokens only: never put a key that holds real funds in .env.
 set -euo pipefail
 
@@ -86,12 +87,14 @@ if [ -f "$DEP" ] && [ -f .live-deployed ] && [ "$(cat .live-deployed)" = "$(echo
 fi
 
 if [ "$REUSE" = 0 ]; then
-  say "3/6 Deploying to Sepolia (about 5 minutes)"
+  say "3/6 Deploying to Sepolia (about 50 minutes; leave it running)"
   BAL_WEI="$(cast balance "$DEPLOYER" --rpc-url "$RPC")"
   .venv/bin/python -c "import sys; sys.exit(int('$BAL_WEI') < 8 * 10**16)" \
     || fail "Deployer $DEPLOYER has $(cast from-wei "$BAL_WEI") ETH; it needs about 0.1 Sepolia ETH. Fund it from a faucet and rerun."
   if [ -f "$DEP" ] && [ ! -f deployments/11155111.reference.json ]; then cp "$DEP" deployments/11155111.reference.json; fi
-  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-180}"
+  # The seeded late deals need a deadline after all ~110 transactions land (12 s blocks): 45 minutes, as in the
+  # original deployment.
+  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-2700}"
   restore() { [ -f deployments/11155111.reference.json ] && cp deployments/11155111.reference.json "$DEP" || rm -f "$DEP"; }
   ./scripts/deploy-sepolia.sh 2>&1 | tee .live-deploy.log | grep -E "^(Deployer|Balance|Waiting|Done)" \
     || { restore; fail "The deployment failed; see .live-deploy.log. Rerun to start a fresh deployment."; }
