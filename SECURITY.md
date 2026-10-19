@@ -33,7 +33,10 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
    Every payout path (create, down payment, balance, monitor) re-runs the blocklist and supplier status checks.
 3. **Scoped signer (`chain.py`).** The agent key can call only operator functions; each call is simulated first.
 4. **Contract (`TiwalaAgentWallet`).** For the agent key:
-   - payees must be whitelisted by the owner and active after `supplierDelay`
+   - payees must be whitelisted by the owner and active after `supplierDelay`: a newly saved payee cannot be paid
+     until it passes, so a payee added through phishing, injection or a stolen session can be removed before any
+     money moves. Production setting 24 hours; the run scripts deploy with 10 minutes (`PAYEE_DELAY`) so judges
+     can watch the rule work in one session. Our own Sepolia deployment uses 24 hours
    - `perDealCap`, `dailyCap` (UTC day), `maxDownBps` and `approvalThreshold` bound every deal
    - `releaseBalance` requires owner attestation (`confirmDelivery`); refunds before the deadline plus grace revert
    - `withdraw`, `setAgent`, `setLimits`, disputes and resolutions are owner-only

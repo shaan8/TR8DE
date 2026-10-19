@@ -6,7 +6,7 @@ set -euo pipefail
 eval "$(python3 - <<'PY'
 import os, shlex
 keys = ("SEPOLIA_RPC_URL", "PRIVATE_KEY", "OWNER_PRIVATE_KEY", "AGENT_PRIVATE_KEY", "ACCOUNT_SALT", "ETHERSCAN_API_KEY",
-        "LATE_WINDOW", "DEMO_GRACE", "BUYER_FUND_WEI")
+        "LATE_WINDOW", "DEMO_GRACE", "BUYER_FUND_WEI", "PAYEE_DELAY")
 vals = {}
 if os.path.exists(".env"):
     for line in open(".env").read().splitlines():

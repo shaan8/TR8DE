@@ -71,7 +71,7 @@ Red-team notes, what we tried and what was fixed: [`SECURITY.md`](SECURITY.md#ju
 | Transactions | On a throwaway chain; hashes are not public proof | On Sepolia; every hash opens on Etherscan |
 | Supplier reputation | Read from the chain, from seeded history plus your demo deals | Read from Sepolia, from seeded history plus your real test deals |
 | Keys | Public Anvil test keys (worthless) | Your own keys, kept in `.env` |
-| Paying addresses outside the demo | No: only addresses on the local chain | Yes: any Sepolia address you save as a payee (24 h waiting period) |
+| Paying addresses outside the demo | No: only addresses on the local chain | Yes: any Sepolia address you save as a payee, payable after a 10-minute waiting period (`PAYEE_DELAY`; 24 h in production) |
 | WhatsApp | Built-in simulator only; never sends, whatever `.env` says | Real messages both ways with Meta credentials ([docs/whatsapp-webhook.md](docs/whatsapp-webhook.md)) |
 | Telegram | Off; never sends, whatever `.env` says | Real messages both ways with a bot token; no public URL needed ([docs/telegram.md](docs/telegram.md)) |
 | Without a model key | Chat assistant off; negotiations use rules and a scripted supplier; payments use a labelled rules-only Checker | Chat assistant off; the Checker fails closed, so no payments |

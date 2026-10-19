@@ -73,7 +73,7 @@ port_busy "$CHAIN_PORT" || fail "The local chain did not start; see $DEMO/anvil.
 
 say "3/6 Contracts and network history (about 30 s)"
 export PRIVATE_KEY="$KEY_DEPLOYER" OWNER_PRIVATE_KEY="$KEY_OWNER" AGENT_PRIVATE_KEY="$KEY_AGENT" \
-       ACCOUNT_SALT="0x$(printf '11%.0s' $(seq 1 32))" DEMO_GRACE=600 LATE_WINDOW=120
+       ACCOUNT_SALT="0x$(printf '11%.0s' $(seq 1 32))" DEMO_GRACE=600 LATE_WINDOW=120 PAYEE_DELAY=600
 forge script script/Deploy.s.sol --rpc-url "$RPC" --broadcast >"$DEMO/deploy.log" 2>&1 \
   || fail "Deploying the contracts failed; see $DEMO/deploy.log"
 cast rpc evm_increaseTime 200 --rpc-url "$RPC" >/dev/null && cast rpc evm_mine --rpc-url "$RPC" >/dev/null

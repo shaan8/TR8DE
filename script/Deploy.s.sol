@@ -14,7 +14,7 @@ import {TiwalaAgentWallet} from "../src/TiwalaAgentWallet.sol";
 /// Run Finish.s.sol once LATE_WINDOW seconds have passed to close the 2 late deals.
 ///
 /// Env: PRIVATE_KEY, OWNER_PRIVATE_KEY, AGENT_PRIVATE_KEY, ACCOUNT_SALT (bytes32),
-///      optional BUYER_FUND_WEI (default 0.01 ether), LATE_WINDOW (default 120 s),
+///      optional BUYER_FUND_WEI (default 0.01 ether), PAYEE_DELAY (default 1 day), LATE_WINDOW (default 120 s),
 ///      DEMO_GRACE (default 600 s).
 contract Deploy is Script {
     uint256 constant PHP = 100; // 2 decimals
@@ -102,8 +102,10 @@ contract Deploy is Script {
         dw.addSupplier(lumen);
         dw.addSupplier(bayani);
         _onTime(demo, bayani, 50_000, 2000, "PO-098");
-        // From now on, newly added payees wait 1 day; short grace so the overdue beat fits the video.
-        dw.setLimits(200_000 * PHP, 150_000 * PHP, 150_000 * PHP, 1 days);
+        // From now on, newly added payees wait PAYEE_DELAY seconds before they can be paid (default 1 day, the
+        // production setting; the run scripts use 10 minutes so judges can see the rule without losing a day).
+        // Short grace so the overdue beat fits the video.
+        dw.setLimits(200_000 * PHP, 150_000 * PHP, 150_000 * PHP, uint64(vm.envOr("PAYEE_DELAY", uint256(1 days))));
         dw.setEscrowPolicy(5000, demoGrace);
         vm.stopBroadcast();
 

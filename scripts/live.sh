@@ -112,7 +112,8 @@ if [ "$REUSE" = 0 ]; then
   # The seeded late deals need a deadline after all ~110 transactions land (12 s blocks): 45 minutes, as in the
   # original deployment.
   # Gas on Sepolia costs a few wei, so 0.002 ETH per seeded buyer (0.004 for owner and agent) is plenty.
-  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-2700}" BUYER_FUND_WEI="${BUYER_FUND_WEI:-2000000000000000}"
+  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-2700}" BUYER_FUND_WEI="${BUYER_FUND_WEI:-2000000000000000}" \
+         PAYEE_DELAY="${PAYEE_DELAY:-600}"  # new payees wait 10 minutes before they can be paid (24 h in production)
   restore() { [ -f deployments/11155111.reference.json ] && cp deployments/11155111.reference.json "$DEP" || rm -f "$DEP"; }
   ./scripts/deploy-sepolia.sh 2>&1 | tee .live-deploy.log | grep -E "^(Deployer|Balance|Waiting|Done)" \
     || { restore; fail "The deployment failed; see .live-deploy.log. Rerun to start a fresh deployment."; }
