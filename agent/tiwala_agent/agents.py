@@ -99,7 +99,7 @@ COORDINATOR_TOOLS = [
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
     {"name": "forecast", "description": "Test a new PO against the cash forecast; returns shortfall and ranked fixes.",
      "input_schema": {"type": "object", "properties": {"total_php": {"type": "number"},
-                                                        "date": {"type": "string", "description": "YYYY-MM-DD"}},
+                                                        "date": {"type": "string", "description": "YYYY-MM-DD when the money leaves the free balance. For a new escrow deal that is today (the full PO is locked at creation), not the delivery date."}},
                       "required": ["total_php"]}},
     {"name": "draft_create_deal", "description": "Draft a new escrow deal. The full total is locked at creation.",
      "input_schema": {"type": "object", "properties": {

@@ -98,7 +98,7 @@ PAYEE_CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm|oo|sige)\s+([0-9a-f]{4})\s*[.
 PENDING_TTL_S = 600
 TX_RX = re.compile(r"0x[0-9a-fA-F]{64}")
 NUM_RX = re.compile(r"\d[\d,]*(?:\.\d+)?")
-PESO_RX = re.compile(r"(?:₱|PHP\s?)(\d[\d,]*(?:\.\d+)?)\s*(k\b)?", re.I)
+PESO_RX = re.compile(r"(?:₱|PHP\s?)(\d(?:[\d,]*\d)?(?:\.\d+)?)\s*(k\b)?", re.I)
 BREAKER_REFUSALS, BREAKER_WINDOW_S = 3, 600  # suspicious refused payment requests before the agent freezes itself
 BREAKER_FLAGS = {"intent_mismatch", "checker_reject", "blocklisted", "unregistered_payee", "contract_text_origin"}
 MAX_TOOL_STEPS = 8
@@ -644,7 +644,8 @@ class Tiwala:
                 continue
             c = m["content"]
             parts += [c] if isinstance(c, str) else [b.get("content", "") for b in c if isinstance(b, dict)]
-        return "\n".join(str(p) for p in parts)
+        text = "\n".join(str(p) for p in parts)
+        return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: " " + chr(int(m.group(1), 16)), text)  # JSON-escaped ₱
 
     def _tx_is_ours(self, h: str) -> bool:
         """Signed here this session, or a mined transaction to this wallet or from its owner."""

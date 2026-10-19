@@ -678,3 +678,9 @@ def test_honest_mistakes_do_not_trip_the_breaker(env):
     for _ in range(4):
         t.handle("Lumen PO-1 ₱1,000, 10% down")
     assert not t.frozen()
+
+
+def test_card_amounts_repeated_by_the_model_are_not_flagged(env):
+    t = env["make"](coord(CREATE_LUMEN(env, 20), ("text", "Please confirm: lock ₱120,000, release ₱24,000 now, ₱96,000 later.")))
+    r = t.handle("Create escrow for Lumen PO-104, ₱120,000, 20% down")
+    assert "CONFIRM NEW ESCROW DEAL" in r.reply and "Check:" not in r.reply, r.reply
