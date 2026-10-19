@@ -89,14 +89,19 @@ def test_agreement_within_both_mandates(world):
 def test_no_feasible_agreement_stops_safely(world):
     n, agent = open_agent(world, m=mandate(list_unit_price=260_00, min_unit_price=200_00))
     n = run_agent_turns(world["eng"], n.id, agent)
-    assert n.state == State.REJECTED.value and n.agreement is None, n.reason
+    assert n.agreement is None
+    # only the supplier (saying no) or the owner closes; the buyer's agent hands over instead
+    assert (n.state == State.REJECTED.value and n.reason.startswith("the supplier")) or (n.escalated and "owner" in n.reason), n.reason
     assert all(p.terms.total <= 60_000_00 for p in n.props() if p.by == "buyer")
 
 
 def test_rounds_are_bounded(world):
     n, agent = open_agent(world, m=mandate(list_unit_price=200_00, min_unit_price=118_00), rounds=3)
     n = run_agent_turns(world["eng"], n.id, agent)
-    assert len(n.proposals) <= 3 and n.state in (State.REJECTED.value, State.AWAITING_BUYER_APPROVAL.value)
+    assert len(n.proposals) <= 3
+    assert n.state in (State.NEGOTIATING.value, State.AWAITING_BUYER_APPROVAL.value) or n.reason.startswith("the supplier")
+    if n.state == State.NEGOTIATING.value:
+        assert n.escalated  # out of rounds: the owner decides, nothing was closed
 
 
 # ------------------------------------------------------------------ buyer limits
@@ -285,8 +290,9 @@ def gateway(world, cfg=Config(), sender=None):
     eng = world["eng"]
 
     def find_open(addr):
-        return next((x.id for x in eng.store.all() if x.state not in ("rejected", "expired", "cancelled",
-                                                                      "escrow_created")), None)
+        return next((x.id for x in eng.store.all()
+                     if x.supplier_address.lower() == addr.lower()
+                     and x.state not in ("rejected", "expired", "cancelled", "escrow_created")), None)
     esc = []
     g = Gateway(world["tmp"] / "wa", cfg, eng.supplier_text, find_open, lambda nid, note: esc.append(note),
                 lambda e, **k: None, sender=sender, clock=world["clock"])
@@ -323,6 +329,19 @@ def test_duplicate_webhook_delivery_is_a_noop(world):
     before = world["eng"].store.get(n.id).to_dict()
     assert g.handle(m, "simulator")["status"] == "duplicate"
     assert world["eng"].store.get(n.id).to_dict() == before
+
+
+
+def test_one_number_two_suppliers_routes_to_the_open_deal(world):
+    """The owner's own number can be linked to several suppliers. A reply belongs to whichever has a deal open."""
+    g, _ = gateway(world)
+    idle = "0x4Cda1F90B5beF0827985ECD45c9240dFfc7779ec"  # linked first, no negotiation of its own
+    g.contacts.put(Contact(idle, WA, "live", opted_in_at=T0 - 20))
+    g.contacts.put(Contact(LUMEN, WA, "live", opted_in_at=T0 - 10))
+    n = world["eng"].open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "live",
+                          WA, "none")
+    r = g.handle(Inbound("wamid.1", WA, T0, f"ACCEPT {n.current().code}"), "live")
+    assert r.get("negotiation") == n.id and r["status"] == "processed"
 
 
 def test_unknown_sender_opt_out_and_escalation(world):

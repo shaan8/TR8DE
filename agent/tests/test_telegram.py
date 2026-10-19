@@ -234,3 +234,18 @@ def test_reply_writer_is_guarded_and_repeats_are_skipped(world):  # noqa: F811
     before = len(n.messages)
     n = eng.supplier_text(n.id, "um", f"tg:{CHAT}", "b", "telegram")  # same goal within 10 minutes: no new message
     assert len(n.messages) == before + 1 and n.messages[-1]["dir"] == "in"
+
+
+def test_out_of_rounds_hands_to_owner_and_never_closes(world):  # noqa: F811
+    """Live run: "closing this negotiation: no agreement within 8 offers". Only the owner or the supplier closes."""
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    from tiwala_agent.negotiation import State
+    eng = world["eng"]
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "counter", "unit_price_php": 140}')] * 10)
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none", max_rounds=3)
+    for i in range(4):
+        n = eng.supplier_text(n.id, "140 each", f"tg:{CHAT}", f"r{i}", "telegram")
+    assert n.state not in (State.REJECTED.value, State.CANCELLED.value, State.EXPIRED.value)
+    assert n.escalated and any("passed your offer to the buyer" in m["text"] for m in n.messages if m["dir"] == "out")
+    assert not any("closing this negotiation" in m["text"] for m in n.messages)

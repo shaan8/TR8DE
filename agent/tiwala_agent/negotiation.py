@@ -577,7 +577,7 @@ class Engine:
         bad = t.problems()
         if bad:
             raise NegotiationError("; ".join(bad))
-        if len(n.proposals) >= n.max_rounds:
+        if len(n.proposals) >= n.max_rounds and source != "owner":  # the limit binds the agents, not the owner
             raise NegotiationError(f"the {n.max_rounds}-offer limit is reached")
         for old in n.props():  # a counteroffer supersedes every earlier version and any acceptance of it
             if old.status in ("open", "accepted"):
@@ -607,6 +607,16 @@ class Engine:
             n.agreement = {"proposal_id": p.id, "terms_hash": p.terms_hash, "buyer": p.accepted_by["buyer"],
                            "supplier": p.accepted_by["supplier"], "expires": p.expires}
             self._set(n, State.AWAITING_BUYER_APPROVAL, f"Both parties accepted v{p.version}. Waiting for your review.")
+
+    def _hand_to_owner(self, n: Negotiation, reason: str) -> None:
+        """The buyer's agent may not end a negotiation on its own: only the owner, or the supplier saying no, closes
+        it. When the agent has nothing more it may offer, the supplier's offer stays open for the owner to decide."""
+        n.escalated = True
+        self._set(n, State.NEGOTIATING, f"waiting for the owner: {reason}")
+        n.note("escalated", reason, self.now())
+        self.log("negotiation_escalated", negotiation=n.id, note=reason)
+        self._say(n, "Thank you. That is beyond what I can agree to on my own, so I have passed your offer to the "
+                     "buyer to decide. You will hear back here; nothing is accepted or closed in the meantime.")
 
     def _close(self, n: Negotiation, state: State, reason: str, tell_supplier: bool = True) -> None:
         for p in n.props():
@@ -763,11 +773,11 @@ class Engine:
         take your time) gets no new message, like a person would leave it; someone trying to accept always gets the
         exact code again."""
         last = next((m for m in reversed(n.messages) if m["dir"] == "out"), None)
-        if (goal in ("ask_specific", "wait") and last and last.get("goal") == goal
+        if (goal in ("ask_specific", "wait", "handed") and last and last.get("goal") == goal
                 and self.now() - last.get("ts", 0) < 600):
             self.log("negotiation_reply_skipped", negotiation=n.id, goal=goal)
             return
-        text = chat_reply(self.negotiator, n, cur, goal) or fallback
+        text = (chat_reply(self.negotiator, n, cur, goal) if goal != "handed" else None) or fallback
         open_ = cur if cur and cur.by == "buyer" and cur.status == "open" else None
         if open_ and goal != "question" and open_.code not in text:
             text += f" To accept offer v{open_.version} as is, reply ACCEPT {open_.code}."
@@ -845,6 +855,13 @@ class Engine:
         if t is None or t.problems():
             self._clarify(n, cur)
             return
+        if len(n.proposals) >= n.max_rounds:  # out of rounds: no new version; the owner sees it and decides
+            n.note("supplier_counter_after_limit", str(j.get("summary", ""))[:200], self.now())
+            if not n.escalated:
+                self._hand_to_owner(n, f"no agreement within {n.max_rounds} offers; the owner decides")
+            else:
+                self._reply(n, None, "handed", "Noted. The buyer has your latest message and will reply here.")
+            return
         # Text terms were read by a model, so they are a candidate, not the supplier's acceptance.
         p = self._new_proposal(n, "supplier", t, "supplier_text", str(j.get("summary", ""))[:200])
         self._set(n, State.NEGOTIATING)
@@ -869,7 +886,8 @@ class Engine:
                 self._say(n, "We can accept: " + offer_text(n, p) + f" Reply ACCEPT {p.code} to confirm.", p)
             return
         if left <= 0:
-            self._close(n, State.REJECTED, f"no agreement within {n.max_rounds} offers")
+            self._hand_to_owner(n, f"no agreement within {n.max_rounds} offers; the owner decides on the supplier's "
+                                   f"offer v{sup.version}")
             return
         prev = n.last_by("buyer").terms
         t, final = rules_counter(sup.terms, prev, c, v)
@@ -880,7 +898,7 @@ class Engine:
                 t, source, final = cand, "buyer_model", False
             note = str(s.get("message", ""))[:300]
         if not passes(buyer_checks(t, c, v)):
-            self._close(n, State.REJECTED, "no offer fits your limits (budget, reserve, quantity or date)")
+            self._hand_to_owner(n, "no counter fits your limits (budget, reserve, quantity or date)")
             return
         if feasible and t == sup.terms:  # the counter would repeat their offer: accept it instead
             self._accept(n, sup, "buyer", "tiwala:buyer", source)
@@ -891,8 +909,7 @@ class Engine:
             return
         last_buyer = n.last_by("buyer")
         if t == last_buyer.terms and last_buyer.final:
-            self._close(n, State.REJECTED, "no feasible agreement: the supplier's terms stay outside your limits "
-                        "and your final offer stands")
+            self._hand_to_owner(n, "the supplier's terms stay outside your limits and your final offer stands")
             return
         if _leaks(note, c, v) or flags:
             note = ""  # never echo a note that carries a private number or answers flagged supplier text
@@ -928,6 +945,7 @@ class Engine:
             if not passes(checks):
                 raise NegotiationError(" ".join(x.detail for x in checks if not x.ok and x.severity == "refuse"))
             p = self._new_proposal(n, "buyer", t, "owner", note, accept_as="tiwala:buyer")
+            n.escalated = False  # the owner has decided
             self._set(n, State.AWAITING_ACCEPTANCE, "you changed the terms; the supplier must accept the new version")
             self._say(n, (note + " " if note else "") + "Updated offer: " + offer_text(n, p) +
                       f" Reply ACCEPT {p.code} to accept.", p)
