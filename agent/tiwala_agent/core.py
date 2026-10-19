@@ -62,7 +62,7 @@ def user_tz() -> tzinfo:
 CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm(ed)?|ok(ay)?|go( ahead)?|proceed|sige|oo)\s*[.!]*\s*$", re.I)
 GUIDE = "\n".join([
     '**What TR8DE does**',
-    'Pays your suppliers through on-chain escrow. The full PO is locked when a deal is created, the down payment goes out right after, and the balance only after you confirm delivery. Every new deal comes back to you for a yes.',
+    'Pays your suppliers through on-chain escrow. The full PO is locked when a deal is created, the down payment goes out right after, and the balance only after you confirm delivery. Inside the limits you set with /limits, a deal you describe in full (supplier, total, down payment, PO) is created and funded by the agent itself; anything larger, flagged or filled in by the agent comes back to you for a yes.',
     '',
     '**Try asking**',
     "- What's my balance and what deals are open?",

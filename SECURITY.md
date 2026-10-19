@@ -61,7 +61,7 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 | Policy fuzzing: 200,000 seeded random cases, every payout rule checked after each decision | 0 violations; three planted bugs each caught |
 | Secret scan of the full git history (gitleaks in CI, plus a check of every `.env` value) | No secrets committed; only the public Anvil test keys, allowlisted |
 | Slither 0.11.6 on `src/` | 0 high, 0 medium; 14 informational, triaged in [`reports/slither-triage.md`](reports/slither-triage.md) |
-| Live red-team on Sepolia | Injection, unknown payee, forced revert, social engineering: all held ([`README.md`](README.md#live-agent-run-on-sepolia)) |
+| Live red-team on Sepolia | Injection, unknown payee, forced revert, social engineering: all held ([`README.md`](README.md#4-execution-evidence)) |
 
 ## Independent testing (18 October 2026)
 
