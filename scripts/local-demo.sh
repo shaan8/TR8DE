@@ -52,12 +52,15 @@ fi
 
 rm -rf "$DEMO" && mkdir -p "$DEMO"
 cleanup() {
+  local status=$?
   [ -n "${CONSOLE_PID:-}" ] && kill "$CONSOLE_PID" 2>/dev/null || true
   [ -n "${CHAIN_PID:-}" ] && kill "$CHAIN_PID" 2>/dev/null || true
   wait 2>/dev/null || true
   echo; echo "Stopped. Chain and demo data were temporary."
+  exit "$status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 say "2/6 Local chain"
 anvil --port "$CHAIN_PORT" --silent >"$DEMO/anvil.log" 2>&1 &

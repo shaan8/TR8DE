@@ -37,7 +37,8 @@ def seed(dep_path: Path, demo: Path) -> dict:
     fd = os.open(login, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write(f"username: demo\npassword: {password}\n")
-    (demo / "env").write_text(f"TIWALA_ADMIN_USER=demo\nTIWALA_ADMIN_PASS_HASH={hash_password(password)}\n")
+    # Single-quoted: the scrypt hash contains "$", which a shell must not expand when it sources this file.
+    (demo / "env").write_text(f"TIWALA_ADMIN_USER='demo'\nTIWALA_ADMIN_PASS_HASH='{hash_password(password)}'\n")
     return {"password": password, "suppliers": sup}
 
 
