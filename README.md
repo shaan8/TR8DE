@@ -190,7 +190,8 @@ on WhatsApp (or the local simulator) or with the supplier's agent, then carries 
 through the same policy, Checker, Gate and your own yes. Replays: `?view=negotiate&fixture=neg_success` (also
 `neg_ready`, `neg_escrow`, `neg_impossible`, `neg_injection`) and `?view=supplier&fixture=neg_success`.
 Design, trust model, WhatsApp policy notes and limitations: [`docs/negotiation.md`](docs/negotiation.md). Telegram
-setup (no webhook needed): [`docs/telegram.md`](docs/telegram.md).
+setup (no webhook needed): [`docs/telegram.md`](docs/telegram.md). Live WhatsApp replies on a laptop, through a
+webhook-only tunnel: [`docs/whatsapp-webhook.md`](docs/whatsapp-webhook.md).
 
 For a local demo without Meta credentials:
 
