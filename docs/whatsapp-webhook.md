@@ -17,7 +17,10 @@ still checks the verify token and Meta's HMAC signature on every call.
 
 Live mode only: the local demo blanks every WhatsApp setting so it can never message anyone.
 
-0. `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (Meta app > WhatsApp > API setup),
+0. `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (Meta app > WhatsApp > API setup; the token shown
+   there expires after 24 hours, and an expired token fails with "Authentication Error (code 190)". For longer use,
+   create a System User in Business settings with the `whatsapp_business_messaging` and
+   `whatsapp_business_management` permissions and generate a token that never expires),
    `WHATSAPP_TEMPLATE_NAME=hello_world` (Meta's pre-approved template, used for the first message), and
    `WHATSAPP_LIVE_SEND=1`. `WHATSAPP_ALLOWED_RECIPIENTS` is optional: if set, only those numbers can be messaged.
 1. In `.env`: `WHATSAPP_APP_SECRET` (Meta app > App settings > Basic > App secret) and `WHATSAPP_VERIFY_TOKEN`

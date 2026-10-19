@@ -1,6 +1,6 @@
 """FastAPI over the Tiwala core for the React console (ui/).
 
-    cd agent && ../.venv/bin/uvicorn console.server:app --port 8000
+    cd agent && ../.venv/bin/uvicorn console.server:app --port 8000 --no-access-log   # access logs would record query strings
 
 Every endpoint takes ?fixture=<name>: it then replays audit.jsonl slices and reports/live transcripts
 (see fixtures.py) with no LLM or chain call. Without it the endpoint drives the live agent, built the

@@ -197,7 +197,7 @@ the agent's daily limit left and open deals beside the chat. It uses OpenRouter 
 
 ```bash
 cd ui && npm install && npm run build                                # builds ui/dist
-cd ../agent && ../.venv/bin/uvicorn console.server:app --port 8000   # API + page on :8000
+cd ../agent && ../.venv/bin/uvicorn console.server:app --port 8000 --no-access-log   # API + page on :8000
 ```
 
 Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in the header) to replay

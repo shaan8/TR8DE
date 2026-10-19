@@ -270,6 +270,20 @@ def _post_json(url: str, body: dict, bearer: str) -> dict:
         return json.loads(r.read().decode())
 
 
+def _meta_error(e: Exception) -> str:
+    """Meta's own reason for a failed call, in plain words, never the token."""
+    detail = ""
+    try:
+        err = json.loads(e.read().decode()).get("error", {})  # urllib HTTPError carries Meta's JSON body
+        detail = f"{err.get('message', '')} (code {err.get('code')})".strip()
+    except Exception:
+        pass
+    status = getattr(e, "code", None)
+    hint = {401: " The access token is expired or invalid: tokens from Meta's API Setup page last 24 hours; use a "
+                 "System User token for anything longer, then restart."}.get(status, "")
+    return (f"{type(e).__name__} {status or ''}: {detail or str(e)[:120]}".strip() + hint)[:300]
+
+
 class CloudSender:
     """Live Cloud API sends. Refuses anything not explicitly allowed."""
 
@@ -298,7 +312,7 @@ class CloudSender:
             r = self.post(url, body, c.access_token)
             return True, str(((r.get("messages") or [{}])[0]).get("id", "")), ""
         except Exception as e:  # report, never retry automatically: a retry could duplicate an offer
-            return False, "", f"{type(e).__name__}: {str(e)[:160]}"
+            return False, "", _meta_error(e)
 
 
 class Gateway:
