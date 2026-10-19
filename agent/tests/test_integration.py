@@ -654,3 +654,16 @@ def test_without_a_model_key_the_console_still_works(env):
     r = t.handle("What is my balance?")
     assert "chat assistant is off" in r.reply and "DEEPSEEK_API_KEY" in r.reply
     assert "/attest N" in t.handle("/guide").reply
+
+
+def test_missing_key_checker_fails_closed_unless_the_local_demo_opts_in(env, monkeypatch):
+    from tiwala_agent.core import OfflineLLM, RulesOnlyChecker, llms_or_offline
+    boom = lambda: (_ for _ in ()).throw(KeyError("DEEPSEEK_API_KEY"))
+    monkeypatch.delenv("TIWALA_CHECKER", raising=False)
+    assert isinstance(llms_or_offline(boom)["checker"], OfflineLLM)
+    deal_id = locked_deal(env, env["lumen"])
+    v = verdict_of(env["make"](coord(("tool", "draft_release_down_payment", {"deal_id": deal_id}), ("text", "ok")),
+                               checker=llms_or_offline(boom)["checker"]).handle(f"Release the down payment for Lumen deal {deal_id}"))
+    assert not v["allowed"] and any("failing closed" in x for x in v["reasons"]), v
+    monkeypatch.setenv("TIWALA_CHECKER", "rules")
+    assert isinstance(llms_or_offline(boom)["checker"], RulesOnlyChecker)

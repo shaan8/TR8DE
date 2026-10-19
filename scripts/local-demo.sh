@@ -92,7 +92,7 @@ export RPC_URL="$RPC" TIWALA_DEPLOYMENT="$ROOT/deployments/31337.json" TIWALA_DA
 # Never touch live messaging from the demo, whatever .env says.
 export WHATSAPP_LIVE_SEND=0 WHATSAPP_ACCESS_TOKEN="" WHATSAPP_PHONE_NUMBER_ID="" WHATSAPP_APP_SECRET="" \
        WHATSAPP_VERIFY_TOKEN="" WHATSAPP_ALLOWED_RECIPIENTS=""
-if [ "$MODEL_KEY" = 0 ]; then export TIWALA_NEGOTIATOR=rules TIWALA_SUPPLIER_AGENT=scripted; fi
+if [ "$MODEL_KEY" = 0 ]; then export TIWALA_NEGOTIATOR=rules TIWALA_SUPPLIER_AGENT=scripted TIWALA_CHECKER=rules; fi
 (cd agent && exec ../.venv/bin/uvicorn console.server:app --host 127.0.0.1 --port "$PORT" --log-level warning) \
   >"$DEMO/console.log" 2>&1 &
 CONSOLE_PID=$!
@@ -108,17 +108,19 @@ cat <<EOF
   Sign in   username demo, password $PASSWORD   (also in .local-demo/login.txt)
 
   Try:
-  - Payments: "Create escrow for Lumen PO-104, PHP 120,000, 20% down, delivery in 10 days", reply "yes",
-    then "/attest <deal>" to confirm delivery and watch the balance release and Lumen's record change.
-  - Negotiations: start one with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator).
+  - Negotiations: start one with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator). When both
+    sides agree, press "Recheck and prepare escrow", then reply "yes" in Payments to lock it on the chain.
+  - Payments: type "/attest <deal>" to confirm delivery and watch the balance release and Lumen's record change.
+    With a model key you can also ask in plain words, e.g. "Create escrow for Lumen PO-104, PHP 120,000, 20% down".
   - Your own supplier agent: in another terminal,
       TIWALA_SUPPLIER_TOKEN=$LUMEN_TOKEN python3 scripts/supplier_agent_example.py \\
         --url http://127.0.0.1:$PORT --supplier $LUMEN --min-price 110 --max-qty 450 --min-deposit 15
     then start a Lumen negotiation with "Supplier's own system (API)".
 EOF
 if [ "$MODEL_KEY" = 0 ]; then
-  echo "  Note: no model key found in .env, so the chat assistant is off. Negotiations use rules and a scripted"
-  echo "  supplier. Add DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env and rerun for the full agent."
+  echo "  Note: no model key found in .env. The chat assistant is off, negotiations use rules and a scripted supplier,"
+  echo "  and payments use a labelled rules-only Checker (intent, policy and contract checks still apply). Add"
+  echo "  DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env and rerun for the full agent."
 fi
 echo
 echo "  Ctrl+C to stop."

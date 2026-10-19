@@ -35,7 +35,7 @@ from .chain import Chain, OwnerConsole
 from .data import Plans, load_blocklist, load_directory, load_plans, save_directory
 from .guard import as_data, tag_contract, tag_user
 from .intent import parse as parse_intent, verify as verify_intent
-from .llm import LLM
+from .llm import LLM, LLMResponse
 from .models import (MONEY_MOVING, PHP, Action, ActionKind, Deal, Origin, Outcome, Status, SupplierEntry, Tier,
                      Verdict, php)
 from .payee import PayeeVerdict, check_payee, chunk
@@ -141,13 +141,24 @@ class OfflineLLM(LLM):
                            "nothing was drafted or sent.")
 
 
+class RulesOnlyChecker(LLM):
+    """Local demo without a model key only (TIWALA_CHECKER=rules, set by scripts/local-demo.sh). The model Checker
+    is replaced by an explicit, labelled pass; the deterministic intent verifier, policy, Gate and contract still
+    decide. Never the default: without this setting a missing key makes the Checker fail closed."""
+
+    def complete(self, system, messages, tools=None):
+        return LLMResponse('{"approve": true, "reason": "Rules-only check: no model key in this local demo, so the '
+                           'model Checker is off. Intent, policy and contract checks still apply."}')
+
+
 def llms_or_offline(make) -> dict:
     """Build the model clients, or offline stand-ins naming the missing key."""
     try:
         return make()
     except KeyError as e:
         off = OfflineLLM(str(e).strip("'"))
-        return {"coordinator": off, "checker": off, "treasury": None}
+        checker = RulesOnlyChecker() if os.environ.get("TIWALA_CHECKER") == "rules" else off
+        return {"coordinator": off, "checker": checker, "treasury": None}
 
 
 # ---------------------------------------------------------------------- gate
