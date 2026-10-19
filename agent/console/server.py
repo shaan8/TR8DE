@@ -139,6 +139,15 @@ def live():
         return _live
 
 
+NETWORKS = {11155111: ("Sepolia testnet", "https://sepolia.etherscan.io"), 31337: ("Local test chain", None)}
+
+
+def network(t) -> dict:
+    cid = t.chain.w3.eth.chain_id
+    name, explorer = NETWORKS.get(cid, (f"Chain {cid}", None))
+    return {"network": name, "explorer": explorer}
+
+
 def _live_state() -> dict:
     from tiwala_agent.guard import tag_contract
     from tiwala_agent.models import PHP
@@ -163,10 +172,10 @@ def _live_state() -> dict:
         "wallet": {"free": ws.free / PHP, "locked": ws.locked / PHP, "balance": ws.balance / PHP,
                    "daily_left": ws.daily_remaining / PHP, "daily_cap": ws.daily_cap / PHP,
                    "per_deal_cap": ws.per_deal_cap / PHP, "paused": ws.paused, "underfunded": ws.underfunded,
-                   "source": "Sepolia, live"},
+                   "source": f"{network(t)['network']}, live"},
         "payees": payees, "pending_payee": {**pp.verdict.to_dict(), "card_text": pp.card} if pp else None,
         "now": ws.now, "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
-        "turns": [], "pending": pending, "explorer": "https://sepolia.etherscan.io",
+        "turns": [], "pending": pending, **network(t),
     }
 
 

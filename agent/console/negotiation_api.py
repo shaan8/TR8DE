@@ -123,8 +123,9 @@ def list_negotiations(fixture: Optional[str] = Query(None)):
     if fixture:
         f = _fixture(fixture)
         return {"negotiations": [f["buyer"]], "simulated": True, "whatsapp": f.get("whatsapp", {}), "fixture": f["meta"]}
+    from .server import network
     s = svc()
-    return {"negotiations": [s.buyer_dict(n) for n in s.engine.store.all()[:20]],
+    return {"negotiations": [s.buyer_dict(n) for n in s.engine.store.all()[:20]], **network(s.t),
             "whatsapp": s.wa.cfg.status(), "escalations": s.escalations[-10:],
             "payees": [{"name": e.name, "address": a, "agent": s.mandates.get(a) is not None,
                         "whatsapp": (lambda c: c.channel if c and c.opted_in else None)(s.wa.contacts.get(a)),

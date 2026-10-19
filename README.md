@@ -29,11 +29,11 @@ commands still work. To negotiate from your own supplier-side agent, see [`docs/
 | Path | What |
 | --- | --- |
 | `src/` | `TiwalaAgentWallet` (escrow, owner/agent tiers), `TiwalaFactory` (platform-gated, account-hash dedup), `SettlementToken` (tPHP, 2 decimals) |
-| `test/` | 42 Foundry tests (38 unit, 1 fuzz, 3 invariant) |
+| `test/` | Foundry unit, fuzz and invariant tests (run in CI) |
 | `script/` | `Deploy.s.sol` (deploy + seed network history), `Finish.s.sol` (close the 2 late deals) |
 | `scripts/` | `deploy-sepolia.sh` (one-command deploy), `evidence_table.py` (builds the evidence report from broadcasts) |
 | `agent/tiwala_agent/` | Agent core (Python) |
-| `agent/tests/` | 122 tests: deterministic layer, negotiation, WhatsApp adapter, end-to-end red-team on anvil |
+| `agent/tests/` | Deterministic layer, negotiation, WhatsApp and supplier API, console login, red team, pentest regressions and 200k-case policy fuzz, on anvil; grouped results in [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md) |
 | `reports/` | Test, coverage and Slither output; `live/` holds live agent transcripts and the audit log; `negotiation/` holds recorded negotiation demos |
 
 ## Agent core

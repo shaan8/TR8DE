@@ -4,7 +4,7 @@ import { Composer, EmptyChat, Suggestions, Turn } from "./components/Chat.jsx";
 import { Feed, NeedsYou } from "./components/Feed.jsx";
 import { DailyLimit, Deals, Payees, Suppliers, Wallet } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
-import { getJSON, postJSON, query, sendMessage } from "./lib.js";
+import { getJSON, postJSON, query, sendMessage, setExplorer } from "./lib.js";
 import { ViewNav } from "./Negotiate.jsx";
 
 function StatePicker({ fixture, list }) {
@@ -40,7 +40,7 @@ export default function App() {
   const load = async (initial = false) => {
     try {
       const s = await getJSON("/api/state", fixture);
-      setState(s); setActivity(s.activity);
+      setExplorer(s.explorer); setState(s); setActivity(s.activity);
       if (initial) { setTurns(s.turns); setPendingLine(s.pending?.line ?? null); setPendingPayeeLine(s.pending_payee_line ?? null); }
     } catch (e) { setError(String(e.message || e)); }
   };
@@ -124,7 +124,7 @@ export default function App() {
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-section font-bold tracking-tight">Tiwala</h1>
-          <p className="text-sm text-ink-2">Escrow agent for your supplier payments · Sepolia testnet</p>
+          <p className="text-sm text-ink-2">Escrow agent for your supplier payments · {state?.network || "Sepolia testnet"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {fixture && <Chip tone="accent">Fixture {state.state_no}: {state.title}</Chip>}
@@ -170,7 +170,7 @@ export default function App() {
         </div>
       </div>
       <footer className="mt-6 text-cap text-ink-2">
-        {fixture ? <>Replayed from <span className="font-mono">{state.audit_source}</span> and reports/live transcripts. No model or chain calls.</> : "Live: Sepolia and the configured model."}
+        {fixture ? <>Replayed from <span className="font-mono">{state.audit_source}</span> and reports/live transcripts. No model or chain calls.</> : `Live: ${state?.network || "Sepolia testnet"} and the configured model.`}
       </footer>
     </div>
   );

@@ -99,8 +99,29 @@ PENDING_TTL_S = 600
 TX_RX = re.compile(r"0x[0-9a-fA-F]{64}")
 NUM_RX = re.compile(r"\d[\d,]*(?:\.\d+)?")
 PESO_RX = re.compile(r"(?:₱|PHP\s?)(\d[\d,]*(?:\.\d+)?)\s*(k\b)?", re.I)
-BREAKER_REFUSALS, BREAKER_WINDOW_S = 3, 600  # refused payment requests from chat before the agent freezes itself
+BREAKER_REFUSALS, BREAKER_WINDOW_S = 3, 600  # suspicious refused payment requests before the agent freezes itself
+BREAKER_FLAGS = {"intent_mismatch", "checker_reject", "blocklisted", "unregistered_payee", "contract_text_origin"}
 MAX_TOOL_STEPS = 8
+
+
+def _option_view(o) -> dict:
+    """Forecast options in the owner's terms: pesos, not centavo units; dates, not unix day numbers."""
+    desc = re.sub(r"(\d+) units", lambda m: php(int(m.group(1))), o.detail)
+    desc = re.sub(r"day (\d+)", lambda m: _date(int(m.group(1)) * 86400), desc)
+    params = {}
+    for k, v in o.params.items():
+        if k.endswith("day"):
+            params[k.removesuffix("day").rstrip("_") + "_date" if k != "day" else "date"] = _date(v * 86400)
+        else:
+            params[f"{k}_php"] = v / PHP
+    return {"kind": o.kind, "detail": desc, "params": params}
+
+
+def _today_note() -> str:
+    """The model has no clock: give it today's date so "in 10 days" or "next Friday" become real dates."""
+    now = datetime.now(user_tz())
+    return (f"\n\nToday is {now.strftime('%A %Y-%m-%d %H:%M')} ({now.tzname()}). Turn relative dates such as "
+            f"\"in 10 days\" into YYYY-MM-DD from today; never use a date before today.")
 
 
 def _date(ts: int) -> str:
@@ -151,12 +172,25 @@ class RulesOnlyChecker(LLM):
                            'model Checker is off. Intent, policy and contract checks still apply."}')
 
 
+PROVIDER_KEYS = {"deepseek": "DEEPSEEK_API_KEY", "openrouter": "OPENROUTER_API_KEY",
+                 "anthropic": "ANTHROPIC_API_KEY", "qwen": "DASHSCOPE_API_KEY"}
+
+
 def llms_or_offline(make) -> dict:
-    """Build the model clients, or offline stand-ins naming the missing key."""
-    try:
-        return make()
-    except KeyError as e:
-        off = OfflineLLM(str(e).strip("'"))
+    """Build the model clients. If the configured provider has no key, use the first provider that has one (and
+    tell the negotiation side through TIWALA_LLM_PROVIDER); with no key at all, offline stand-ins naming the gap."""
+    first = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
+    tried = [first] + [p for p in PROVIDER_KEYS if p != first and os.environ.get(PROVIDER_KEYS[p])]
+    err: Optional[KeyError] = None
+    for p in tried:
+        os.environ["TIWALA_LLM_PROVIDER"] = p
+        try:
+            return make()
+        except KeyError as e:
+            err = err or e
+    os.environ["TIWALA_LLM_PROVIDER"] = first
+    if err is not None:
+        off = OfflineLLM(str(err).strip("'"))
         checker = RulesOnlyChecker() if os.environ.get("TIWALA_CHECKER") == "rules" else off
         return {"coordinator": off, "checker": checker, "treasury": None}
 
@@ -402,7 +436,8 @@ class Tiwala:
         self._log("agent_frozen", reason=reason)
 
     def _note_refusal(self, a: Action) -> Optional[str]:
-        """Repeated refused payment requests from chat look like an attack or a confused model: stop the agent."""
+        """Repeated payment requests refused for security reasons (wrong payee, intent mismatch, Checker
+        rejection, blocklist, contract-text origin) look like an attack or a hijacked model: stop the agent."""
         now = time.time()
         self._refusals = [t for t in getattr(self, "_refusals", []) if now - t < BREAKER_WINDOW_S] + [now]
         if len(self._refusals) >= BREAKER_REFUSALS and not self.frozen():
@@ -425,7 +460,8 @@ class Tiwala:
                   checker={"approve": ok, "reason": reason}, verdict=verdict.to_dict())
         if not verdict.allowed:
             out = {"status": "refused", "reasons": verdict.reasons, "flags": verdict.flags}
-            if a.origin.kind == "user" and (b := self._note_refusal(a)):
+            suspicious = set(verdict.flags) & BREAKER_FLAGS  # honest mistakes (a past date, a cap) do not count
+            if a.origin.kind == "user" and suspicious and (b := self._note_refusal(a)):
                 out["reasons"] = out["reasons"] + [b]
             return out
         if verdict.needs_confirmation:
@@ -564,7 +600,7 @@ class Tiwala:
         for _ in range(MAX_TOOL_STEPS):
             try:
                 r = RedactingLLM(self.llms["coordinator"], self._redactor).complete(
-                    COORDINATOR_SYSTEM, self.history, COORDINATOR_TOOLS)
+                    COORDINATOR_SYSTEM + _today_note(), self.history, COORDINATOR_TOOLS)
             except Exception as e:  # model down or rate-limited: nothing was drafted, so drop the turn
                 del self.history[turn_start:]
                 self._log("coordinator_error", error=f"{type(e).__name__}: {str(e)[:200]}")
@@ -708,7 +744,7 @@ class Tiwala:
             total = round(float(a["total_php"]) * PHP)
             day = _parse_deadline(a["date"]) // 86400 if a.get("date") else today
             f = fc.with_new_deal(ws.free, p.inflows, p.planned, p.buffer, today, total, day)
-            opts = [o.__dict__ for o in fc.options(ws.free, p.inflows, p.planned, p.buffer, today, total, day)]
+            opts = [_option_view(o) for o in fc.options(ws.free, p.inflows, p.planned, p.buffer, today, total, day)]
             summary = {"ok": f.ok, "shortfall_php": f.shortfall / PHP,
                        "shortfall_date": _date(f.shortfall_day * 86400) if f.shortfall_day else None,
                        "free_php": ws.free / PHP, "buffer_php": p.buffer / PHP}
@@ -938,6 +974,7 @@ class Tiwala:
                     f"Agent frozen off-chain; the on-chain pause failed ({r.error}).")
         (self.data / "frozen.json").unlink(missing_ok=True)
         self._refusals = []
+        self.history, self.ledger, self.pending = [], [], None  # fresh conversation: no stale "frozen" context
         self._log("agent_unfrozen")
         if not self.chain.wallet_state(self.wallet).paused:
             return "Agent unfrozen. The wallet was not paused."

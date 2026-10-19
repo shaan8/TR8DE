@@ -667,3 +667,14 @@ def test_missing_key_checker_fails_closed_unless_the_local_demo_opts_in(env, mon
     assert not v["allowed"] and any("failing closed" in x for x in v["reasons"]), v
     monkeypatch.setenv("TIWALA_CHECKER", "rules")
     assert isinstance(llms_or_offline(boom)["checker"], RulesOnlyChecker)
+
+
+def test_honest_mistakes_do_not_trip_the_breaker(env):
+    steps = []
+    for _ in range(4):
+        steps += [("tool", "draft_create_deal", {"supplier": "Lumen Textiles", "total_php": 1000, "down_pct": 10,
+                                                 "deadline": "2020-01-01", "po_ref": "PO-1"}), ("text", "ok")]
+    t = env["make"](coord(*steps), checker=approve_all())
+    for _ in range(4):
+        t.handle("Lumen PO-1 ₱1,000, 10% down")
+    assert not t.frozen()

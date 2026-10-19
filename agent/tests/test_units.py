@@ -399,3 +399,37 @@ def test_model_never_sees_phones_accounts_or_wallet_addresses():
     assert addr not in sent and "9627" not in sent and "4567" not in sent and "9012" not in sent and "j@x.ph" not in sent
     assert "120,000" in sent and "ADDR_1" in sent
     assert out.tool_calls[0].args["address"] == addr and addr in out.text
+
+
+def test_provider_falls_back_to_the_one_with_a_key(monkeypatch):
+    import os
+    from tiwala_agent.core import OfflineLLM, llms_or_offline
+    for k in ("DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "DASHSCOPE_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("TIWALA_LLM_PROVIDER", "deepseek")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+
+    def make():
+        p = os.environ["TIWALA_LLM_PROVIDER"]
+        if p != "openrouter":
+            raise KeyError("DEEPSEEK_API_KEY")
+        return {"coordinator": "or", "checker": "or", "treasury": None}
+
+    assert llms_or_offline(make)["coordinator"] == "or" and os.environ["TIWALA_LLM_PROVIDER"] == "openrouter"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    monkeypatch.setenv("TIWALA_LLM_PROVIDER", "deepseek")
+    assert isinstance(llms_or_offline(make)["coordinator"], OfflineLLM)
+
+
+def test_coordinator_is_told_todays_date():
+    from datetime import datetime
+    from tiwala_agent.core import _today_note, user_tz
+    assert datetime.now(user_tz()).strftime("%Y-%m-%d") in _today_note()
+
+
+def test_forecast_options_reach_the_model_in_pesos_and_dates():
+    from tiwala_agent.core import _option_view
+    opts = fc.options(10_000_00, [fc.Flow(20100, 90_000_00, "Receivable")], [], 20_000_00, 20000, 30_000_00, 20001)
+    v = [_option_view(o) for o in opts]
+    top = next(x for x in v if x["kind"] == "top_up")
+    assert top["params"] == {"amount_php": 10_000.0} and "₱10,000.00" in top["detail"] and "day " not in top["detail"]

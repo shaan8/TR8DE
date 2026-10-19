@@ -7,7 +7,7 @@ limits the contract enforces and the owner approves.
 | Deliverable | Where |
 | --- | --- |
 | Technical documentation: architecture, core algorithms, security design | [`README.md`](README.md) (layout, agent core, run and deploy), [`docs/negotiation.md`](docs/negotiation.md) (negotiation engine, WhatsApp), [`SECURITY.md`](SECURITY.md) (security design) |
-| Presentation deck | `docs/deck.pdf` (to be added: exported from the team's deck before submission) |
+| Presentation deck | Submitted with the entry form |
 | Source code | `src/` (Solidity contracts), `agent/` (Python agent and console API), `ui/` (React console) |
 | Deployment instructions | One-command local demo: [`scripts/local-demo.sh`](scripts/local-demo.sh) ([README](README.md#try-it-on-your-machine-one-command)); Sepolia: [`README.md`](README.md#deploy-to-sepolia), [`scripts/deploy-sepolia.sh`](scripts/deploy-sepolia.sh) |
 | Integration for suppliers' own agents | [`docs/supplier-api.md`](docs/supplier-api.md), example agent [`scripts/supplier_agent_example.py`](scripts/supplier_agent_example.py) |

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Ban, Bot, CheckCircle2, Clock, FileWarning, Handshake, KeyRound, Lock, MessageSquare, Phone, Send, ShieldAlert, User, XCircle } from "lucide-react";
 import clsx from "clsx";
 import { Button, Card, Chip, Panel, Row } from "./components/ui.jsx";
-import { day, peso, request, short, txUrl, when } from "./lib.js";
+import { day, peso, request, setExplorer, short, txUrl, when } from "./lib.js";
 import { logout } from "./Login.jsx";
 
 const P = (units) => peso(units / 100, 2);
@@ -256,7 +256,7 @@ export default function Negotiate() {
   const load = async () => {
     try {
       const j = await call(`/api/negotiations${fixture ? `?fixture=${fixture}` : ""}`);
-      setData(j);
+      setExplorer(j.explorer); setData(j);
       setSel((s) => s || j.negotiations[0]?.id || null);
     } catch (e) { setErr(String(e.message || e)); }
   };
@@ -287,7 +287,7 @@ export default function Negotiate() {
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-section font-bold tracking-tight">Tiwala</h1>
-          <p className="text-sm text-ink-2">Negotiate supplier terms, then lock the exact agreement in escrow · Sepolia testnet</p>
+          <p className="text-sm text-ink-2">Negotiate supplier terms, then lock the exact agreement in escrow · {data?.network || "Sepolia testnet"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}

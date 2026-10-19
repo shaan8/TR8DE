@@ -1,6 +1,8 @@
-export const EXPLORER = "https://sepolia.etherscan.io";
-export const txUrl = (h) => `${EXPLORER}/tx/${h}`;
-export const addrUrl = (a) => `${EXPLORER}/address/${a}`;
+let EXPLORER = "https://sepolia.etherscan.io";
+/** The server says which chain it is on; a local test chain has no public explorer, so links are dropped. */
+export const setExplorer = (url) => { if (url !== undefined) EXPLORER = url; };
+export const txUrl = (h) => (EXPLORER ? `${EXPLORER}/tx/${h}` : undefined);
+export const addrUrl = (a) => (EXPLORER ? `${EXPLORER}/address/${a}` : undefined);
 export const chunk = (a) => (a ? "0x" + a.slice(2).match(/.{1,4}/g).join(" ") : "");
 export const short = (h, n = 10) => (h ? `${h.slice(0, n)}…${h.slice(-4)}` : "");
 export const peso = (v, dp = 0) =>
