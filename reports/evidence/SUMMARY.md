@@ -1,17 +1,17 @@
 # Tiwala execution evidence
 
-Commit `f69a0eb (with local changes)`, Python 3.14.7, 2026-10-18 21:37 UTC, 74 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `b8972b5 (with local changes)`, Python 3.14.7, 2026-10-19 08:00 UTC, 68 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
-**155/155 scenarios pass.**
+**158/158 scenarios pass.**
 
 | Group | Passed |
 | --- | --- |
 | C. Attacks blocked | 53/53 |
 | D. Privacy and integrity | 10/10 |
 | B. Safe execution and owner control | 30/30 |
-| A. Task completion | 62/62 |
+| A. Task completion | 65/65 |
 
 Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed payouts reached: cancel_deal 974, create_deal 141, release_balance 175, release_down_payment 198. Three deliberately planted bugs (no payee checks, no daily limit, no Checker) are each caught.
 
@@ -136,6 +136,8 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | full flow through deepseek adapter | test_integration | pass |
 | timed deadline overdue counts as non delivery | test_integration | pass |
 | down payment followup tells checker about confirmed card | test_integration | pass |
+| without a model key the console still works | test_integration | pass |
+| missing key checker fails closed unless the local demo opts in | test_integration | pass |
 | agreement within both mandates | test_negotiation | pass |
 | liquidity accounting under full value lock | test_negotiation | pass |
 | exact code accepts and old code does not | test_negotiation | pass |
@@ -145,6 +147,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | negotiated escrow created once with exact terms | test_negotiation_chain | pass |
 | whatsapp human negotiation to escrow | test_negotiation_chain | pass |
 | owner chat starts live whatsapp negotiation | test_negotiation_chain | pass |
+| supplier own system negotiates over the api | test_negotiation_chain | pass |
 | demo successful agreement and escrow | test_negotiation_demo | pass |
 | typed new supplier passes | test_payee | pass |
 | malformed address stops early | test_payee | pass |
