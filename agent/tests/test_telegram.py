@@ -183,3 +183,15 @@ def test_vague_reply_gets_a_plain_too_vague_answer_with_an_example(world):  # no
     assert "too vague" in last and "for example" in last and f"ACCEPT {n.current().code}" in last
     n = eng.supplier_text(n.id, "ok", f"tg:{CHAT}", "m2", "telegram")  # a bare "ok" is never acceptance
     assert "too vague" in n.messages[-1]["text"] and n.agreement is None
+
+
+def test_needing_time_gets_a_polite_hold_not_a_vague_warning(world):  # noqa: F811
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    eng = world["eng"]
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "wait", "summary": "needs time"}')])
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none")
+    state = n.state
+    n = eng.supplier_text(n.id, "Let me think about it", f"tg:{CHAT}", "m1", "telegram")
+    last = n.messages[-1]["text"]
+    assert "take your time" in last and "too vague" not in last and n.state == state
