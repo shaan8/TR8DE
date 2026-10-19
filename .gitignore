@@ -20,3 +20,4 @@ ui/playwright-report/
 .live-deploy.log
 .live-console.log
 deployments/11155111.reference.json
+.live-deployed

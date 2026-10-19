@@ -80,8 +80,8 @@ MODEL_KEY=0
 for k in DASHSCOPE_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY; do [ -n "$(envval $k)" ] && MODEL_KEY=1; done
 [ "$MODEL_KEY" = 1 ] || echo "  No model key in .env: the chat assistant will be off (add DASHSCOPE_API_KEY, DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY)."
 
-REUSE=0
-if [ -f "$DEP" ] && [ "$(.venv/bin/python -c "import json;print(json.load(open('$DEP')).get('owner','').lower())")" = "$(echo "$OWNER" | tr A-Z a-z)" ]; then
+REUSE=0  # only a deployment this script finished, for these keys
+if [ -f "$DEP" ] && [ -f .live-deployed ] && [ "$(cat .live-deployed)" = "$(echo "$OWNER" | tr A-Z a-z)" ]; then
   REUSE=1
 fi
 
@@ -92,9 +92,11 @@ if [ "$REUSE" = 0 ]; then
     || fail "Deployer $DEPLOYER has $(cast from-wei "$BAL_WEI") ETH; it needs about 0.1 Sepolia ETH. Fund it from a faucet and rerun."
   if [ -f "$DEP" ] && [ ! -f deployments/11155111.reference.json ]; then cp "$DEP" deployments/11155111.reference.json; fi
   export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-180}"
+  restore() { [ -f deployments/11155111.reference.json ] && cp deployments/11155111.reference.json "$DEP" || rm -f "$DEP"; }
   ./scripts/deploy-sepolia.sh 2>&1 | tee .live-deploy.log | grep -E "^(Deployer|Balance|Waiting|Done)" \
-    || fail "The deployment failed; see .live-deploy.log"
-  grep -q "^Done" .live-deploy.log || fail "The deployment did not finish; see .live-deploy.log"
+    || { restore; fail "The deployment failed; see .live-deploy.log. Rerun to start a fresh deployment."; }
+  grep -q "^Done" .live-deploy.log || { restore; fail "The deployment did not finish; see .live-deploy.log"; }
+  echo "$OWNER" | tr A-Z a-z > .live-deployed
   rm -rf agent/data/suppliers.json agent/data/negotiation
 else
   say "3/6 Reusing your Sepolia deployment ($DEP)"
