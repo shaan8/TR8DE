@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 WINDOW_S = 24 * 3600
+RATE_N, RATE_S = 20, 600  # per sender: at most 20 messages in 10 minutes reach the engine (and its models)
 STOP_RX = re.compile(r"^\s*(stop|unsubscribe|opt ?out|huwag na)\s*[.!]*\s*$", re.I)
 START_RX = re.compile(r"^\s*(start|subscribe|opt ?in)\s*[.!]*\s*$", re.I)
 HUMAN_RX = re.compile(r"\b(human|person|agent|tao|talk to (someone|a person))\b", re.I)
@@ -316,6 +317,7 @@ class Gateway:
         self.sender = sender or CloudSender(cfg)
         self.tg = tg  # telegram.TelegramSender, for contacts on the "telegram" channel
         self.clock = clock
+        self._recent: dict[str, list[int]] = {}
 
     def now(self) -> int:
         return int(self.clock())
@@ -366,6 +368,14 @@ class Gateway:
             self.log("whatsapp_unknown_sender", channel=channel, sender=redact(m.wa_id))
             return {"status": "ignored", "reason": "unknown sender"}  # never answer unverified numbers
         now = self.now()
+        hits = [t for t in self._recent.get(m.wa_id, []) if now - t < RATE_S] + [now]
+        self._recent[m.wa_id] = hits
+        if len(hits) > RATE_N:
+            self.log("chat_rate_limited", channel=channel, sender=redact(m.wa_id))
+            if len(hits) == RATE_N + 1 and (nid := self.find_open(c.supplier_address)):
+                self.escalate(nid, f"The supplier sent more than {RATE_N} messages in {RATE_S // 60} minutes; "
+                                   "further messages are ignored for now.")
+            return {"status": "rate_limited"}
         out_of_order = bool(m.ts and c.last_inbound_ts and m.ts < c.last_inbound_ts)
         c.last_inbound_at = now
         c.last_inbound_ts = max(c.last_inbound_ts, m.ts)

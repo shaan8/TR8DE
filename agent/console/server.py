@@ -294,8 +294,9 @@ def tick(fixture: Optional[str] = Query(None)):
         f = _fixture(fixture)
         return {"notes": [], "activity": f["activity"], "alerts": f["alerts"]}
     t = live()
-    t._events = []
-    notes = t.tick()
+    with t.turn_lock:
+        t._events = []
+        notes = t.tick()
     _remember_alerts(notes)
     return {"notes": notes, "events": t._events}
 

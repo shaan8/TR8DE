@@ -52,8 +52,9 @@ if [ ! -d lib/forge-std/src ]; then
   git -C lib/forge-std checkout -q "$FORGE_STD_COMMIT"
 fi
 if [ ! -x .venv/bin/python ]; then python3 -m venv .venv; fi
-if [ ! -f .venv/.req ] || ! cmp -s agent/requirements.txt .venv/.req; then
-  .venv/bin/pip install -q --disable-pip-version-check -r agent/requirements.txt && cp agent/requirements.txt .venv/.req
+if [ ! -f .venv/.req ] || ! cat agent/requirements.txt agent/requirements.lock | cmp -s - .venv/.req; then
+  .venv/bin/pip install -q --disable-pip-version-check -r agent/requirements.txt -c agent/requirements.lock \
+    && cat agent/requirements.txt agent/requirements.lock > .venv/.req
 fi
 if [ ! -f ui/dist/index.html ] || [ -n "$(find ui/src ui/index.html -newer ui/dist/index.html 2>/dev/null | head -1)" ]; then
   (cd ui && { [ -d node_modules ] || npm ci --no-audit --no-fund --loglevel=error; } && npm run build --silent >/dev/null)

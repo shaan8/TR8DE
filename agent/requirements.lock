@@ -1,0 +1,12 @@
+# Exact versions of the direct dependencies (and starlette, which handles HTTP parsing), verified from a fresh
+# clone on 2026-10-19 and resolvable on Python 3.11 to 3.14. Install: pip install -r requirements.txt -c requirements.lock
+anthropic==1.15.0
+fastapi==0.116.2
+httpx==0.28.1
+openai==3.35.1
+pydantic==2.14.1
+pytest==9.1.1
+starlette==0.48.0
+streamlit==1.66.0
+uvicorn==0.54.0
+web3==8.0.0

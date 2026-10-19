@@ -13,6 +13,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 | Negotiated terms | Supplier text injection, stale or ambiguous acceptance, duplicate webhooks, human and agent answering at once | Supplier text never reaches the owner path; acceptance must name the open version and terms hash; counters supersede; lock plus version check; message-ID dedup; escrow handoff idempotent by on-chain reference; agreement rechecked on fresh chain data and confirmed by the owner ([`docs/negotiation.md`](docs/negotiation.md)) |
 | Supplier reputation | Fake buyers inflating a supplier's record | Platform-gated factory with account-hash dedup; buyer-history weighting; causal median (non-delivery never raises R) |
 | Supplier API | Another supplier, a leaked token, stale or replayed moves | Per-supplier Bearer token scoped to that supplier's own negotiations; moves must name the open version and terms hash; the buyer's limits are never returned |
+| Supplier chat (WhatsApp, Telegram) | A stranger messaging the bot, a flood from a bound chat, a forged webhook | Only bound, opted-in senders reach the engine; WhatsApp posts need Meta's HMAC signature; Telegram is pulled by long polling and binds a chat only through a one-time, hashed, expiring invite; 20 messages per 10 minutes per sender; STOP opts out |
 | Owner console | Anyone who reaches the console URL | Login (`agent/console/auth.py`): salted scrypt hash in `.env`, no plaintext; 256-bit server-side sessions in an HttpOnly, SameSite=Strict cookie (Secure on HTTPS), 2 h idle and 12 h absolute expiry; lockout after 5 failures per client and 30 overall per 15 min; same-origin plus `X-Tiwala` header on every write; CSP, frame-deny and HSTS headers; API docs disabled. The supplier console uses its own per-supplier token and the WhatsApp webhook its Meta signature |
 | Audit trail | Tampering after the fact | Hash-chained JSONL; `/anchor` writes the head hash and entry count to Sepolia from the owner key, so edits, deletions and tail truncation up to the last anchor are detected by [`scripts/verify_audit.py`](scripts/verify_audit.py) (standard library only, works offline) |
 
@@ -74,11 +75,43 @@ Promptfoo runs, 13 recorded a prohibited payment.
 The Promptfoo cases were not rerun against the fixed code; the regression tests above replay each path on anvil with
 scripted models.
 
+## Judge walkthrough (19 October 2026)
+
+We cloned the public repository into an empty folder, ran `./scripts/local-demo.sh` exactly as the README says
+(no keys, no `.env`), signed in with the printed one-time login, and attacked the running console from outside
+(curl, concurrent requests, oversized bodies, path tricks), then read every route and entry point in the code.
+
+| # | Finding | Severity | Outcome |
+| --- | --- | --- | --- |
+| J1 | Chat, the Confirm button, the monitor (`/api/tick`) and the escrow handoff all read and clear the same pending confirmation with no lock. Two requests at the same moment could both act on one owner "yes" and execute it twice (Gate authorizations are single-use, but each request mints its own). Four concurrent confirms against the demo executed once, but only because the window is narrow. | High | Fixed: one re-entrant turn lock around every owner entry point (`Tiwala.handle`, `tick`, `request_escrow`). Test: `test_owner_turns_are_serialized` |
+| J2 | No request size limit. Public endpoints (login, WhatsApp webhook, supplier API) read the whole body before any check; a 50 MB login body was accepted for parsing. | Medium | Fixed: 256 KB cap in front of every route, by `Content-Length` and by counting chunked bodies; 413 before parsing. Test: `test_oversized_bodies_are_refused_before_parsing` |
+| J3 | The supplier console link carried its token in the query string, so it ended up in browser history and sync, any proxy or access log, and screen recordings. | Medium | Fixed: links use `#token=` (never sent to the server or in `Referer`); the page moves it into `sessionStorage`, removes it from the address bar and sends it as `X-Supplier-Token`. Old `?token=` links still work. Test: `test_supplier_page_token_travels_in_a_header_not_the_url` |
+| J4 | A bound WhatsApp or Telegram chat could send unlimited messages, each one a model call (cost and log flooding). | Low | Fixed: 20 messages per 10 minutes per sender reach the engine; the owner is told once. Test: `test_chat_flood_from_a_bound_sender_is_capped` |
+| J5 | The local demo blanked WhatsApp settings but not Telegram: a `TELEGRAM_BOT_TOKEN` in `.env` would make the throwaway demo poll and send for real. Its supplier-token secret fell back to `date +%s%N` (predictable, and `%N` is not supported on macOS). | Low | Fixed: the demo blanks every Telegram setting; the secret comes from Python's `secrets` |
+| J6 | Python dependencies were version ranges, so a judge's install could differ from the tested one. | Low | Fixed: `agent/requirements.lock` pins the direct dependencies and starlette; checked to resolve on Python 3.11 to 3.14 for macOS, Linux and Windows; the scripts and CI install with it |
+| J7 | With no model key, the chat named only `DEEPSEEK_API_KEY`. | Info | Fixed: it names all four providers. Test: `test_offline_message_names_every_provider` |
+
+Probed and held: `//api/state`, `/API/state`, percent-encoded and `..` paths return only the static page shell or
+401; `/docs` and `/openapi.json` are off; fixture names and negotiation ids are checked against strict patterns
+before any file is read; one supplier's token is refused on another supplier's negotiation; the UI has no raw-HTML
+sinks and the CSP allows scripts from this origin only; every `.env` value was compared with the full public git
+history and none of the keys or tokens appear there; every state-changing contract function carries an owner,
+operator or platform modifier.
+
+Accepted for this deployment model: the global login lockout (30 failures in 15 minutes) can be triggered by anyone
+who can reach the login page, which would lock the owner out for 15 minutes. The console is meant to stay local, and
+the tunnel script exposes only the webhook, so the login is not reachable from the internet in the documented setup.
+Supplier tokens do not expire and are revoked together (delete `supplier_token_secret`). A Telegram invite is a
+bearer link until it is used: whoever presses Start first becomes that supplier's chat. The supplier is told when
+a chat is linked, and negotiations already open stay bound to the identity they started with.
+
 ## Deployment model
 
 The console runs on the owner's machine and binds to `127.0.0.1`. It is not meant to be exposed whole. Receiving
 live WhatsApp replies needs a public HTTPS URL for `/webhooks/whatsapp` only (signed by Meta with the app secret);
 expose that one path through a tunnel or reverse proxy for as long as it is needed and keep every other path local.
+`scripts/whatsapp-tunnel.sh` does this: the tunnel reaches a small gate that forwards only `/webhooks/whatsapp`
+([`docs/whatsapp-webhook.md`](docs/whatsapp-webhook.md)). Telegram needs no inbound connection at all.
 The login is a second layer for any exposure, not a reason to publish the console. Set or change the password with
 `cd agent && ../.venv/bin/python -m console.auth set-password <username>`.
 
@@ -102,7 +135,9 @@ The login is a second layer for any exposure, not a reason to publish the consol
   provider.
 - **Timestamps.** Deadlines use `block.timestamp`; drift of seconds does not matter at hour and day granularity.
 - **Single chain, test token, no upgrade path.** Contracts are not upgradeable; a fix means a new deployment.
-- **WhatsApp live integration is untested.** No Meta credentials were available. Eligibility of an escrow-linked
+- **WhatsApp and Telegram live receiving are not yet tested end to end.** Live WhatsApp sending was tested to one
+  allowlisted number; replies need the webhook tunnel and Meta's app secret, and the Telegram adapter is tested
+  against a fake Bot API only. Eligibility of an escrow-linked
   use case under the WhatsApp Business Messaging Policy is unresolved ([`docs/negotiation.md`](docs/negotiation.md)).
 - **Supplier side.** Real suppliers join through WhatsApp, the supplier web page or the supplier API
   ([`docs/supplier-api.md`](docs/supplier-api.md)), each authorised by a per-supplier token (HMAC of the address

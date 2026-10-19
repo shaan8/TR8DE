@@ -224,6 +224,10 @@ class NegotiationService:
     # ---------------------------------------------------------- escrow handoff
 
     def request_escrow(self, nid: str) -> dict:
+        with self.t.turn_lock:  # same order everywhere: owner turn first, then the negotiation store
+            return self._request_escrow(nid)
+
+    def _request_escrow(self, nid: str) -> dict:
         eng, t = self.engine, self.t
         with eng.store.lock:
             n = eng.store.get(nid)

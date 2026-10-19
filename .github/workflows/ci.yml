@@ -33,7 +33,7 @@ jobs:
         run: forge --version && forge test
       - name: Agent tests on a local anvil chain, then the evidence summary
         run: |
-          python -m venv .venv && .venv/bin/pip install -q -r agent/requirements.txt
+          python -m venv .venv && .venv/bin/pip install -q -r agent/requirements.txt -c agent/requirements.lock
           .venv/bin/python scripts/evidence.py
       - uses: actions/upload-artifact@v4
         if: always()

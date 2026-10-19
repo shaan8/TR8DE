@@ -165,7 +165,8 @@ SECURITY_HEADERS = {
 
 
 def install(app, auth: Auth) -> None:
-    """Middleware that gates every non-public path on a valid session."""
+    """Middleware that gates every non-public path on a valid session, behind a request-size cap."""
+    app.add_middleware(BodyLimit)
 
     @app.middleware("http")
     async def gate(request: Request, call_next):
@@ -178,6 +179,40 @@ def install(app, auth: Auth) -> None:
                 return _with_headers(JSONResponse({"detail": "Cross-site request refused."}, 403), request)
         resp = await call_next(request)
         return _with_headers(resp, request)
+
+
+MAX_BODY = 256 * 1024  # chat, supplier moves and Meta webhooks are a few KB; refuse anything far larger
+
+
+class BodyLimit:
+    """Refuses request bodies over MAX_BODY before anything parses them: by Content-Length when sent, and by
+    counting chunks for chunked uploads. Public paths (login, webhook, supplier API) are covered too."""
+
+    def __init__(self, app, limit: int = MAX_BODY):
+        self.app, self.limit = app, limit
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        length = dict(scope.get("headers") or []).get(b"content-length")
+        if length is not None and (not length.isdigit() or int(length) > self.limit):
+            return await JSONResponse({"detail": "Request body too large."}, 413)(scope, receive, send)
+        seen = 0
+
+        async def counted():
+            nonlocal seen
+            msg = await receive()
+            if msg["type"] == "http.request":
+                seen += len(msg.get("body", b""))
+                if seen > self.limit:
+                    raise ValueError("request body too large")
+            return msg
+        try:
+            await self.app(scope, counted, send)
+        except ValueError as e:
+            if "too large" not in str(e):
+                raise
+            await JSONResponse({"detail": "Request body too large."}, 413)(scope, receive, send)
 
 
 def test_bypass(request: Request) -> bool:

@@ -199,9 +199,12 @@ def close_or_escrow(nid: str, what: str, fixture: Optional[str] = Query(None)):
 
 
 def _auth(addr: str, token: str, request: Optional[Request] = None):
-    """Supplier token from `Authorization: Bearer <token>` (API clients) or ?token= (the supplier web page)."""
+    """Supplier token from `Authorization: Bearer <token>` (API clients), X-Supplier-Token (the supplier web page,
+    which keeps the token in the link's #fragment so it never reaches server logs, history sync or Referer), or the
+    older ?token= query parameter."""
     h = request.headers.get("authorization", "") if request is not None else ""
-    token = h[7:].strip() if h.lower().startswith("bearer ") else token
+    page = request.headers.get("x-supplier-token", "") if request is not None else ""
+    token = h[7:].strip() if h.lower().startswith("bearer ") else (page.strip() or token)
     if not addr or not token or not hmac.compare_digest(token, supplier_token(addr)):
         raise HTTPException(403, "supplier token required")
     if request is not None and h:  # an API client, not the web page: remember it is connected
@@ -311,7 +314,7 @@ def sim_contact(r: SimMsg):
         raise HTTPException(400, "not a saved payee")
     s.wa.contacts.put(Contact(r.supplier, f"sim:{r.supplier.lower()}", "simulator", opted_in_at=int(time.time()),
                               opt_in_source="simulator demo opt-in (not a real WhatsApp consent)"))
-    return {"ok": True, "supplier_link": f"/?view=supplier&supplier={r.supplier}&token={supplier_token(r.supplier)}"}
+    return {"ok": True, "supplier_link": f"/?view=supplier&supplier={r.supplier}#token={supplier_token(r.supplier)}"}
 
 
 @router.post("/api/sim/whatsapp/inbound")
@@ -330,7 +333,7 @@ def sim_supplier_link(supplier: str):
     through their own onboarding, never from the buyer's console."""
     if os.environ.get("TIWALA_DEMO_LINKS", "1") != "1":
         raise HTTPException(404, "disabled")
-    return {"link": f"/?view=supplier&supplier={supplier}&token={supplier_token(supplier)}"}
+    return {"link": f"/?view=supplier&supplier={supplier}#token={supplier_token(supplier)}"}
 
 
 # ---------------------------------------------------------------- live WhatsApp Cloud API webhook

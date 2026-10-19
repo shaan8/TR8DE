@@ -44,8 +44,9 @@ if [ ! -d lib/forge-std/src ]; then
   git -C lib/forge-std checkout -q "$FORGE_STD_COMMIT"
 fi
 if [ ! -x .venv/bin/python ]; then python3 -m venv .venv; fi
-if [ ! -f .venv/.req ] || ! cmp -s agent/requirements.txt .venv/.req; then
-  .venv/bin/pip install -q --disable-pip-version-check -r agent/requirements.txt && cp agent/requirements.txt .venv/.req
+if [ ! -f .venv/.req ] || ! cat agent/requirements.txt agent/requirements.lock | cmp -s - .venv/.req; then
+  .venv/bin/pip install -q --disable-pip-version-check -r agent/requirements.txt -c agent/requirements.lock \
+    && cat agent/requirements.txt agent/requirements.lock > .venv/.req
 fi
 if [ ! -f ui/dist/index.html ] || [ -n "$(find ui/src ui/index.html -newer ui/dist/index.html 2>/dev/null | head -1)" ]; then
   (cd ui && { [ -d node_modules ] || npm ci --no-audit --no-fund --loglevel=error; } && npm run build --silent >/dev/null)
@@ -89,10 +90,11 @@ for k in DEEPSEEK_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY DASHSCOPE_API_KEY
 done
 set -a; . "$DEMO/env"; set +a
 export RPC_URL="$RPC" TIWALA_DEPLOYMENT="$ROOT/deployments/31337.json" TIWALA_DATA="$DEMO/data" \
-       TIWALA_AUDIT="$DEMO/audit.jsonl" TIWALA_SUPPLIER_CONSOLE_SECRET="$(openssl rand -hex 32 2>/dev/null || date +%s%N)"
+       TIWALA_AUDIT="$DEMO/audit.jsonl" TIWALA_SUPPLIER_CONSOLE_SECRET="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')"
 # Never touch live messaging from the demo, whatever .env says.
 export WHATSAPP_LIVE_SEND=0 WHATSAPP_ACCESS_TOKEN="" WHATSAPP_PHONE_NUMBER_ID="" WHATSAPP_APP_SECRET="" \
-       WHATSAPP_VERIFY_TOKEN="" WHATSAPP_ALLOWED_RECIPIENTS=""
+       WHATSAPP_VERIFY_TOKEN="" WHATSAPP_ALLOWED_RECIPIENTS="" \
+       TELEGRAM_BOT_TOKEN="" TELEGRAM_LIVE_SEND=0 TELEGRAM_POLL=0
 if [ "$MODEL_KEY" = 0 ]; then export TIWALA_NEGOTIATOR=rules TIWALA_SUPPLIER_AGENT=scripted TIWALA_CHECKER=rules; fi
 (cd agent && exec ../.venv/bin/uvicorn console.server:app --host 127.0.0.1 --port "$PORT" --log-level warning) \
   >"$DEMO/console.log" 2>&1 &

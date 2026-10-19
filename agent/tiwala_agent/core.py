@@ -18,6 +18,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, tzinfo
@@ -157,8 +158,8 @@ class OfflineLLM(LLM):
         self.missing = missing
 
     def complete(self, system, messages, tools=None):
-        raise ModelOffline(f"The chat assistant is off because no model key is set ({self.missing}). Add one to "
-                           ".env and restart. Owner commands such as /attest, /freeze and /guide still work, and "
+        raise ModelOffline("The chat assistant is off because no model key is set. Add DASHSCOPE_API_KEY (Qwen "
+                           "Cloud), DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env and restart. Owner commands such as /attest, /freeze and /guide still work, and "
                            "nothing was drafted or sent.")
 
 
@@ -303,6 +304,9 @@ class Tiwala:
         self.history: list[dict] = []
         self.ledger: list[str] = []  # owner's own words for the current draft
         self.pending: Optional[Pending] = None
+        # One owner turn at a time: chat, Confirm, the monitor and the escrow handoff all read and clear
+        # self.pending, so two requests at once could otherwise both act on the same confirmation.
+        self.turn_lock = threading.RLock()
         self.pending_payee: Optional[PendingPayee] = None
         self.pending_negotiation: Optional[dict] = None  # {"spec", "card", "created"}
         self.negotiations = None  # NegotiationService, attached by the service itself
@@ -558,6 +562,10 @@ class Tiwala:
     # ------------------------------------------------------------ chat
 
     def handle(self, text: str) -> TurnResult:
+        with self.turn_lock:
+            return self._handle(text)
+
+    def _handle(self, text: str) -> TurnResult:
         self._events = []
         t = tag_user(text)
         self._log("user_message", text=t.text, flags=list(t.flags))
@@ -987,6 +995,10 @@ class Tiwala:
     # ------------------------------------------------------------ monitor
 
     def tick(self) -> list[str]:
+        with self.turn_lock:
+            return self._tick()
+
+    def _tick(self) -> list[str]:
         ws = self.chain.wallet_state(self.wallet)
         if ws.underfunded:
             self._log("monitor_halt", reason="isUnderfunded", balance=ws.balance, locked=ws.locked)

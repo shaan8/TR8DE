@@ -9,17 +9,25 @@ const P = (u) => peso(u / 100, 2);
 /** The supplier's own console: their mandate and their side of each negotiation. No buyer limits are ever sent here. */
 export default function SupplierView() {
   const q = new URLSearchParams(window.location.search);
-  const supplier = q.get("supplier") || "", token = q.get("token") || "", fixture = q.get("fixture");
-  const base = fixture ? `?fixture=${fixture}` : `?supplier=${supplier}&token=${token}`;
+  const supplier = q.get("supplier") || "", fixture = q.get("fixture");
+  // The token rides in the #fragment (never sent to the server or in Referer) and goes out only as a header.
+  const [token] = useState(() => {
+    const t = new URLSearchParams(window.location.hash.slice(1)).get("token") || q.get("token") || "";
+    if (t) { q.delete("token"); window.history.replaceState(null, "", `?${q}`); }
+    try { if (t) sessionStorage.setItem(`tiwala-supplier-${supplier}`, t); return t || sessionStorage.getItem(`tiwala-supplier-${supplier}`) || ""; }
+    catch { return t; }
+  });
+  const auth = { "X-Supplier-Token": token };
+  const base = fixture ? `?fixture=${fixture}` : `?supplier=${encodeURIComponent(supplier)}`;
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const load = () => request(`/api/supplier${base}`).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.detail); setD(j); }).catch((e) => setErr(String(e.message)));
+  const load = () => request(`/api/supplier${base}`, { headers: auth }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.detail); setD(j); }).catch((e) => setErr(String(e.message)));
   useEffect(() => { load(); const id = fixture ? null : setInterval(load, 2000); return () => id && clearInterval(id); }, []);
   const post = async (path, body, method = "POST") => {
     setBusy(true); setErr("");
     try {
-      const r = await request(path + (path.includes("?") ? "&" : "?") + `supplier=${supplier}&token=${token}`, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+      const r = await request(path + (path.includes("?") ? "&" : "?") + `supplier=${encodeURIComponent(supplier)}`, { method, headers: { "Content-Type": "application/json", ...auth }, body: body ? JSON.stringify(body) : undefined });
       const j = await r.json(); if (!r.ok) throw new Error(j.detail); await load();
     } catch (e) { setErr(String(e.message)); } finally { setBusy(false); }
   };
