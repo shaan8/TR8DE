@@ -155,8 +155,10 @@ class NegotiationService:
         link = self.tg.invite_link(addr)
         self._log("telegram_invite_created", supplier=addr)
         note = "" if self.tg_cfg.live_send else " Note: TELEGRAM_LIVE_SEND is not 1, so the bot cannot reply yet."
+        code = link.rsplit("start=", 1)[1]
         return (f"Send this link to {self.t.directory[addr].name}: {link}\nIt works once, for 7 days. When they press "
-                f"Start their chat is linked and you can negotiate with them.{note}")
+                f"Start their chat is linked and you can negotiate with them. If they had chatted with the bot before, "
+                f"Telegram may open the chat without the code: they then send /start {code} there.{note}")
 
     def link_whatsapp(self, name_or_addr: str, number: str) -> str:
         import re as _re

@@ -161,8 +161,14 @@ class Poller:
 
     def handle(self, m: Inbound) -> dict:
         text = m.text.strip()
-        cmd, _, arg = text.partition(" ")
+        words = text.split(None, 1)  # any whitespace: phones and pastes vary
+        cmd, arg = (words[0] if words else ""), (words[1] if len(words) > 1 else "")
         cmd = cmd.split("@")[0].lower()  # "/start@TiwalaBot" in some clients
+        if (cmd != "/start" and CODE_RX.match(text) and len(text) >= 20
+                and self.g.contacts.get_by_wa(m.wa_id) is None):  # an unlinked chat pasted just the code
+            cmd, arg = "/start", text
+        self.g.log("telegram_in", chat=f"tg:…{m.wa_id[-4:]}", command=cmd if cmd.startswith("/") else "",
+                   has_code=bool(arg.strip()) and cmd == "/start")
         if cmd == "/start" and arg.strip():
             addr = self.invites.redeem(arg.strip())
             if not addr:
@@ -182,8 +188,9 @@ class Poller:
             return {"status": "bound", "supplier": addr}
         if cmd in ("/start", "/stop"):
             if cmd == "/start" and self.g.contacts.get_by_wa(m.wa_id) is None:
-                self._reply(m.wa_id, "Hello. This bot negotiates purchase orders for one buyer. Ask the buyer for "
-                                     "your invite link and open it here to connect.")
+                self._reply(m.wa_id, "Hello. This bot negotiates purchase orders for one buyer. Open the invite link "
+                                     "the buyer sent you, or send /start followed by the code at the end of that "
+                                     "link (for example /start AbC123...).")
                 return {"status": "not_invited"}
             text = cmd[1:]
         elif cmd == "/help":

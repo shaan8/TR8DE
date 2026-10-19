@@ -142,3 +142,44 @@ def test_whatsapp_sender_allows_owner_linked_numbers_without_an_env_list():
     s2 = CloudSender(Config(access_token="t", phone_number_id="P", live_send=True, allowed=("639000000000",)),
                      lambda *a: {"messages": [{"id": "x"}]})
     assert s2.send("639171234567", "hi")[0] is False  # a list in .env still restricts
+
+
+def test_invite_code_survives_odd_whitespace_or_a_bare_paste(world):  # noqa: F811
+    bot, g, p, _ = setup(world)
+    code = p.invite_link(LUMEN).split("start=")[1]
+    bot.msg(f"/start {code}")  # non-breaking space from a phone keyboard
+    p.run_once()
+    assert g.contacts.get(LUMEN) and "Linked as" in bot.sent[-1]["text"]
+    code2 = p.invite_link(LUMEN).split("start=")[1]
+    bot.msg(code2, chat=999888)  # a second phone pastes only the code
+    p.run_once()
+    assert g.contacts.get(LUMEN).wa_id == "tg:999888"
+
+
+def test_partial_counter_with_deal_words_becomes_a_counter(world):  # noqa: F811
+    """Live Telegram run: "20% and we have a deal, by next week" was answered with only "reply ACCEPT"; the
+    interpreter's null fields broke the parse. Unmentioned terms now stay as offered."""
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    from tiwala_agent.negotiation import DAY
+    eng = world["eng"]
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "counter", "quantity": null, "unit_price_php": null, '
+                                                    '"deposit_pct": 20, "deliver_by": null, "summary": "20% deposit"}')])
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none")
+    n = eng.supplier_text(n.id, "20% and we have a deal", f"tg:{CHAT}", "m1", "telegram")
+    sup = [p for p in n.props() if p.by == "supplier"]
+    assert sup and sup[-1].terms.deposit_bps == 2000 and sup[-1].terms.quantity == n.props()[0].terms.quantity
+    assert n.agreement is None  # "deal" in words never accepts
+
+
+def test_vague_reply_gets_a_plain_too_vague_answer_with_an_example(world):  # noqa: F811
+    from tiwala_agent.llm import LLMResponse, ScriptedLLM
+    eng = world["eng"]
+    eng.interpreter = ScriptedLLM([LLMResponse(text='{"intent": "other", "summary": "hmm"}')])
+    n = eng.open("0xWALLET", "Lumen Textiles", LUMEN, "Cotton fabric", cons(), "whatsapp", "telegram",
+                 f"tg:{CHAT}", "none")
+    n = eng.supplier_text(n.id, "Hmm", f"tg:{CHAT}", "m1", "telegram")
+    last = n.messages[-1]["text"]
+    assert "too vague" in last and "for example" in last and f"ACCEPT {n.current().code}" in last
+    n = eng.supplier_text(n.id, "ok", f"tg:{CHAT}", "m2", "telegram")  # a bare "ok" is never acceptance
+    assert "too vague" in n.messages[-1]["text"] and n.agreement is None
