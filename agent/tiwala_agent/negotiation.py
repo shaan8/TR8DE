@@ -759,10 +759,11 @@ class Engine:
             return n
 
     def _reply(self, n: Negotiation, cur: Optional[Proposal], goal: str, fallback: str) -> None:
-        """Answer a turn that changes no terms: once, in context. A filler message right after we already asked for
-        specifics (or said take your time) gets no new message, like a person would leave it."""
+        """Answer a turn that changes no terms, in context. Filler right after we already asked for specifics (or said
+        take your time) gets no new message, like a person would leave it; someone trying to accept always gets the
+        exact code again."""
         last = next((m for m in reversed(n.messages) if m["dir"] == "out"), None)
-        if (goal in ("ask_specific", "wait", "accept_unclear") and last and last.get("goal") == goal
+        if (goal in ("ask_specific", "wait") and last and last.get("goal") == goal
                 and self.now() - last.get("ts", 0) < 600):
             self.log("negotiation_reply_skipped", negotiation=n.id, goal=goal)
             return
