@@ -6,6 +6,7 @@ what that key can do even if everything above it is compromised.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -18,6 +19,9 @@ from .models import Action, ActionKind, ClosedDeal, Deal, Outcome, Status, Walle
 
 ABI_DIR = Path(__file__).parent / "abi"
 LOG_CHUNK = 9_000  # stay under common public-RPC eth_getLogs block-range limits
+RATE_RETRIES = 5  # a throttled range is retried as-is, with backoff, never split into more requests
+RATE_BACKOFF_S = 1.5
+CLOSED_TTL_S = 45.0  # closed-deal history changes rarely; a live chain mines a block every ~12 s
 
 
 
@@ -78,7 +82,7 @@ class Chain:
         self.factory = self.w3.eth.contract(address=Web3.to_checksum_address(deployment["factory"]), abi=FACTORY_ABI)
         self.token = self.w3.eth.contract(address=Web3.to_checksum_address(deployment["token"]), abi=TOKEN_ABI)
         self._agent = Account.from_key(agent_key) if agent_key else None
-        self._closed_cache: Optional[tuple[int, list[ClosedDeal]]] = None
+        self._closed_cache: Optional[tuple[float, list[ClosedDeal]]] = None  # (read at, deals)
 
     # ------------------------------------------------------------- reads
 
@@ -118,19 +122,37 @@ class Chain:
             now=self.now(),
         )
 
+    @staticmethod
+    def _throttled(e: Exception) -> bool:
+        """A rate limit, not a range limit. Splitting the range would make it worse, so the two are told apart
+        by the provider's own signal: HTTP 429, or the JSON-RPC limit codes free tiers return."""
+        code = getattr(getattr(e, "response", None), "status_code", None)
+        if code == 429:
+            return True
+        text = str(e).lower()
+        return "429" in text or "too many requests" in text or "rate limit" in text or "exceeded" in text
+
     def _logs(self, event, address: str) -> list:
+        """Walk the chain in ranges. A range limit is answered by asking for less; a rate limit is answered by
+        waiting and asking for the same range again, since splitting it would only add requests to the burst."""
         latest = self.w3.eth.block_number
-        out, frm, chunk = [], self.start_block, LOG_CHUNK
+        out, frm, chunk, waits = [], self.start_block, LOG_CHUNK, 0
         while frm <= latest:
             to = min(latest, frm + chunk)
             try:
                 out += event.get_logs(from_block=frm, to_block=to, argument_filters=None)
-            except Exception:
+            except Exception as e:
+                if self._throttled(e):
+                    if waits >= RATE_RETRIES:
+                        raise
+                    time.sleep(RATE_BACKOFF_S * (2 ** waits))
+                    waits += 1
+                    continue
                 if chunk <= 9:  # some free tiers (Alchemy) allow only 10 blocks per query
                     raise
                 chunk = max(9, chunk // 10)
                 continue
-            frm = to + 1
+            frm, waits = to + 1, 0  # progress clears the wait budget, so a long walk can be throttled repeatedly
         return [l for l in out if l["address"].lower() == address.lower()]
 
     def refs(self, address: str) -> dict[int, str]:
@@ -161,9 +183,14 @@ class Chain:
         return bool(listed), int(active_at)
 
     def closed_deals(self) -> list[ClosedDeal]:
-        """Outcomes from every factory wallet, read from events only. Lookalike contracts are ignored."""
-        latest = self.w3.eth.block_number
-        if self._closed_cache and self._closed_cache[0] == latest:
+        """Outcomes from every factory wallet, read from events only. Lookalike contracts are ignored.
+
+        Held for CLOSED_TTL_S rather than for one block: this walks every log of every factory wallet, and a
+        live chain mines a block every few seconds, so keying the cache on the head block meant re-reading
+        almost every time and made rate limits routine. A write clears the cache, so the owner's own actions
+        are never served stale.
+        """
+        if self._closed_cache and time.time() - self._closed_cache[0] < CLOSED_TTL_S:
             return self._closed_cache[1]
         out: list[ClosedDeal] = []
         for addr in self.factory_wallets():
@@ -184,7 +211,7 @@ class Chain:
                 out.append(ClosedDeal(c.address, a["supplier"], created[a["id"]]["total"],
                                       Outcome.NEUTRAL if a["released"] else Outcome.NON_DELIVERY, (l["blockNumber"], l["logIndex"])))
         out.sort(key=lambda c: c.order)
-        self._closed_cache = (latest, out)
+        self._closed_cache = (time.time(), out)
         return out
 
     # ------------------------------------------------------------- writes (agent key only)

@@ -451,3 +451,77 @@ def test_forecast_options_reach_the_model_in_pesos_and_dates():
     v = [_option_view(o) for o in opts]
     top = next(x for x in v if x["kind"] == "top_up")
     assert top["params"] == {"amount_php": 10_000.0} and "₱10,000.00" in top["detail"] and "day " not in top["detail"]
+
+
+# ------------------------------------------------------------------ chain log reads
+
+
+class _FakeEvent:
+    """Counts get_logs calls and fails them the way a provider does."""
+
+    def __init__(self, fail_with, fail_times):
+        self.fail_with, self.fail_times, self.calls, self.ranges = fail_with, fail_times, 0, []
+
+    def get_logs(self, from_block, to_block, argument_filters=None):
+        self.calls += 1
+        self.ranges.append(to_block - from_block)
+        if self.calls <= self.fail_times:
+            raise self.fail_with
+        return []
+
+
+def _chain_for_logs(monkeypatch, latest):
+    from tiwala_agent import chain as ch
+    monkeypatch.setattr(ch.time, "sleep", lambda s: None)  # no real waiting in tests
+    c = ch.Chain.__new__(ch.Chain)  # no RPC: _logs only needs block_number and start_block
+    c.start_block = 0
+    c.w3 = type("W", (), {"eth": type("E", (), {"block_number": latest})()})()
+    return c, ch
+
+
+def test_rate_limit_waits_instead_of_splitting_the_range(monkeypatch):
+    """A 429 means slow down. Splitting the range would add requests to the burst that caused it."""
+    c, ch = _chain_for_logs(monkeypatch, 20_000)
+    ev = _FakeEvent(Exception("429 Client Error: Too Many Requests for url"), 3)
+    c._logs(ev, "0x0000000000000000000000000000000000000000")
+    assert all(r == ch.LOG_CHUNK for r in ev.ranges[:-1]), ev.ranges  # never split; last is just the tail
+    assert ev.ranges[:4] == [ch.LOG_CHUNK] * 4, ev.ranges  # the three refusals re-asked for the same window
+    assert ev.calls == 3 + 3  # three throttled retries, then the three real chunks of 0..20000
+
+
+def test_a_range_limit_still_shrinks_the_window(monkeypatch):
+    """A range error is the other case: ask for less, as before."""
+    c, ch = _chain_for_logs(monkeypatch, 20_000)
+    ev = _FakeEvent(ValueError("query returned more than 10000 results"), 1)
+    c._logs(ev, "0x0000000000000000000000000000000000000000")
+    assert ev.ranges[0] == ch.LOG_CHUNK and ev.ranges[1] == ch.LOG_CHUNK // 10, ev.ranges
+
+
+def test_a_persistent_rate_limit_eventually_raises(monkeypatch):
+    c, ch = _chain_for_logs(monkeypatch, 20_000)
+    ev = _FakeEvent(Exception("rate limit exceeded"), 999)
+    with pytest.raises(Exception, match="rate limit"):
+        c._logs(ev, "0x0000000000000000000000000000000000000000")
+    assert ev.calls == ch.RATE_RETRIES + 1  # bounded, not an infinite storm
+
+
+def test_closed_deals_cache_is_held_for_a_while_not_for_one_block(monkeypatch):
+    """Keyed on the head block, the cache missed almost every time on a live chain."""
+    from tiwala_agent import chain as ch
+    c = ch.Chain.__new__(ch.Chain)
+    c._closed_cache = None
+    reads = []
+
+    def fake_wallets():
+        reads.append(1)
+        return []
+
+    c.factory_wallets = fake_wallets
+    c.w3 = type("W", (), {"eth": type("E", (), {"block_number": 100})()})()
+    c.closed_deals()
+    c.w3.eth.block_number = 101  # a new block arrives, as one does every few seconds
+    c.closed_deals()
+    assert len(reads) == 1, "a new block must not invalidate the cache on its own"
+    c._closed_cache = (c._closed_cache[0] - ch.CLOSED_TTL_S - 1, c._closed_cache[1])
+    c.closed_deals()
+    assert len(reads) == 2, "past the TTL it reads again"
