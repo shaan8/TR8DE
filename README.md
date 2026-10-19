@@ -104,7 +104,7 @@ history. It then opens the console with a one-time login it prints. Ctrl+C stops
 2. **Payments**: confirm, then `/attest <deal>`. The balance is released and Lumen's on-chain record updates.
 3. With a model key in `.env` (0.3), try any prompt above.
 
-### 0.3 Get your keys
+### 0.3 Get your keys (For Live Mode)
 
 Each service has its own step list. Put every value in `.env`, with no space after `=`.
 
