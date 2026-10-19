@@ -72,6 +72,15 @@ class TxResult:
     tx_hash: Optional[str]
     error: Optional[str] = None
     block: Optional[int] = None
+    pending: bool = False  # broadcast, but no receipt yet: tx_hash is what to look up, never resend blindly
+
+
+def _await(w3, h) -> tuple[Optional[dict], Optional[str]]:
+    """Receipt, or the reason none came back. The hash is already public either way."""
+    try:
+        return w3.eth.wait_for_transaction_receipt(h, timeout=180), None
+    except Exception as e:  # TimeExhausted, RPC drop or throttling after broadcast
+        return None, f"{type(e).__name__}: {str(e)[:160]}"
 
 
 class Chain:
@@ -260,11 +269,13 @@ class Chain:
             return TxResult(False, None, "signer refused: target is not this buyer's wallet")
         signed = acct.sign_transaction(tx)
         h = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        rcpt = self.w3.eth.wait_for_transaction_receipt(h, timeout=180)
         hx = "0x" + h.hex().removeprefix("0x")
+        rcpt, err = _await(self.w3, h)
+        self._closed_cache = None
+        if rcpt is None:
+            return TxResult(False, hx, err, None, pending=True)
         if rcpt["status"] != 1:
             return TxResult(False, hx, "transaction reverted on-chain", rcpt["blockNumber"])
-        self._closed_cache = None
         return TxResult(True, hx, None, rcpt["blockNumber"])
 
     def deal_id_from_receipt(self, wallet: str, tx_hash: str) -> Optional[int]:
@@ -291,9 +302,12 @@ class OwnerConsole:
                                    "nonce": w3.eth.get_transaction_count(self.acct.address, "pending")})
         tx = with_gas_headroom(tx)
         h = w3.eth.send_raw_transaction(self.acct.sign_transaction(tx).raw_transaction)
-        r = w3.eth.wait_for_transaction_receipt(h, timeout=180)
+        hx = "0x" + h.hex().removeprefix("0x")
+        r, err = _await(w3, h)
         self.chain._closed_cache = None
-        return TxResult(r["status"] == 1, "0x" + h.hex().removeprefix("0x"), None, r["blockNumber"])
+        if r is None:
+            return TxResult(False, hx, err, None, pending=True)
+        return TxResult(r["status"] == 1, hx, None if r["status"] == 1 else "transaction reverted on-chain", r["blockNumber"])
 
     def attest(self, deal_id: int) -> TxResult:
         return self._send(self.chain.wallet(self.wallet).functions.confirmDelivery(deal_id))

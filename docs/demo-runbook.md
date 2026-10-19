@@ -41,7 +41,7 @@ Use deal 7 only if beat 2 already created deal 6; otherwise check `cast call $W 
 
 ## Script
 
-Start the chat UI (http://localhost:8501). Use the Run monitor button for `/tick` and Verify audit log for `/verify`:
+Start the chat UI (http://localhost:8501) and sign in with the console's owner login. Use the Run monitor button for `/tick` and Verify audit log for `/verify`:
 
 ```bash
 ../.venv/bin/streamlit run app.py

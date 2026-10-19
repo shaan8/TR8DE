@@ -15,6 +15,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from console import auth as authmod
 from tiwala_agent.audit import AuditLog
 from tiwala_agent.chain import Chain, OwnerConsole
 from tiwala_agent.core import Tiwala, user_tz
@@ -213,10 +214,36 @@ def run_turn(t: Tiwala, audit: AuditLog, msg: str) -> tuple[str, list[dict]]:
     return r.reply, r.events
 
 
+def login_gate() -> None:
+    """Same owner login as the console. This page drives the agent and holds the owner key, so nothing
+    is built, read or signed until a session has signed in."""
+    if st.session_state.get("signed_in"):
+        return
+    a = st.session_state.setdefault("auth", authmod.Auth.from_env())
+    if not a.configured:
+        st.error("No login is set up. Run: cd agent && ../.venv/bin/python -m console.auth set-password <name>")
+        st.stop()
+    with st.form("login"):
+        user = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        sent = st.form_submit_button("Sign in")
+    if sent:
+        wait = a.locked_for("streamlit")
+        if wait:
+            st.error(f"Too many failed attempts. Try again in {wait:.0f} s.")
+        elif a.login("streamlit", user[:64], password[:256]):
+            st.session_state.signed_in = True
+            st.rerun()
+        else:
+            st.error("Wrong username or password.")
+    st.stop()
+
+
 def main() -> None:
     st.set_page_config(page_title="Tiwala", page_icon="🤝", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
     load_env()
+    login_gate()
     if "tiwala" not in st.session_state:
         try:
             st.session_state.tiwala, st.session_state.audit, st.session_state.dep = build()

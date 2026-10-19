@@ -88,6 +88,21 @@ Promptfoo runs, 13 recorded a prohibited payment.
 The Promptfoo cases were not rerun against the fixed code; the regression tests above replay each path on anvil with
 scripted models.
 
+## Second independent audit (20 October 2026)
+
+A second external audit of commit `b4244b8` reproduced seven failures on a local Anvil chain with scripted models
+and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` and all pass now.
+
+| Finding | Outcome |
+| --- | --- |
+| The Streamlit UI (`agent/app.py`) had no login and signed owner commands such as `/attest` (high) | Fixed: the page asks for the same owner login as the console before it builds anything or loads the owner key, and refuses to start when no login is set up. Test: `test_streamlit_cannot_sign_owner_commands_without_authentication` |
+| Two identical create calls in one request made two escrows and paid both deposits (high) | Fixed: a create is once-only. The same action twice in a turn, or a PO reference that already has an open deal on chain, is refused, also at confirmation time. If the open-deal check cannot read the chain, nothing is created. Test: `test_one_request_cannot_create_the_same_po_twice` |
+| After a deal was paid, a model outage replied "Nothing was drafted or sent" (high) | Fixed: the reply lists every transaction already sent this turn. Test: `test_model_failure_after_execution_must_not_say_nothing_was_sent` |
+| A receipt timeout after broadcast lost the transaction hash (high) | Fixed: the hash is returned and logged as `tx_pending`, and the reply says to check it before asking again. Test: `test_receipt_timeout_must_leave_a_recoverable_transaction_hash` |
+| A negotiated card still executed after the agreement expired, or below the negotiated reserve (high) | Fixed: just before the owner's yes signs, the negotiation re-checks expiry, the agreed terms hash and every hard buyer constraint on chain state read then. Tests: `test_negotiated_expiry_is_rechecked_when_owner_confirms`, `test_negotiated_min_reserve_is_rechecked_when_owner_confirms` |
+| Concurrent appends forked the audit hash chain (medium) | Fixed: appends hold a thread lock and an exclusive file lock, and re-read the head hash if another process wrote. Test: `test_audit_log_survives_concurrent_writers` |
+| Off-chain evidence does not pin the agent revision that produced it | Open. Deployed bytecode matches the pinned build; regenerated evidence should record the commit |
+
 ## Judge walkthrough (19 October 2026)
 
 We cloned the public repository into an empty folder, ran `./scripts/local-demo.sh` exactly as the README says
@@ -158,7 +173,18 @@ The login is a second layer for any exposure, not a reason to publish the consol
   RPC endpoint; nothing is hard-coded. The starting history is seeded: the deploy script creates four network
   buyer wallets and records synthetic trades so suppliers have a record. Treat those scores as demo data, not
   independent trade history (audit F4). A bug in `reputation.py` could set a wrong cap; the contract's
-  `maxDownBps` is the hard ceiling. Sybil resistance depends on the platform's account dedup.
+  `maxDownBps` is the hard ceiling.
+- **Sybil resistance comes from onboarding, not from the score.** `createWallet` is `onlyPlatform`, so only buyers
+  the platform admits can record outcomes. The reputation formula itself would credit any wallet that trades.
+- **Reputation weighs wins and losses by size alike.** Each outcome counts `min(3, total / median)`, so a supplier
+  who fails only on small orders keeps a higher deposit cap (45%) than one with the same record failing on large
+  ones (15%). The deposit is the part a cancel does not refund. Clamping wins to at most 1 and losses to at least 1
+  removes the gap and leaves the four demo suppliers' caps unchanged; not shipped yet.
+- **No recency decay.** Outcomes carry a block and log index but no age weight, so a record from long ago counts
+  the same as last week's.
+- **Forecast inflows are the owner's own assertions.** `data/plans.json` receivables have no haircut, so one
+  optimistic inflow can hide a shortfall. The file is read-only at runtime (only `setup_data.py` writes it), so no
+  model or injected text can change it.
 - **LLM provider sees conversation content, minimised.** Phones, e-mails and account numbers are masked and wallet
   addresses replaced by placeholders before any model call (`privacy.py`); names, amounts and dates still go to the
   provider.

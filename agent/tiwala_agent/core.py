@@ -249,6 +249,9 @@ class Gate:
         return True
 
 
+OPEN_STATUSES = {Status.LOCKED, Status.DOWN_PAID, Status.DELIVERED, Status.DISPUTED}
+
+
 class Executor:
     def __init__(self, chain: Chain, wallet: str, gate: Gate):
         self.chain, self.wallet, self.gate = chain, wallet, gate
@@ -320,6 +323,8 @@ class Tiwala:
         self._events: list[dict] = []
         self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
         self.on_executed: list = []  # callbacks(action, result) after an owner-confirmed action executes
+        self._created_this_turn: set[str] = set()  # gate digests of creates broadcast in the current turn
+        self.before_confirm: list = []  # callbacks(action) -> reasons to refuse, run on fresh state before a yes signs
 
     # ------------------------------------------------------------ data
 
@@ -454,9 +459,29 @@ class Tiwala:
             return "Circuit breaker tripped: the agent is now frozen until the owner types /unfreeze."
         return None
 
+    def _duplicate(self, a: Action) -> Optional[str]:
+        """A create is once-only: the same action twice in one turn, or a PO reference that already has an open deal
+        on chain, is refused. The chain is the record, so this holds across restarts and processes too."""
+        if a.kind != ActionKind.CREATE_DEAL:
+            return None
+        if self.gate.digest(a) in self._created_this_turn:
+            return "That exact deal was already created in this request. Nothing was created twice."
+        if a.ref:
+            try:
+                dup = next((d for d in self.chain.deals(self.wallet)
+                            if d.ref.strip().lower() == a.ref.strip().lower() and d.status in OPEN_STATUSES), None)
+            except Exception as e:  # cannot prove it is new: do not risk paying twice
+                return f"Could not check for an existing {a.ref} deal ({type(e).__name__}). Nothing was created."
+            if dup:
+                return f"{a.ref} already has open deal {dup.id}. Nothing was created twice."
+        return None
+
     def propose(self, a: Action, then_release_down: bool = False, system_note: str = "") -> dict:
         if (f := self.frozen()) and a.kind in MONEY_MOVING:
             return {"status": "refused", "reasons": [f"The agent is frozen ({f['reason']}). Type /unfreeze to resume."]}
+        if dup := self._duplicate(a):
+            self._log("duplicate_refused", action=a.to_dict(), reason=dup)
+            return {"status": "refused", "reasons": [dup]}
         ctx, deal = self._context(a)
         intent = self._intent(a, self.ledger[-6:], deal)
         ctx.intent_mismatches = intent.mismatches
@@ -482,6 +507,11 @@ class Tiwala:
     def _execute(self, a: Action, verdict: Verdict, confirmed: bool) -> dict:
         auth = self.gate.mint(a, verdict, confirmed)
         res = self.executor.execute(a, auth)
+        if a.kind == ActionKind.CREATE_DEAL and res.tx_hash:  # broadcast: never send this one again this turn
+            self._created_this_turn.add(self.gate.digest(a))
+        if res.pending:
+            self._log("tx_pending", action=a.to_dict(), tx=res.tx_hash, error=res.error)
+            return {"status": "pending", "error": res.error, "tx": res.tx_hash}
         if not res.ok:
             self._log("tx_failed", action=a.to_dict(), error=res.error, tx=res.tx_hash)
             return {"status": "failed", "error": res.error, "tx": res.tx_hash}
@@ -529,6 +559,11 @@ class Tiwala:
             self._log("confirmed", action=p.action.to_dict(), verdict=verdict.to_dict())
             if not verdict.allowed:
                 return {"status": "refused", "reasons": verdict.reasons}
+            stale = ([dup] if (dup := self._duplicate(p.action)) else []) + \
+                [r for cb in self.before_confirm for r in cb(p.action)]  # e.g. the agreement expired since the card
+            if stale:
+                self._log("confirm_refused", action=p.action.to_dict(), reasons=stale)
+                return {"status": "refused", "reasons": stale}
             out = self._execute(p.action, verdict, confirmed=True)
             return self._after_execute(p.action, out, p.then_release_down, True)
         finally:
@@ -582,6 +617,7 @@ class Tiwala:
 
     def _handle(self, text: str) -> TurnResult:
         self._events = []
+        self._created_this_turn = set()
         t = tag_user(text)
         self._log("user_message", text=t.text, flags=list(t.flags))
 
@@ -627,6 +663,15 @@ class Tiwala:
             except Exception as e:  # model down or rate-limited: nothing was drafted, so drop the turn
                 del self.history[turn_start:]
                 self._log("coordinator_error", error=f"{type(e).__name__}: {str(e)[:200]}")
+                acted = [ev for ev in self._events if ev["event"] in ("executed", "tx_pending")]
+                if acted or cards:  # say what already happened; never reassure after money moved
+                    done = [f"{'Sent' if ev['event'] == 'executed' else 'Sent, receipt pending'}: tx {ev.get('tx')}"
+                            + (f" (deal {ev['deal_id']})" if ev.get("deal_id") else "") for ev in acted]
+                    if acted:
+                        self.ledger = []
+                    return TurnResult("\n\n".join([f"The assistant model stopped responding ({type(e).__name__}) "
+                                                    "after I had already acted on your request:"] + done + cards),
+                                      self._events)
                 if isinstance(e, ModelOffline):
                     return TurnResult(str(e), self._events)
                 return TurnResult(f"The assistant model is unavailable right now ({type(e).__name__}). "
@@ -721,6 +766,9 @@ class Tiwala:
             return "I did not execute it. " + " ".join(out["reasons"])
         if s == "failed":
             return f"The transaction did not go through ({out['error']}). Nothing was retried."
+        if s == "pending":
+            return (f"The transaction was sent but no receipt came back yet ({out['error']}). Tx {out['tx']}. "
+                    "It may still be mined: check it on Etherscan before asking again. Nothing was retried.")
         if s == "expired":
             return "That confirmation expired. Ask again and I will re-check everything."
         return "There is nothing waiting for confirmation."

@@ -16,7 +16,7 @@ from typing import Optional
 from . import forecast as fc
 from .core import Tiwala, _date, _when
 from .llm import LLM
-from .models import PHP, Action, php
+from .models import PHP, Action, ActionKind, php
 from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, NegotiationError, Proposal, State, Store,
                           TERMINAL, Terms, buyer_checks, cash_impact, escrow_ref, passes)
 from .privacy import RedactingLLM
@@ -45,6 +45,7 @@ class NegotiationService:
         self.tg = Poller(self.wa, self.tg_cfg, root / "whatsapp",
                          lambda a: self.t.directory[a].name if a in self.t.directory else a, **tg_kw)
         self.t.on_executed.append(self._on_executed)
+        self.t.before_confirm.append(self._recheck_before_confirm)
         self.t.negotiations = self
         self._runs: dict[str, threading.Thread] = {}
         self._views: dict[str, tuple[float, BuyerView]] = {}  # supplier -> (read at, view); escrow always reads fresh
@@ -388,6 +389,37 @@ class NegotiationService:
             eng.store.save(n)
             self._log("negotiation_handoff", negotiation=n.id, proposal=p.id, status=out["status"], ref=ref)
             return {**out, "events": t._events}
+
+    def _recheck_before_confirm(self, action: Action) -> list[str]:
+        """The owner's yes may come minutes after the card. Re-run expiry and the buyer's hard constraints on chain
+        state read now, so a card cannot outlive the agreement it was raised for."""
+        if action.origin.kind != "negotiation" or action.kind != ActionKind.CREATE_DEAL:
+            return []
+        nid, pid, terms_hash = (action.origin.detail.split(":") + ["", ""])[:3]
+        eng = self.engine
+        with eng.store.lock:
+            try:
+                n = eng.store.get(nid)
+            except NegotiationError:
+                return ["the negotiation behind this card no longer exists"]
+            p = n.by_id(n.agreement["proposal_id"]) if n.agreement else None
+            if p is None or p.id != pid or p.terms_hash != terms_hash:
+                return ["the agreed terms changed after this card was raised"]
+            if State(n.state) not in (State.AWAITING_BUYER_APPROVAL, State.READY_FOR_ESCROW):
+                return [f"the negotiation is {n.state.replace('_', ' ')}, not agreed"]
+            if eng.now() > p.expires:
+                eng._close(n, State.EXPIRED, "the agreement expired before escrow; negotiate again", tell_supplier=True)
+                eng.store.save(n)
+                return ["the agreement expired before your yes; negotiate again"]
+            checks = buyer_checks(p.terms, n.constraints, self.buyer_view(n, fresh=True))
+            reasons = [c.detail for c in checks if not c.ok and c.severity == "refuse"]
+            if reasons:
+                n.state, n.handoff = State.AWAITING_BUYER_APPROVAL.value, {}
+                n.reason = "Recheck failed: " + " ".join(reasons)
+                n.note("recheck_failed", n.reason, eng.now())
+                eng.store.save(n)
+                self._log("negotiation_recheck_failed", negotiation=n.id, reasons=reasons)
+            return reasons
 
     def _on_executed(self, action: Action, out: dict) -> None:
         if action.origin.kind != "negotiation":

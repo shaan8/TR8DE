@@ -193,7 +193,7 @@ cd agent
 ../.venv/bin/python -m tiwala_agent.drive --deployment ../deployments/11155111.json "What's open?" "/tick"   # scripted
 ```
 
-The UI (`agent/app.py`) reads `../.env` itself and shows free vs locked funds,
+The UI (`agent/app.py`) asks for the same owner login as the console, reads `../.env` itself and shows free vs locked funds,
 the agent's daily limit left and open deals beside the chat. It uses OpenRouter when no DeepSeek key is set.
 
 ### Agent console (FastAPI + React)
