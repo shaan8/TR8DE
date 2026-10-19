@@ -119,8 +119,8 @@ def check_payee(name: str, address: str, owner_texts: list[str], untrusted_texts
     if typed:
         checks.append(Check("provenance", True, "You typed this address yourself."))
     else:
-        where = "It appears only in text read from the chain" if in_chain else "Tiwala did not get it from you"
-        checks.append(Check("provenance", False, f"You did not type this address. {where}, and nothing Tiwala reads "
+        where = "It appears only in text read from the chain" if in_chain else "TR8DE did not get it from you"
+        checks.append(Check("provenance", False, f"You did not type this address. {where}, and nothing TR8DE reads "
                             "can become a payee. Paste it in your own message to save it."))
     if typed and in_chain:
         checks.append(Check("address_also_in_chain_text", False, "The same address also appears in a PO note on "

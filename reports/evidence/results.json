@@ -1,11 +1,11 @@
 {
   "summary": {
-    "commit": "1e18e5c (with local changes)",
+    "commit": "01b4fc4 (with local changes)",
     "python": "3.14.7",
-    "date_utc": "2026-10-19 13:18",
+    "date_utc": "2026-10-19 19:00",
     "seconds": 77,
-    "scenarios": 177,
-    "passed": 177,
+    "scenarios": 192,
+    "passed": 192,
     "fuzz": {
       "seed": 20261019,
       "cases": 200000,
@@ -31,8 +31,8 @@
         "passed": 32
       },
       "A. Task completion": {
-        "total": 72,
-        "passed": 72
+        "total": 87,
+        "passed": 87
       }
     }
   },
@@ -42,7 +42,7 @@
       "file": "test_auth",
       "group": "D. Privacy and integrity",
       "status": "pass",
-      "seconds": 0.4
+      "seconds": 0.39
     },
     {
       "name": "test_everything_but_public_paths_needs_a_session",
@@ -77,14 +77,14 @@
       "file": "test_auth",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 3.1
+      "seconds": 3.12
     },
     {
       "name": "test_sessions_expire_when_idle_and_absolutely",
       "file": "test_auth",
       "group": "D. Privacy and integrity",
       "status": "pass",
-      "seconds": 0.31
+      "seconds": 0.32
     },
     {
       "name": "test_security_headers_on_every_response",
@@ -112,35 +112,35 @@
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 20.2
+      "seconds": 19.52
     },
     {
       "name": "test_lookalike_wallet_cannot_inflate_reputation",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 2.71
+      "seconds": 2.72
     },
     {
       "name": "test_happy_path_create_confirm_then_release_down_payment",
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.78
+      "seconds": 0.79
     },
     {
       "name": "test_confirmation_card_shows_cap_forecast_and_flags",
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.21
+      "seconds": 0.22
     },
     {
       "name": "test_correction_redraft_then_confirm",
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.83
+      "seconds": 0.82
     },
     {
       "name": "test_rt_direct_prompt_injection",
@@ -161,28 +161,28 @@
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.32
+      "seconds": 0.35
     },
     {
       "name": "test_rt_payout_redirection",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.27
+      "seconds": 0.29
     },
     {
       "name": "test_rt_fake_delivery_then_real_attestation",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 1.64
+      "seconds": 1.66
     },
     {
       "name": "test_rt_amount_tampering",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.23
+      "seconds": 0.21
     },
     {
       "name": "test_rt_key_compromise_contract_backstop",
@@ -196,14 +196,14 @@
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.29
+      "seconds": 0.21
     },
     {
       "name": "test_rt_pending_confirmation_expires",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.22
+      "seconds": 0.23
     },
     {
       "name": "test_rt_offchain_data_minimized",
@@ -224,42 +224,42 @@
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.99
+      "seconds": 0.96
     },
     {
       "name": "test_monitor_halts_when_underfunded",
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 1.35
+      "seconds": 1.39
     },
     {
       "name": "test_audit_log_covers_every_step_and_verifies",
       "file": "test_integration",
       "group": "D. Privacy and integrity",
       "status": "pass",
-      "seconds": 0.81
+      "seconds": 0.76
     },
     {
       "name": "test_print_demo_transcript",
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.79
+      "seconds": 0.75
     },
     {
       "name": "test_full_flow_through_deepseek_adapter",
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.81
+      "seconds": 0.78
     },
     {
       "name": "test_timed_deadline_overdue_counts_as_non_delivery",
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 1.63
+      "seconds": 1.5
     },
     {
       "name": "test_coordinator_outage_drops_turn_and_drafts_nothing",
@@ -273,7 +273,7 @@
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.74
+      "seconds": 0.79
     },
     {
       "name": "test_payee_save_needs_last4_owner_key_and_waiting_period",
@@ -287,7 +287,7 @@
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.07
+      "seconds": 0.09
     },
     {
       "name": "test_payee_lookalike_of_saved_address_is_refused",
@@ -301,35 +301,35 @@
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.4
+      "seconds": 0.41
     },
     {
       "name": "test_agent_key_cannot_add_a_supplier",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.02
+      "seconds": 0.03
     },
     {
       "name": "test_pentest_monitor_does_not_pay_blocklisted_supplier",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 1.18
+      "seconds": 1.22
     },
     {
       "name": "test_pentest_down_payment_refused_for_blocklisted_supplier",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.44
+      "seconds": 0.46
     },
     {
       "name": "test_pentest_readded_supplier_cooling_blocks_down_payment_and_balance",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 2.27
+      "seconds": 2.46
     },
     {
       "name": "test_pentest_removed_supplier_balance_needs_owner_confirmation",
@@ -343,35 +343,35 @@
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.76
+      "seconds": 0.74
     },
     {
       "name": "test_audit_f3_wrong_deal_id_is_refused",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.53
+      "seconds": 0.55
     },
     {
       "name": "test_circuit_breaker_freezes_after_repeated_refusals_until_unfreeze",
       "file": "test_integration",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.92
+      "seconds": 0.9
     },
     {
       "name": "test_freeze_pauses_wallet_and_unfreeze_restores",
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 1.86
+      "seconds": 1.93
     },
     {
       "name": "test_audit_anchor_detects_tail_deletion_offline_and_on_chain",
       "file": "test_integration",
       "group": "D. Privacy and integrity",
       "status": "pass",
-      "seconds": 1.14
+      "seconds": 1.18
     },
     {
       "name": "test_reply_claiming_a_payment_that_did_not_happen_is_replaced",
@@ -385,7 +385,7 @@
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.9
+      "seconds": 1.01
     },
     {
       "name": "test_without_a_model_key_the_console_still_works",
@@ -399,14 +399,14 @@
       "file": "test_integration",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.36
+      "seconds": 0.37
     },
     {
       "name": "test_honest_mistakes_do_not_trip_the_breaker",
       "file": "test_integration",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.46
+      "seconds": 0.43
     },
     {
       "name": "test_card_amounts_repeated_by_the_model_are_not_flagged",
@@ -434,7 +434,7 @@
       "file": "test_negotiation",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.01
+      "seconds": 0.0
     },
     {
       "name": "test_reserve_and_deposit_ceiling_are_never_breached",
@@ -563,6 +563,13 @@
       "seconds": 0.0
     },
     {
+      "name": "test_one_number_two_suppliers_routes_to_the_open_deal",
+      "file": "test_negotiation",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
       "name": "test_unknown_sender_opt_out_and_escalation",
       "file": "test_negotiation",
       "group": "C. Attacks blocked",
@@ -602,28 +609,28 @@
       "file": "test_negotiation_chain",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 1.1
+      "seconds": 1.12
     },
     {
       "name": "test_lost_link_is_recovered_from_the_chain_reference",
       "file": "test_negotiation_chain",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 1.01
+      "seconds": 1.05
     },
     {
       "name": "test_wallet_changes_after_agreement_block_the_escrow",
       "file": "test_negotiation_chain",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.66
+      "seconds": 0.78
     },
     {
       "name": "test_paused_wallet_is_refused_by_policy",
       "file": "test_negotiation_chain",
       "group": "B. Safe execution and owner control",
       "status": "pass",
-      "seconds": 0.72
+      "seconds": 0.73
     },
     {
       "name": "test_changed_terms_need_renewed_acceptance",
@@ -637,21 +644,21 @@
       "file": "test_negotiation_chain",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.41
+      "seconds": 0.48
     },
     {
       "name": "test_whatsapp_human_negotiation_to_escrow",
       "file": "test_negotiation_chain",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 1.0
+      "seconds": 0.99
     },
     {
       "name": "test_owner_chat_starts_live_whatsapp_negotiation",
       "file": "test_negotiation_chain",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.19
+      "seconds": 0.21
     },
     {
       "name": "test_chat_negotiation_needs_the_supplier_in_the_owners_words",
@@ -665,14 +672,14 @@
       "file": "test_negotiation_chain",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.97
+      "seconds": 0.98
     },
     {
       "name": "test_demo_successful_agreement_and_escrow",
       "file": "test_negotiation_demo",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.95
+      "seconds": 0.99
     },
     {
       "name": "test_demo_impossible_agreement",
@@ -686,7 +693,7 @@
       "file": "test_negotiation_demo",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.29
+      "seconds": 0.25
     },
     {
       "name": "test_typed_new_supplier_passes",
@@ -763,28 +770,28 @@
       "file": "test_policy_fuzz",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 3.09
+      "seconds": 2.92
     },
     {
       "name": "test_fuzzer_catches_deliberate_bugs[skip_payout_checks-blocklisted payee]",
       "file": "test_policy_fuzz",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.31
+      "seconds": 0.29
     },
     {
       "name": "test_fuzzer_catches_deliberate_bugs[skip_daily_limit-over daily limit]",
       "file": "test_policy_fuzz",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.33
+      "seconds": 0.3
     },
     {
       "name": "test_fuzzer_catches_deliberate_bugs[skip_checker-no checker approval]",
       "file": "test_policy_fuzz",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.33
+      "seconds": 0.32
     },
     {
       "name": "test_owner_turns_are_serialized",
@@ -812,10 +819,45 @@
       "file": "test_redteam_judge",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.03
+      "seconds": 0.04
     },
     {
       "name": "test_offline_message_names_every_provider",
+      "file": "test_redteam_judge",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_password_file_is_owner_only_and_deploy_reads_env_without_running_it",
+      "file": "test_redteam_judge",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.07
+    },
+    {
+      "name": "test_empty_keys_from_env_example_fall_through_to_a_real_one[keys0-qwen]",
+      "file": "test_redteam_judge",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.39
+    },
+    {
+      "name": "test_empty_keys_from_env_example_fall_through_to_a_real_one[keys1-qwen]",
+      "file": "test_redteam_judge",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_empty_keys_from_env_example_fall_through_to_a_real_one[keys2-openrouter]",
+      "file": "test_redteam_judge",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_empty_keys_from_env_example_fall_through_to_a_real_one[keys3-None]",
       "file": "test_redteam_judge",
       "group": "A. Task completion",
       "status": "pass",
@@ -854,7 +896,7 @@
       "file": "test_telegram",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 0.0
+      "seconds": 0.01
     },
     {
       "name": "test_token_never_appears_in_errors",
@@ -862,6 +904,69 @@
       "group": "C. Attacks blocked",
       "status": "pass",
       "seconds": 0.0
+    },
+    {
+      "name": "test_bot_always_answers_and_owner_link_needs_no_allowlist",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.01
+    },
+    {
+      "name": "test_whatsapp_sender_allows_owner_linked_numbers_without_an_env_list",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_invite_code_survives_odd_whitespace_or_a_bare_paste",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.01
+    },
+    {
+      "name": "test_partial_counter_with_deal_words_becomes_a_counter",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_vague_reply_gets_a_plain_too_vague_answer_with_an_example",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_needing_time_gets_a_polite_hold_not_a_vague_warning",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_a_burst_is_one_turn_and_filler_is_not_answered_twice",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.21
+    },
+    {
+      "name": "test_reply_writer_is_guarded_and_repeats_are_skipped",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.0
+    },
+    {
+      "name": "test_out_of_rounds_hands_to_owner_and_never_closes",
+      "file": "test_telegram",
+      "group": "A. Task completion",
+      "status": "pass",
+      "seconds": 0.01
     },
     {
       "name": "test_worked_example_from_doc",
@@ -1267,14 +1372,14 @@
       "file": "test_webhook_gate",
       "group": "A. Task completion",
       "status": "pass",
-      "seconds": 1.01
+      "seconds": 1.0
     },
     {
       "name": "test_other_methods_and_oversized_bodies_are_refused",
       "file": "test_webhook_gate",
       "group": "C. Attacks blocked",
       "status": "pass",
-      "seconds": 0.51
+      "seconds": 0.5
     }
   ]
 }

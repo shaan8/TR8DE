@@ -123,7 +123,7 @@ export default function App() {
     <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-6">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-section font-bold tracking-tight">Tiwala</h1>
+          <h1 className="text-section font-bold tracking-tight">TR8DE</h1>
           <p className="text-sm text-ink-2">Escrow agent for your supplier payments · {state?.network || "Sepolia testnet"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

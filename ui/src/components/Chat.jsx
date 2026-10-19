@@ -54,7 +54,7 @@ export function Turn({ turn, ctx }) {
       )}
       {turn.system && <p className="text-sm text-ink-2"><Chip tone="muted">Outside the agent</Chip> {turn.source}</p>}
       <div className="rounded bg-surface p-4 sm:p-6">
-        <p className="mb-2 flex items-center gap-2 text-cap font-semibold uppercase tracking-wider text-ink-2">Tiwala</p>
+        <p className="mb-2 flex items-center gap-2 text-cap font-semibold uppercase tracking-wider text-ink-2">TR8DE</p>
         {turn.reply && <div className="[overflow-wrap:anywhere]"><Prose text={turn.reply} /></div>}
         {turn.untrusted?.map((u) => <div key={u.source} className="mt-3"><UntrustedBlock u={u} /></div>)}
         {turn.question && <div className="mt-3"><QuestionCard q={turn.question} /></div>}
@@ -71,9 +71,9 @@ export function Composer({ disabled, busy, value, setValue, onSend, onTick, inpu
   return (
     <form className="flex flex-col gap-2 rounded bg-surface p-3 sm:flex-row"
       onSubmit={(ev) => { ev.preventDefault(); if (value.trim()) onSend(value.trim()); }}>
-      <label htmlFor="msg" className="sr-only">Message Tiwala</label>
+      <label htmlFor="msg" className="sr-only">Message TR8DE</label>
       <input id="msg" ref={inputRef} value={value} onChange={(ev) => setValue(ev.target.value)} disabled={disabled}
-        placeholder={disabled ? "Halted: actions are disabled" : "Ask Tiwala, or type /guide"}
+        placeholder={disabled ? "Halted: actions are disabled" : "Ask TR8DE, or type /guide"}
         className="min-h-[44px] flex-1 rounded border border-accent bg-raised px-3 text-base text-ink placeholder:text-ink-2 disabled:opacity-60" />
       <div className="flex gap-2">
         <Button type="submit" disabled={disabled || busy || !value.trim()} className="flex-1 sm:flex-none"><Send size={16} aria-hidden="true" />Send</Button>
@@ -112,8 +112,8 @@ export function Suggestions({ onPick, onSend, disabled }) {
 export function EmptyChat() {
   return (
     <div className="rounded bg-surface p-6 text-ink-2">
-      <p className="flex items-center gap-2 text-base text-ink"><User size={16} aria-hidden="true" />Tell Tiwala what to pay, and to whom.</p>
-      <p className="mt-1 text-sm">For example: “Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25”. Every new deal comes back to you for a yes. Type <span className="font-mono text-ink">/guide</span> for everything Tiwala can do.</p>
+      <p className="flex items-center gap-2 text-base text-ink"><User size={16} aria-hidden="true" />Tell TR8DE what to pay, and to whom.</p>
+      <p className="mt-1 text-sm">For example: “Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25”. Every new deal comes back to you for a yes. Type <span className="font-mono text-ink">/guide</span> for everything TR8DE can do.</p>
     </div>
   );
 }

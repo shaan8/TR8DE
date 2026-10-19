@@ -1,4 +1,4 @@
-"""FastAPI over the Tiwala core for the React console (ui/).
+"""FastAPI over the TR8DE core for the React console (ui/).
 
     cd agent && ../.venv/bin/uvicorn console.server:app --port 8000 --no-access-log   # access logs would record query strings
 
@@ -29,7 +29,7 @@ PUBLIC_RPC = "https://ethereum-sepolia-rpc.publicnode.com"
 STAGE = {"LOCKED": "Locked", "DOWN_PAID": "DP paid", "DELIVERED": "Delivered", "COMPLETED": "Completed",
          "REFUNDED": "Refunded", "DISPUTED": "Disputed"}
 
-app = FastAPI(title="Tiwala console", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="TR8DE console", docs_url=None, redoc_url=None, openapi_url=None)
 
 
 class Msg(BaseModel):

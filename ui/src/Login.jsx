@@ -22,7 +22,7 @@ export function Login({ onDone }) {
   return (
     <main className="mx-auto mt-24 max-w-sm px-4">
       <form onSubmit={submit} className="space-y-3 rounded border border-subtle bg-surface p-5">
-        <h1 className="flex items-center gap-2 text-section font-bold"><Lock size={18} aria-hidden /> Tiwala</h1>
+        <h1 className="flex items-center gap-2 text-section font-bold"><Lock size={18} aria-hidden /> TR8DE</h1>
         <p className="text-sm text-ink-2">Sign in to the owner console.</p>
         <label className="block text-sm">Username
           <input className="mt-1 w-full rounded border border-subtle bg-canvas px-2 py-1.5" autoComplete="username"

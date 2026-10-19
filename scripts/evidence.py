@@ -82,7 +82,7 @@ def main() -> int:
                           for g, _ in GROUPS}}
     (OUT / "results.json").write_text(json.dumps({"summary": summary, "cases": cases}, indent=2) + "\n")
 
-    lines = ["# Tiwala execution evidence", "",
+    lines = ["# TR8DE execution evidence", "",
              f"Commit `{summary['commit']}`, Python {summary['python']}, {summary['date_utc']} UTC, "
              f"{summary['seconds']} s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.",
              "", "Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a "

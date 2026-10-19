@@ -1,17 +1,17 @@
-# Tiwala execution evidence
+# TR8DE execution evidence
 
-Commit `1e18e5c (with local changes)`, Python 3.14.7, 2026-10-19 13:18 UTC, 77 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `01b4fc4 (with local changes)`, Python 3.14.7, 2026-10-19 19:00 UTC, 77 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
-**177/177 scenarios pass.**
+**192/192 scenarios pass.**
 
 | Group | Passed |
 | --- | --- |
 | C. Attacks blocked | 63/63 |
 | D. Privacy and integrity | 10/10 |
 | B. Safe execution and owner control | 32/32 |
-| A. Task completion | 72/72 |
+| A. Task completion | 87/87 |
 
 Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed payouts reached: cancel_deal 974, create_deal 141, release_balance 175, release_down_payment 198. Three deliberately planted bugs (no payee checks, no daily limit, no Checker) are each caught.
 
@@ -154,6 +154,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | liquidity accounting under full value lock | test_negotiation | pass |
 | exact code accepts and old code does not | test_negotiation | pass |
 | parse messages and statuses | test_negotiation | pass |
+| one number two suppliers routes to the open deal | test_negotiation | pass |
 | whatsapp status explains what is missing | test_negotiation | pass |
 | hello world template is sent without parameters | test_negotiation | pass |
 | negotiated escrow created once with exact terms | test_negotiation_chain | pass |
@@ -165,8 +166,22 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | malformed address stops early | test_payee | pass |
 | chunk groups by four | test_payee | pass |
 | offline message names every provider | test_redteam_judge | pass |
+| password file is owner only and deploy reads env without running it | test_redteam_judge | pass |
+| empty keys from env example fall through to a real one[keys0-qwen] | test_redteam_judge | pass |
+| empty keys from env example fall through to a real one[keys1-qwen] | test_redteam_judge | pass |
+| empty keys from env example fall through to a real one[keys2-openrouter] | test_redteam_judge | pass |
+| empty keys from env example fall through to a real one[keys3-None] | test_redteam_judge | pass |
 | offer reply and accept over telegram | test_telegram | pass |
 | stop opts out and sending is gated | test_telegram | pass |
+| bot always answers and owner link needs no allowlist | test_telegram | pass |
+| whatsapp sender allows owner linked numbers without an env list | test_telegram | pass |
+| invite code survives odd whitespace or a bare paste | test_telegram | pass |
+| partial counter with deal words becomes a counter | test_telegram | pass |
+| vague reply gets a plain too vague answer with an example | test_telegram | pass |
+| needing time gets a polite hold not a vague warning | test_telegram | pass |
+| a burst is one turn and filler is not answered twice | test_telegram | pass |
+| reply writer is guarded and repeats are skipped | test_telegram | pass |
+| out of rounds hands to owner and never closes | test_telegram | pass |
 | worked example from doc | test_units | pass |
 | new supplier starts at zero trust | test_units | pass |
 | stranger cap binds for new buyer | test_units | pass |

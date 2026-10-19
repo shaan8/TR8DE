@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a Tiwala audit log offline. Standard library only; no Tiwala install or server needed.
+"""Verify a TR8DE audit log offline. Standard library only; no TR8DE install or server needed.
 
     python3 scripts/verify_audit.py agent/logs/audit.jsonl
     python3 scripts/verify_audit.py agent/logs/audit.jsonl --anchors agent/logs/anchors.jsonl \
@@ -49,13 +49,13 @@ def onchain_anchor(url, tx):
         return None, "transaction failed or not mined"
     data = bytes.fromhex(t["input"][2:])
     if not data.startswith(PREFIX) or len(data) != len(PREFIX) + 40:
-        return None, "transaction is not a Tiwala audit anchor"
+        return None, "transaction is not a TR8DE audit anchor"
     rest = data[len(PREFIX):]
     return (int.from_bytes(rest[:8], "big"), rest[8:].hex(), t["from"]), ""
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Verify a Tiwala audit log.")
+    ap = argparse.ArgumentParser(description="Verify a TR8DE audit log.")
     ap.add_argument("log")
     ap.add_argument("--anchors", help="anchors.jsonl written by /anchor")
     ap.add_argument("--rpc", help="JSON-RPC URL to read each anchor from the chain")

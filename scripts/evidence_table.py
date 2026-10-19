@@ -13,7 +13,7 @@ nm = lambda a: names.get((a or "").lower(), (a or "")[:10])
 link = lambda h, t=None: f"[{t or h[:10]+'...'}]({ES}/tx/{h})"
 addr = lambda a: f"[`{a[:8]}...{a[-4:]}`]({ES}/address/{a})"
 
-out = ["# Tiwala on Sepolia: on-chain evidence", "",
+out = ["# TR8DE on Sepolia: on-chain evidence", "",
        f"Chain 11155111, start block {dep['startBlock']}. All links open on Sepolia Etherscan.", "",
        "## Contracts", "", "| Role | Address |", "|---|---|"]
 for k, r in [("token","tPHP settlement token"),("factory","TiwalaFactory"),("demoWallet","Demo agent wallet"),("owner","Owner (human)"),("agent","Agent key")]:

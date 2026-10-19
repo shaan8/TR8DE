@@ -1,4 +1,4 @@
-"""Non-interactive CLI: feeds messages to one Tiwala session, for recorded live runs.
+"""Non-interactive CLI: feeds messages to one TR8DE session, for recorded live runs.
 
     python3 -m tiwala_agent.drive --deployment ../deployments/11155111.json "msg 1" "yes" "/tick"
 """

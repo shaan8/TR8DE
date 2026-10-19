@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy Tiwala to Sepolia and seed demo history. Run from the repo root: ./scripts/deploy-sepolia.sh
+# Deploy TR8DE to Sepolia and seed demo history. Run from the repo root: ./scripts/deploy-sepolia.sh
 set -euo pipefail
 # Read only the keys this script needs, without running .env as shell code (values may contain "$" or spaces).
 # Values already in the environment win, as with the console.

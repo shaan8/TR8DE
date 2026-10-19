@@ -1,9 +1,9 @@
-"""Glue between the negotiation engine, Tiwala's payment pipeline, WhatsApp and supplier agents.
+"""Glue between the negotiation engine, TR8DE's payment pipeline, WhatsApp and supplier agents.
 
 Escrow handoff (request_escrow) is idempotent: it returns the existing deal if the negotiation already has one or if
 a deal with the same on-chain reference exists, returns the same pending card on a repeated request, and rechecks
 funds, reserve, supplier status, deposit ceiling and expiry before drafting. The deal is created only when the owner
-confirms the card in their own words, through Tiwala's policy, Checker, Gate and signer.
+confirms the card in their own words, through TR8DE's policy, Checker, Gate and signer.
 """
 from __future__ import annotations
 

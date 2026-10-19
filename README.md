@@ -1,9 +1,11 @@
-# Tiwala
+# TR8DE
 
 [![CI](https://github.com/shaan8/TR8DE/actions/workflows/ci.yml/badge.svg)](https://github.com/shaan8/TR8DE/actions/workflows/ci.yml)
 
 AI escrow wallet agent for MSME supplier payments (WeBank Fintechathon 2026, International Track, Topic F).
 Three LLM agents plan and check; deterministic code decides; the contract has the final say.
+TR8DE was called Tiwala during development: the Python package (`tiwala_agent`), the `TIWALA_*` settings and the
+deployed contract names (`TiwalaAgentWallet`, `TiwalaFactory`) keep that name, so the Sepolia evidence still matches.
 
 Live on Sepolia: factory [`0xDEF343...d569`](https://sepolia.etherscan.io/address/0xDEF343FeeD80C2Dd4943B731bde56bb8932Bd569),
 demo wallet [`0x2Fc37E...8C1a`](https://sepolia.etherscan.io/address/0x2Fc37E4e02F4d10745875710cd54B52429A28C1a).
@@ -205,13 +207,13 @@ Open `http://127.0.0.1:8000/?fixture=approval` (or pick any of the 21 states in 
 `?fixture=` the page drives the live agent. `cd ui && npm run shots` renders every state at 1440 and 390 into
 `reports/ui/` and runs axe on each (spec: `docs/ui-spec.md`).
 
-`/guide` lists what Tiwala can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
+`/guide` lists what TR8DE can do with example prompts (no model call). Owner commands: `/attest N`, `/approve N`, `/dispute N`, `/resolve N release|refund`, `/tick` (run the monitor),
 `/verify` (check the audit chain), `/quit`.
 Deadlines accept `YYYY-MM-DD` (23:59) or `YYYY-MM-DD HH:MM` in the device timezone (`TIWALA_TZ` overrides).
 
 ### Supplier negotiation
 
-Open `http://127.0.0.1:8000/?view=negotiate`. Tiwala negotiates quantity, price, deposit and delivery with a supplier
+Open `http://127.0.0.1:8000/?view=negotiate`. TR8DE negotiates quantity, price, deposit and delivery with a supplier
 on WhatsApp (or the local simulator) or with the supplier's agent, then carries the exact agreed terms into escrow
 through the same policy, Checker, Gate and your own yes. Replays: `?view=negotiate&fixture=neg_success` (also
 `neg_ready`, `neg_escrow`, `neg_impossible`, `neg_injection`) and `?view=supplier&fixture=neg_success`.

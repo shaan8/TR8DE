@@ -22,7 +22,7 @@ for (const f of list) {
       });
       await page.setViewportSize({ width: w, height: h });
       await page.goto(`/?fixture=${f.name}`);
-      await expect(page.getByRole("heading", { name: "Tiwala" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "TR8DE" })).toBeVisible();
       await page.waitForLoadState("networkidle");
       await page.evaluate(() => document.fonts.ready);
       const file = `${String(f.n).padStart(2, "0")}-${f.name}-${w}.png`;
@@ -45,7 +45,7 @@ for (const f of list) {
 // Negotiation workspace and supplier console, replayed from reports/negotiation (recorded local demos).
 const NEG = path.resolve("../reports/negotiation");
 const negList = fs.existsSync(NEG) ? fs.readdirSync(NEG).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort() : [];
-const views = negList.flatMap((name) => [{ name, view: "negotiate", heading: "Tiwala" }]).concat(
+const views = negList.flatMap((name) => [{ name, view: "negotiate", heading: "TR8DE" }]).concat(
   negList.includes("neg_success") ? [{ name: "neg_success", view: "supplier", heading: "Supplier console" }] : []);
 
 for (const v of views) {

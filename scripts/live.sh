@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tiwala live on Sepolia: your own contracts on the public Ethereum test network, real transactions you can show
+# TR8DE live on Sepolia: your own contracts on the public Ethereum test network, real transactions you can show
 # on Etherscan, then the console. Needs git, Node 18+, Python 3.11+, and about 0.02 Sepolia test ETH
 # (free from a faucet; the script makes the key and tells you which address to fund).
 #
@@ -43,7 +43,7 @@ need node "Install Node 18+ from https://nodejs.org"
 need npm "It comes with Node: https://nodejs.org"
 need python3 "Install Python 3.11+ from https://www.python.org"
 python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' || fail "Python 3.11 or newer is needed (found $(python3 -V))."
-port_busy "$PORT" && fail "Port $PORT is in use (another Tiwala console?). Stop it, or run PORT=8010 $0"
+port_busy "$PORT" && fail "Port $PORT is in use (another TR8DE console?). Stop it, or run PORT=8010 $0"
 
 say "1/6 Tools"
 if [ ! -d node_modules/@openzeppelin ]; then npm ci --no-audit --no-fund --loglevel=error; fi

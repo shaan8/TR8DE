@@ -32,12 +32,12 @@ def find_project(explicit: str | None = None) -> Path:
     for candidate in candidates:
         if (candidate / "agent" / "tiwala_agent" / "llm.py").is_file():
             return candidate
-    raise ValueError("Cannot find Tiwala. Run from its project folder or add --project /path/to/Tiwala.")
+    raise ValueError("Cannot find TR8DE. Run from its project folder or add --project /path/to/TR8DE.")
 
 
 def update_env(path: Path, key: str) -> None:
     key = key.strip()
-    # Values stay unquoted for compatibility with Tiwala's loader and shell sourcing.
+    # Values stay unquoted for compatibility with TR8DE's loader and shell sourcing.
     if not key or not re.fullmatch(r"[A-Za-z0-9_.-]+", key):
         raise ValueError("Enter only the API key, with no quotes, spaces, or other characters.")
     if path.is_symlink():
@@ -83,7 +83,7 @@ def update_env(path: Path, key: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", help="Tiwala folder; normally detected automatically")
+    parser.add_argument("--project", help="TR8DE folder; normally detected automatically")
     args = parser.parse_args()
     try:
         project = find_project(args.project)
@@ -102,7 +102,7 @@ def main() -> int:
         print(f"Setup failed: {exc}", file=sys.stderr)
         return 1
     print(f"Saved. Wallet and negotiation agents are configured for {MODEL}, thinking enabled.")
-    print("The .env is readable and writable only by your user. Restart Tiwala to load it.")
+    print("The .env is readable and writable only by your user. Restart TR8DE to load it.")
     return 0
 
 

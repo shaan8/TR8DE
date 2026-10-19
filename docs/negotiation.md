@@ -1,6 +1,6 @@
 # Supplier negotiation
 
-Tiwala negotiates one product with one supplier: quantity, unit price (and total), deposit percentage and delivery
+TR8DE negotiates one product with one supplier: quantity, unit price (and total), deposit percentage and delivery
 deadline. The supplier answers either as a person on WhatsApp or through an optional supplier agent. Both use the
 same negotiation record and proposal format. Once both sides accept the same version, the exact terms go into the
 existing escrow pipeline. Negotiation never moves money.
@@ -24,7 +24,7 @@ existing escrow pipeline. Negotiation never moves money.
 5. **Agreement.** Both parties accepted the same version and hash. State `awaiting_buyer_approval`. The review shows
    the exact terms, hash, both acceptances (identity and channel), the cash impact and any quantity left unfulfilled.
 6. **Escrow.** "Recheck and prepare escrow" rereads wallet funds, reserve, supplier status, deposit ceiling and
-   expiry. It then drafts a `create_deal` through Tiwala's intent check (the action must equal the agreement), the
+   expiry. It then drafts a `create_deal` through TR8DE's intent check (the action must equal the agreement), the
    Checker, the policy engine and a confirmation card. Only your own yes creates the deal and pays the agreed deposit.
    The deal ID and transactions are linked back to the negotiation.
 
@@ -70,7 +70,7 @@ Implemented against Meta's documentation (checked October 2026; recheck before g
 - Sending needs `WHATSAPP_LIVE_SEND=1`, a token, a phone number ID, and the recipient in `WHATSAPP_ALLOWED_RECIPIENTS`.
 
 **Unresolved policy question.** The WhatsApp Business Messaging Policy restricts "real, virtual, or fake currency"
-and prohibits some lending; it does not mention escrow or money transmission. Tiwala settles in a test token on
+and prohibits some lending; it does not mention escrow or money transmission. TR8DE settles in a test token on
 Sepolia. Whether a business using WhatsApp to negotiate terms that end in on-chain escrow is eligible is not settled.
 Keeping settlement outside WhatsApp does not by itself answer it. Get Meta's (or a BSP's) written confirmation before
 live use.
@@ -123,5 +123,5 @@ gets one corrective retry before handing over (supplier-side log only).
 - The agent's moves are checked against its mandate on the same server; a real deployment should run the supplier
   agent on the supplier's own infrastructure.
 - Text counteroffers depend on the interpreter model for extraction. They are never counted as acceptance, but a
-  misread is possible; Tiwala echoes the terms back and the supplier must accept the code.
+  misread is possible; TR8DE echoes the terms back and the supplier must accept the code.
 - Negotiation data is local JSON files, not a database.

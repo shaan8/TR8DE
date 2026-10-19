@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Example supplier-side agent: the supplier's own system negotiating with a Tiwala buyer over the supplier API.
+"""Example supplier-side agent: the supplier's own system negotiating with a TR8DE buyer over the supplier API.
 Standard library only. Replace decide() with your own pricing logic or model.
 
     python3 scripts/supplier_agent_example.py --url http://127.0.0.1:8000 \
@@ -69,7 +69,7 @@ def step(api, rules, seen):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Example supplier agent for the Tiwala supplier API.")
+    ap = argparse.ArgumentParser(description="Example supplier agent for the TR8DE supplier API.")
     ap.add_argument("--url", default="http://127.0.0.1:8000")
     ap.add_argument("--supplier", required=True, help="your payout address as saved by the buyer")
     ap.add_argument("--min-price", type=float, required=True, help="lowest unit price you accept, PHP")

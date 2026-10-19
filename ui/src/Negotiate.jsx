@@ -7,14 +7,14 @@ import { logout } from "./Login.jsx";
 
 const P = (units) => peso(units / 100, 2);
 const STATE = {
-  awaiting_acceptance: ["Waiting for the supplier", "accent"], negotiating: ["Tiwala is answering", "accent"],
+  awaiting_acceptance: ["Waiting for the supplier", "accent"], negotiating: ["TR8DE is answering", "accent"],
   awaiting_clarification: ["Needs a clear reply", "warn"], awaiting_buyer_approval: ["Agreed: your review", "warn"],
   ready_for_escrow: ["Confirm in chat", "warn"], escrow_created: ["Escrow created", "ok"], rejected: ["No deal", "bad"],
   expired: ["Expired", "muted"], cancelled: ["Cancelled", "muted"],
 };
 const OPEN = new Set(["awaiting_acceptance", "negotiating", "awaiting_clarification"]);
 const SOURCE = {
-  owner: "you", buyer_rules: "Tiwala (rules)", buyer_model: "Tiwala (model)", supplier_text: "supplier text, read by model",
+  owner: "you", buyer_rules: "TR8DE (rules)", buyer_model: "TR8DE (model)", supplier_text: "supplier text, read by model",
   supplier_agent_live_model: "supplier agent (live model)", supplier_agent_scripted: "supplier agent (scripted)",
   supplier_console: "supplier's person",
 };
@@ -100,7 +100,7 @@ function Conversation({ n }) {
             <li key={i} className={clsx("flex", m.dir === "out" ? "justify-end" : "justify-start")}>
               <div className={clsx("max-w-[88%] rounded px-3 py-2 text-sm [overflow-wrap:anywhere]", m.dir === "out" ? "border border-accent bg-raised" : "border border-subtle bg-canvas")}>
                 <p className="mb-1 flex flex-wrap items-center gap-1.5 text-cap text-ink-2">
-                  {m.dir === "out" ? "Tiwala (buyer)" : "Supplier"} · {when(m.ts).slice(5)}
+                  {m.dir === "out" ? "TR8DE (buyer)" : "Supplier"} · {when(m.ts).slice(5)}
                   {m.channel === "simulator" && <Chip tone="warn">simulator</Chip>}
                   {m.via && <Chip tone="muted">{SOURCE[m.via] || m.via}</Chip>}
                   {o && <Chip tone={o.status === "blocked" || o.status === "failed" ? "bad" : "muted"}>{o.status}</Chip>}
@@ -163,7 +163,7 @@ function Agreement({ n, onEscrow, onConfirm, busy, readonly }) {
         <Row label="Deposit">{t.deposit_bps / 100}% = <span className="font-mono">{P(t.deposit)}</span>, paid right after the deal is created</Row>
         <Row label="Delivery by">{when(t.deliver_by)}</Row>
         <Row label="Terms hash" mono>{p.terms_hash.slice(0, 24)}… (code {p.code})</Row>
-        <Row label="Accepted by">{Object.entries(p.accepted_by).map(([k, a]) => <div key={k}>{k === "buyer" ? "Tiwala within your limits" : `Supplier · ${SOURCE[a.via] || a.via}`} · {when(a.at).slice(5)}</div>)}</Row>
+        <Row label="Accepted by">{Object.entries(p.accepted_by).map(([k, a]) => <div key={k}>{k === "buyer" ? "TR8DE within your limits" : `Supplier · ${SOURCE[a.via] || a.via}`} · {when(a.at).slice(5)}</div>)}</Row>
         <Row label="Offer expires">{when(p.expires)}</Row>
         {h.deal_id && <Row label="Escrow">Deal #{h.deal_id}{h.tx && <> · <a href={txUrl(h.tx)} target="_blank" rel="noreferrer" className="font-mono">{short(h.tx, 12)}</a></>}{h.down_tx && <> · deposit <a href={txUrl(h.down_tx)} target="_blank" rel="noreferrer" className="font-mono">{short(h.down_tx, 10)}</a></>}{h.note && <div className="text-cap text-ink-2">{h.note}</div>}</Row>}
       </dl>
@@ -312,7 +312,7 @@ export default function Negotiate() {
     <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-6">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-section font-bold tracking-tight">Tiwala</h1>
+          <h1 className="text-section font-bold tracking-tight">TR8DE</h1>
           <p className="text-sm text-ink-2">Negotiate supplier terms, then lock the exact agreement in escrow · {data?.network || "Sepolia testnet"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

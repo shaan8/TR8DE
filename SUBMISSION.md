@@ -1,6 +1,6 @@
-# Tiwala: submission map
+# TR8DE: submission map
 
-WeBank FinTechathon 2026, International Track, Topic F. Tiwala is an escrow payment agent for small businesses:
+WeBank FinTechathon 2026, International Track, Topic F. TR8DE is an escrow payment agent for small businesses:
 it negotiates supplier terms, locks the exact agreement in an on-chain escrow on Sepolia, and pays only within
 limits the contract enforces and the owner approves.
 

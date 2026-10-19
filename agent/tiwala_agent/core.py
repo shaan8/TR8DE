@@ -61,7 +61,7 @@ def user_tz() -> tzinfo:
     return datetime.now().astimezone().tzinfo or timezone.utc
 CONFIRM_RX = re.compile(r"^\s*(yes|y|confirm(ed)?|ok(ay)?|go( ahead)?|proceed|sige|oo)\s*[.!]*\s*$", re.I)
 GUIDE = "\n".join([
-    '**What Tiwala does**',
+    '**What TR8DE does**',
     'Pays your suppliers through on-chain escrow. The full PO is locked when a deal is created, the down payment goes out right after, and the balance only after you confirm delivery. Every new deal comes back to you for a yes.',
     '',
     '**Try asking**',
@@ -92,7 +92,7 @@ GUIDE = "\n".join([
     '- /guide: show this list',
     '',
     '**Negotiations tab**',
-    'Tiwala negotiates quantity, price, deposit and delivery with a supplier on WhatsApp or with their agent, inside your limits, then brings the exact agreement back here for your yes.',
+    'TR8DE negotiates quantity, price, deposit and delivery with a supplier on WhatsApp or with their agent, inside your limits, then brings the exact agreement back here for your yes.',
     '',
     '**Built-in safety**',
     "Only saved payees can be paid, and new ones wait 24 hours. PO notes and supplier messages are treated as data, never instructions. Contract limits cap every deal and the agent's daily spend.",
@@ -558,7 +558,7 @@ class Tiwala:
         if v.flags:
             lines.append("Risk flags: " + ", ".join(v.flags))
         if filled:
-            lines.append("Filled in by Tiwala, please check: " + ", ".join(filled))
+            lines.append("Filled in by TR8DE, please check: " + ", ".join(filled))
         lines += [r for r in v.reasons if r]
         lines.append('Reply "yes" to confirm, or tell me what to change.')
         return "\n".join(l for l in lines if l)
@@ -648,7 +648,7 @@ class Tiwala:
         return TurnResult("\n\n".join([reply] + cards).strip(), self._events)
 
     def _grounding_text(self) -> str:
-        """Everything Tiwala's code or the owner said in this conversation: tool results and user turns, not the
+        """Everything TR8DE's code or the owner said in this conversation: tool results and user turns, not the
         model's own earlier replies."""
         parts = list(self.ledger)
         for m in self.history:

@@ -38,7 +38,7 @@ export function ActionCard({ e, pending, confirmed, diff, disabled, onConfirm, o
         {!pending && !confirmed && <Chip tone="muted">Superseded</Chip>}
       </div>
       <h3 className="mb-1 text-title font-semibold">{KIND[view.kind]} · {c.po || view.po_ref}</h3>
-      <p className="mb-4 text-sm text-ink-2">Nothing has moved yet. Tiwala sends it only after your own yes.</p>
+      <p className="mb-4 text-sm text-ink-2">Nothing has moved yet. TR8DE sends it only after your own yes.</p>
 
       {diff && (
         <div className="mb-4 rounded border border-accent p-4" aria-label="Correction">
@@ -91,7 +91,7 @@ export function ActionCard({ e, pending, confirmed, diff, disabled, onConfirm, o
         </Row>
         <Row label="Deliver by">
           {c.deliver_by || view.deliver_by}
-          {c.filled?.length > 0 && <div className="mt-1"><Chip tone="warn" icon={Pencil} wrap>Filled in by Tiwala, please check: {c.filled.join(", ")}</Chip></div>}
+          {c.filled?.length > 0 && <div className="mt-1"><Chip tone="warn" icon={Pencil} wrap>Filled in by TR8DE, please check: {c.filled.join(", ")}</Chip></div>}
         </Row>
         <Row label="Intent">{e.intent?.ok ? <Chip tone="ok" icon={CheckCircle2}>Matches your words</Chip> : <Chip tone="bad">Mismatch</Chip>}</Row>
         <CheckerLine checker={e.checker} />

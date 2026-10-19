@@ -165,7 +165,7 @@ def test_confirmation_card_shows_cap_forecast_and_flags(env):
     r = t.handle("Create escrow for Lumen PO-104, ₱120,000, 20% down")
     assert "Cap: 20% (network 20%, new to you; the 25% stranger cap does not bind)" in r.reply
     assert "Forecast: short by" in r.reply and "forecast_shortfall" in r.reply
-    assert "Filled in by Tiwala, please check: deadline" in r.reply
+    assert "Filled in by TR8DE, please check: deadline" in r.reply
     assert n_deals(env) == 1  # nothing created before confirmation (only the seeded PO-098)
 
 

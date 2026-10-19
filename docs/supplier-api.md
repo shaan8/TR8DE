@@ -1,7 +1,7 @@
-# Supplier API: negotiate with Tiwala from your own system
+# Supplier API: negotiate with TR8DE from your own system
 
-A supplier can answer a Tiwala buyer with its own software (an AI agent, an ERP rule, a script) instead of a
-person. Tiwala sends offers; your system accepts, counters or rejects. Tiwala's buyer side replies within the
+A supplier can answer a TR8DE buyer with its own software (an AI agent, an ERP rule, a script) instead of a
+person. TR8DE sends offers; your system accepts, counters or rejects. TR8DE's buyer side replies within the
 buyer's private limits, and an agreement still needs the buyer's own confirmation before any money moves.
 
 A working example is [`scripts/supplier_agent_example.py`](../scripts/supplier_agent_example.py) (standard library
@@ -53,14 +53,14 @@ newer offer instead.
 ```
 
 `deliver_by` takes unix seconds (recommended: copy the buyer's) or `YYYY-MM-DD` (end of that day in the buyer's
-time zone). The response is the updated negotiation, including Tiwala's reply if it countered.
+time zone). The response is the updated negotiation, including TR8DE's reply if it countered.
 
 ### `PUT /api/supplier/mandate?supplier=<address>`
 
 Optional. Stores your private limits for the simulated supplier agent that can answer for you on the buyer's
 server. Not needed when your own system answers.
 
-## What Tiwala guarantees your side
+## What TR8DE guarantees your side
 
 - Acceptance binds to one exact version and terms hash; a counter supersedes all earlier offers.
 - Your text and notes are treated as data, never as instructions to the buyer's agent.

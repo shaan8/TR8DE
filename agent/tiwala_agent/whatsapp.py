@@ -204,8 +204,11 @@ class Contacts:
         self.s = JsonStore(Path(root) / "contacts.json", {})
 
     def get_by_wa(self, wa_id: str) -> Optional[Contact]:
-        d = self.s.read()
-        return next((Contact(**c) for c in d.values() if c["wa_id"] == wa_id), None)
+        return next(iter(self.all_by_wa(wa_id)), None)
+
+    def all_by_wa(self, wa_id: str) -> list:
+        """Every contact on this number. One number can serve more than one supplier."""
+        return [Contact(**c) for c in self.s.read().values() if c["wa_id"] == wa_id]
 
     def get(self, supplier_address: str) -> Optional[Contact]:
         c = self.s.read().get(supplier_address.lower())
@@ -441,8 +444,15 @@ class Gateway:
             return {"status": "duplicate"}
         return self._process(m, channel)
 
+    def _sender(self, wa_id: str, channel: str) -> Optional[Contact]:
+        """The supplier this number is speaking for. With several on one number, the one with an open
+        negotiation wins, so a reply lands on the deal it answers rather than on whoever was linked first."""
+        on_channel = [c for c in self.contacts.all_by_wa(wa_id) if c.channel == channel]
+        return next((c for c in on_channel if self.find_open(c.supplier_address)),
+                    next(iter(on_channel), self.contacts.get_by_wa(wa_id)))
+
     def _process(self, m: Inbound, channel: str) -> dict:
-        c = self.contacts.get_by_wa(m.wa_id)
+        c = self._sender(m.wa_id, channel)
         if c is None or c.channel != channel:
             self.log("whatsapp_unknown_sender", channel=channel, sender=redact(m.wa_id))
             return {"status": "ignored", "reason": "unknown sender"}  # never answer unverified numbers

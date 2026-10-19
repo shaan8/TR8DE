@@ -1,4 +1,4 @@
-# Tiwala agent console: UI spec
+# TR8DE agent console: UI spec
 
 Sources: `agent/logs/audit.jsonl` (counted 2026-10-18), `reports/live/*.txt`, `docs/demo-runbook.md`.
 Criteria: **T** task completion 40%, **S** security and compliance 30%, **I** innovation and interaction 30%.
@@ -36,7 +36,7 @@ States 12, 15 and 16 have no audit event; their fixtures come from the transcrip
 | Option | Estimate | Ceiling |
 |---|---|---|
 | Streamlit + custom HTML components | 3 to 4 h | Full reruns flash on every click, no streaming of pipeline steps, weak at 390px, cards cannot hold their own Confirm/Edit state cleanly |
-| **FastAPI over `Tiwala` + small React page (Vite, Tailwind, shadcn-style components)** | 5 to 7 h | Needs a node build; one more process to run |
+| **FastAPI over `TR8DE` + small React page (Vite, Tailwind, shadcn-style components)** | 5 to 7 h | Needs a node build; one more process to run |
 
 **Recommendation: FastAPI + React.** Each state above is a component with its own props, fixtures replay through
 the same API the live agent uses, steps stream over SSE, and Playwright/axe work against a normal page. Keep the

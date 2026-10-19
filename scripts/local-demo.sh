@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tiwala local demo: a private Ethereum chain on this machine, the real contracts, seeded suppliers and the console.
+# TR8DE local demo: a private Ethereum chain on this machine, the real contracts, seeded suppliers and the console.
 # No real money, no testnet faucet, no WhatsApp. Needs: git, Node 18+, Python 3.11+.
 #
 #   ./scripts/local-demo.sh            # then open http://127.0.0.1:8000 (opens automatically)
@@ -31,7 +31,7 @@ need node "Install Node 18+ from https://nodejs.org"
 need npm "It comes with Node: https://nodejs.org"
 need python3 "Install Python 3.11+ from https://www.python.org"
 python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' || fail "Python 3.11 or newer is needed (found $(python3 -V))."
-port_busy "$PORT" && fail "Port $PORT is in use (another Tiwala console?). Stop it, or run PORT=8010 $0"
+port_busy "$PORT" && fail "Port $PORT is in use (another TR8DE console?). Stop it, or run PORT=8010 $0"
 port_busy "$CHAIN_PORT" && fail "Port $CHAIN_PORT is in use. Stop that process, or run CHAIN_PORT=8546 $0"
 
 say "1/6 Tools"

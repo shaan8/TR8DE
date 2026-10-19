@@ -36,10 +36,10 @@ MAX_UNITS = 10**15  # sanity bound on any money value
 
 class State(str, Enum):
     AWAITING_ACCEPTANCE = "awaiting_acceptance"  # a buyer proposal is open; the supplier answers
-    NEGOTIATING = "negotiating"  # a supplier proposal is open; Tiwala answers for the buyer
+    NEGOTIATING = "negotiating"  # a supplier proposal is open; TR8DE answers for the buyer
     AWAITING_CLARIFICATION = "awaiting_clarification"  # the supplier's reply was ambiguous
     AWAITING_BUYER_APPROVAL = "awaiting_buyer_approval"  # both parties accepted one version; the owner reviews
-    READY_FOR_ESCROW = "ready_for_escrow"  # owner asked for escrow; confirmation card pending in Tiwala
+    READY_FOR_ESCROW = "ready_for_escrow"  # owner asked for escrow; confirmation card pending in TR8DE
     ESCROW_CREATED = "escrow_created"
     REJECTED = "rejected"
     EXPIRED = "expired"
@@ -675,7 +675,7 @@ class Engine:
             self._event(n, "opened", f"{product} with {supplier_name} ({mode}, {channel})", product=product,
                         supplier=supplier_address, mode=mode, channel=channel, agent_kind=agent_kind)
             p = self._new_proposal(n, "buyer", opening, "owner", "Opening offer.", accept_as="tiwala:buyer")
-            self._say(n, "Hello, this is Tiwala for the buyer. " + offer_text(n, p) +
+            self._say(n, "Hello, this is TR8DE for the buyer. " + offer_text(n, p) +
                       f" Reply ACCEPT {p.code} to accept, send a counteroffer, or REJECT.", p)
             self.store.save(n)
             return n

@@ -28,7 +28,7 @@ export function query() {
 }
 const q = (fixture) => (fixture ? `?fixture=${encodeURIComponent(fixture)}` : "");
 
-export const SERVER_DOWN = "Cannot reach the Tiwala server. It is not running or it restarted. Start it with: "
+export const SERVER_DOWN = "Cannot reach the TR8DE server. It is not running or it restarted. Start it with: "
   + "cd agent && ../.venv/bin/uvicorn console.server:app --port 8000, then reload this page.";
 
 /** fetch with a clear message for a dead server or a slow model/chain instead of a bare "Load failed". */

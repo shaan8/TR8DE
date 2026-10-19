@@ -84,7 +84,7 @@ def parse_card(text: str) -> dict:
         out["forecast"] = {"ok": True}
     if m := re.search(r"Risk flags: (.+)", t):
         out["flags"] = [f.strip() for f in m[1].split(",")]
-    if m := re.search(r"Filled in by Tiwala, please check: (.+)", t):
+    if m := re.search(r"Filled in by TR8DE, please check: (.+)", t):
         out["filled"] = [f.strip() for f in m[1].split(",")]
     return out
 

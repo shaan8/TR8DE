@@ -32,7 +32,7 @@ def main() -> None:
         if os.environ.get("OWNER_PRIVATE_KEY") else None
     audit = AuditLog(args.audit)
     t = Tiwala(chain, dep["demoWallet"], args.data, from_env(), audit, owner)
-    print("Tiwala ready. Wallet", dep["demoWallet"])
+    print("TR8DE ready. Wallet", dep["demoWallet"])
     while True:
         try:
             msg = input("\nyou> ").strip()
