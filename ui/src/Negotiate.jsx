@@ -47,6 +47,7 @@ export function ModeChips({ n }) {
     <span className="flex flex-wrap gap-1.5">
       {n.mode === "whatsapp"
         ? <Chip tone={sim ? "warn" : "ok"} icon={Phone} wrap>{sim ? "WhatsApp simulator (local, not WhatsApp)" : "Live WhatsApp"}</Chip>
+        : n.mode === "api" ? <Chip tone="ok" icon={Bot} wrap>Supplier's own system (API)</Chip>
         : <Chip tone="accent" icon={Bot} wrap>{n.agent_kind?.startsWith("live_model") ? `Supplier agent: live model ${n.agent_kind.split(":").slice(1).join(":")}` : "Supplier agent: scripted (not AI)"}</Chip>}
       {n.mode === "agent" && <Chip tone={n.controller === "human" ? "warn" : "muted"} icon={n.controller === "human" ? User : Bot}>
         {n.controller === "human" ? "Supplier's person answering" : "Agent answering"}</Chip>}
@@ -230,8 +231,9 @@ function NewNegotiation({ payees, onOpen, busy }) {
             {payees.map((x) => <option key={x.address}>{x.name}</option>)}</select></label>
         <label className="col-span-2 text-sm"><span className="mb-1 block text-ink-2">Who answers for the supplier</span>
           <select value={f.mode} onChange={set("mode")} className="w-full rounded border border-subtle bg-canvas px-2 py-1.5 text-ink">
-            <option value="agent" disabled={!p?.agent}>Supplier agent{p?.agent ? "" : " (not set up)"}</option>
-            <option value="whatsapp" disabled={!p?.whatsapp}>Supplier's person on WhatsApp{p?.whatsapp ? ` (${p.whatsapp})` : " (no opted-in contact)"}</option></select></label>
+            <option value="agent" disabled={!p?.agent}>Supplier agent, simulated on this server{p?.agent ? "" : " (not set up)"}</option>
+            <option value="whatsapp" disabled={!p?.whatsapp}>Supplier's person on WhatsApp{p?.whatsapp ? ` (${p.whatsapp})` : " (no opted-in contact)"}</option>
+            <option value="api" disabled={!p?.api}>Supplier's own system (API){p?.api ? "" : " (not connected)"}</option></select></label>
         <div className="col-span-2">{inp("product", "Product", "text")}</div>
         {inp("desired_qty", "Quantity wanted")}{inp("min_qty", "Minimum quantity")}
         {inp("target_unit_price_php", "Opening unit price (₱)")}{inp("max_total_php", "Most you will commit (₱)")}

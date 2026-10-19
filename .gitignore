@@ -16,3 +16,4 @@ __pycache__/
 ui/dist/
 ui/test-results/
 ui/playwright-report/
+.local-demo/

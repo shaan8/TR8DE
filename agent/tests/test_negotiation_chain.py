@@ -157,3 +157,53 @@ def test_chat_negotiation_needs_the_supplier_in_the_owners_words(env, tmp_path):
     NegotiationService(t, tmp_path / "neg", wa_cfg=Config())
     r = t.handle("Start a negotiation for 10 cotton")
     assert t.pending_negotiation is None and "CONFIRM NEGOTIATION" not in r.reply
+
+
+def test_supplier_own_system_negotiates_over_the_api(env, svc, monkeypatch):
+    import importlib.util
+    from fastapi.testclient import TestClient
+    from console import negotiation_api as napi, server
+    monkeypatch.setattr(napi, "_svc", svc)
+    monkeypatch.setattr(napi, "_SECRET", "s" * 64)
+    client = TestClient(server.app)
+    lumen, bayani = env["lumen"], env["bayani"]
+    tok = napi.supplier_token(lumen)
+    hdr = {"Authorization": f"Bearer {tok}"}
+
+    assert svc.api_seen(lumen) is None
+    assert client.get(f"/api/supplier?supplier={lumen}", headers=hdr).status_code == 200
+    assert svc.api_seen(lumen) and svc.chat_channel(lumen) == "the supplier's own system (API)"
+    assert client.get(f"/api/supplier?supplier={lumen}", headers={"Authorization": "Bearer wrong"}).status_code == 403
+    assert client.get(f"/api/supplier?supplier={lumen}&token={tok}").status_code == 200  # the supplier web page
+
+    n = svc.open("Lumen Textiles", "Cotton fabric", constraints(env), "api")
+    assert n.mode == "api" and n.controller == "human"
+    other = {"Authorization": f"Bearer {napi.supplier_token(bayani)}"}
+    cur = n.current()
+    move = {"type": "accept", "base_version": cur.version, "proposal_id": cur.id, "terms_hash": cur.terms_hash}
+    assert client.post(f"/api/supplier/negotiations/{n.id}/move?supplier={bayani}", json=move, headers=other).status_code == 403
+
+    root = __import__("pathlib").Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location("sae", root / "scripts" / "supplier_agent_example.py")
+    sae = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sae)
+
+    class Via:  # the example agent's HTTP calls, routed into the app in-process
+        def call(self, method, path, body=None):
+            sep = "&" if "?" in path else "?"
+            r = client.request(method, f"{path}{sep}supplier={lumen}", json=body, headers=hdr)
+            assert r.status_code == 200, r.text
+            return r.json()
+
+    rules = type("R", (), {"min_price": 110, "max_qty": 450, "min_deposit": 15})
+    seen = set()
+    for _ in range(8):
+        sae.step(Via(), rules, seen)
+        n = svc.engine.store.get(n.id)
+        if n.state == State.AWAITING_BUYER_APPROVAL.value:
+            break
+    assert n.state == State.AWAITING_BUYER_APPROVAL.value, (n.state, [p["by"] for p in n.public()["proposals"]])
+    agreed = n.current().terms
+    assert agreed.unit_price >= 110_00 and agreed.quantity <= 450 and agreed.deposit_bps >= 1500
+    assert svc.request_escrow(n.id)["status"] == "needs_confirmation"
+    assert "Done." in svc.t.handle("yes").reply

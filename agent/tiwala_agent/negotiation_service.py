@@ -7,6 +7,7 @@ confirms the card in their own words, through Tiwala's policy, Checker, Gate and
 """
 from __future__ import annotations
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -122,23 +123,46 @@ class NegotiationService:
                 raise NegotiationError("This supplier has not set up an agent mandate.")
             identity = contact.wa_id if contact and contact.opted_in else f"supplier-console:{addr.lower()}"
             channel, kind = "local", self.agent_for(addr).kind
+        elif mode == "api":  # the supplier's own system answers through the supplier API with its token
+            identity, channel, kind = f"supplier-api:{addr.lower()}", "api", "external"
         else:
-            raise NegotiationError("mode must be whatsapp or agent")
+            raise NegotiationError("mode must be whatsapp, agent or api")
         return self.engine.open(self.t.wallet, self.t.directory[addr].name, addr, product, c, mode, channel, identity,
                                 kind, proposal_ttl_s=3600 if mode == "agent" else 86400)
 
-    def chat_channel(self, addr: str) -> Optional[str]:
-        """How a chat-started negotiation would reach this supplier, or None."""
+    def mark_api_seen(self, addr: str) -> None:
+        p = self.mandates.root / f"{addr.lower()}.api.json"
+        p.write_text(json.dumps({"last_seen": int(time.time())}))
+
+    def api_seen(self, addr: str, within_s: int = 7 * 86400) -> Optional[int]:
+        """When the supplier's own system last called the supplier API, if recently."""
+        p = self.mandates.root / f"{addr.lower()}.api.json"
+        try:
+            t = int(json.loads(p.read_text())["last_seen"])
+        except (OSError, ValueError, KeyError):
+            return None
+        return t if time.time() - t < within_s else None
+
+    def _chat_mode(self, addr: str) -> Optional[str]:
         c = self.wa.contacts.get(addr)
         if c and c.opted_in:
+            return "whatsapp"
+        if self.api_seen(addr):
+            return "api"
+        return "agent" if self.mandates.get(addr) else None
+
+    def chat_channel(self, addr: str) -> Optional[str]:
+        """How a chat-started negotiation would reach this supplier, or None."""
+        mode = self._chat_mode(addr)
+        if mode == "whatsapp":
+            c = self.wa.contacts.get(addr)
             return "WhatsApp simulator" if c.channel == "simulator" else f"WhatsApp {redact(c.wa_id)}"
-        return "supplier agent" if self.mandates.get(addr) else None
+        return {"api": "the supplier's own system (API)", "agent": "supplier agent (simulated)"}.get(mode)
 
     def start_from_chat(self, spec: dict) -> dict:
         from .core import _parse_deadline
         addr = next(a for a, e in self.t.directory.items() if e.name == spec["supplier"])
-        c = self.wa.contacts.get(addr)
-        mode = "whatsapp" if c and c.opted_in else "agent"
+        mode = self._chat_mode(addr) or "agent"
         bc = BuyerConstraints(spec["desired_qty"], spec["min_qty"], round(spec["max_total_php"] * PHP),
                               round(spec["min_reserve_php"] * PHP), _parse_deadline(spec["latest_delivery"]),
                               round(spec["target_unit_price_php"] * PHP), _parse_deadline(spec["preferred_delivery"]),
@@ -149,6 +173,8 @@ class NegotiationService:
         if mode == "agent":
             self.run_agent_background(n.id)
             out["sent"] = "The supplier agent is answering now."
+        elif mode == "api":
+            out["sent"] = "The opening offer is waiting for the supplier's system to pick it up."
         else:
             last = (self.wa.outbox.for_negotiation(n.id) or [{}])[-1]
             out["sent"] = {"sent": "Opening offer sent on WhatsApp." if last.get("kind") == "text" else

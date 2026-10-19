@@ -26,7 +26,7 @@ from pydantic import BaseModel
 router = APIRouter()
 _svc = None
 _svc_lock = threading.Lock()
-_SECRET = os.environ.get("TIWALA_SUPPLIER_CONSOLE_SECRET") or secrets.token_hex(16)
+_SECRET: Optional[str] = None
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "reports" / "negotiation"
 
@@ -52,8 +52,27 @@ def _err(e: Exception):
     raise e
 
 
+def _secret() -> str:
+    """Signing key for supplier tokens. Kept in the data directory (owner-only file) so tokens survive restarts;
+    TIWALA_SUPPLIER_CONSOLE_SECRET overrides it. Deleting the file revokes every supplier token."""
+    global _SECRET
+    if _SECRET is None:
+        _SECRET = os.environ.get("TIWALA_SUPPLIER_CONSOLE_SECRET", "")
+        if not _SECRET:
+            from .server import HERE, _load_env
+            _load_env()
+            f = Path(os.environ.get("TIWALA_DATA", str(HERE.parents[1] / "agent" / "data"))) / "supplier_token_secret"
+            f.parent.mkdir(parents=True, exist_ok=True)
+            if not f.exists():
+                fd = os.open(f, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w") as fh:
+                    fh.write(secrets.token_hex(32))
+            _SECRET = f.read_text().strip()
+    return _SECRET
+
+
 def supplier_token(addr: str) -> str:
-    return hmac.new(_SECRET.encode(), addr.lower().encode(), hashlib.sha256).hexdigest()[:24]
+    return hmac.new(_secret().encode(), addr.lower().encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def _fixture(name: str) -> dict:
@@ -69,7 +88,7 @@ def _fixture(name: str) -> dict:
 class OpenReq(BaseModel):
     supplier: str
     product: str
-    mode: str  # agent | whatsapp
+    mode: str  # agent (simulated supplier agent) | whatsapp | api (the supplier's own system)
     desired_qty: int
     min_qty: int
     target_unit_price_php: float
@@ -84,7 +103,7 @@ class TermsReq(BaseModel):
     quantity: int
     unit_price_php: float
     deposit_pct: float
-    deliver_by: str
+    deliver_by: str  # YYYY-MM-DD (end of day, owner's time zone) or unix seconds
     note: str = ""
 
 
@@ -92,7 +111,8 @@ def _terms(r: TermsReq):
     from tiwala_agent.core import _parse_deadline
     from tiwala_agent.models import PHP
     from tiwala_agent.negotiation import Terms
-    return Terms(int(r.quantity), round(r.unit_price_php * PHP), round(r.deposit_pct * 100), _parse_deadline(r.deliver_by))
+    when = int(r.deliver_by) if r.deliver_by.strip().isdigit() else _parse_deadline(r.deliver_by)  # unix seconds or date
+    return Terms(int(r.quantity), round(r.unit_price_php * PHP), round(r.deposit_pct * 100), when)
 
 
 @router.get("/api/negotiations")
@@ -104,7 +124,8 @@ def list_negotiations(fixture: Optional[str] = Query(None)):
     return {"negotiations": [s.buyer_dict(n) for n in s.engine.store.all()[:20]],
             "whatsapp": s.wa.cfg.status(), "escalations": s.escalations[-10:],
             "payees": [{"name": e.name, "address": a, "agent": s.mandates.get(a) is not None,
-                        "whatsapp": (lambda c: c.channel if c and c.opted_in else None)(s.wa.contacts.get(a))}
+                        "whatsapp": (lambda c: c.channel if c and c.opted_in else None)(s.wa.contacts.get(a)),
+                        "api": s.api_seen(a) is not None}
                        for a, e in s.t.directory.items()]}
 
 
@@ -170,9 +191,17 @@ def close_or_escrow(nid: str, what: str, fixture: Optional[str] = Query(None)):
 # ---------------------------------------------------------------- supplier console
 
 
-def _auth(addr: str, token: str):
-    if not token or not hmac.compare_digest(token, supplier_token(addr)):
+def _auth(addr: str, token: str, request: Optional[Request] = None):
+    """Supplier token from `Authorization: Bearer <token>` (API clients) or ?token= (the supplier web page)."""
+    h = request.headers.get("authorization", "") if request is not None else ""
+    token = h[7:].strip() if h.lower().startswith("bearer ") else token
+    if not addr or not token or not hmac.compare_digest(token, supplier_token(addr)):
         raise HTTPException(403, "supplier token required")
+    if request is not None and h:  # an API client, not the web page: remember it is connected
+        try:
+            svc().mark_api_seen(addr)
+        except Exception:
+            pass
 
 
 class MandateReq(BaseModel):
@@ -196,10 +225,10 @@ class SupplierMove(BaseModel):
 
 
 @router.get("/api/supplier")
-def supplier_home(supplier: str = "", token: str = "", fixture: Optional[str] = Query(None)):
+def supplier_home(request: Request, supplier: str = "", token: str = "", fixture: Optional[str] = Query(None)):
     if fixture:
         return _fixture(fixture)["supplier"]
-    _auth(supplier, token)
+    _auth(supplier, token, request)
     s = svc()
     m = s.mandates.get(supplier)
     return {"supplier": supplier, "name": (s.t.directory.get(supplier) or type("x", (), {"name": "?"})).name,
@@ -209,11 +238,11 @@ def supplier_home(supplier: str = "", token: str = "", fixture: Optional[str] = 
 
 
 @router.put("/api/supplier/mandate")
-def put_mandate(supplier: str, r: MandateReq, token: str = ""):
+def put_mandate(request: Request, supplier: str, r: MandateReq, token: str = ""):
     from tiwala_agent.core import _parse_deadline
     from tiwala_agent.models import PHP
     from tiwala_agent.supplier_agent import SupplierMandate
-    _auth(supplier, token)
+    _auth(supplier, token, request)
     try:
         m = SupplierMandate(supplier, round(r.list_unit_price_php * PHP), round(r.min_unit_price_php * PHP),
                             r.available_qty, r.min_order_qty, _parse_deadline(r.earliest_delivery),
@@ -226,8 +255,9 @@ def put_mandate(supplier: str, r: MandateReq, token: str = ""):
 
 
 @router.post("/api/supplier/negotiations/{nid}/{what}")
-def supplier_act(nid: str, what: str, supplier: str, token: str = "", move: Optional[SupplierMove] = None):
-    _auth(supplier, token)
+def supplier_act(request: Request, nid: str, what: str, supplier: str, token: str = "",
+                 move: Optional[SupplierMove] = None):
+    _auth(supplier, token, request)
     s = svc()
     try:
         n = s.engine.store.get(nid)
@@ -244,11 +274,12 @@ def supplier_act(nid: str, what: str, supplier: str, token: str = "", move: Opti
                    "reason": move.reason}
             if move.type == "counter" and move.terms:
                 act.update(terms=_terms(move.terms), note=move.terms.note[:200])
-            n = s.engine.supplier_action(nid, act, n.supplier_identity, "supplier_console", move.base_version)
+            via = "supplier_api" if n.mode == "api" else "supplier_console"
+            n = s.engine.supplier_action(nid, act, n.supplier_identity, via, move.base_version)
             if n.mode == "agent":
                 s.run_agent_background(nid)
         else:
-            raise HTTPException(404, "unknown action")
+            raise HTTPException(404, "unknown action: use move, takeover or handback")
     except HTTPException:
         raise
     except Exception as e:
