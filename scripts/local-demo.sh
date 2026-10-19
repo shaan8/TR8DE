@@ -4,7 +4,8 @@
 #
 #   ./scripts/local-demo.sh            # then open http://127.0.0.1:8000 (opens automatically)
 #
-# Optional: a model key in .env (DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY) for the chat assistant.
+# Optional: a model key in .env (DASHSCOPE_API_KEY for Qwen Cloud, DEEPSEEK_API_KEY, OPENROUTER_API_KEY or
+# ANTHROPIC_API_KEY) for the chat assistant; the first provider with a key is used.
 # Without one, negotiations still run (rule-based buyer, scripted supplier) and the chat says the model is off.
 # Ctrl+C stops everything. Each run starts from a fresh chain.
 set -euo pipefail
@@ -120,7 +121,7 @@ EOF
 if [ "$MODEL_KEY" = 0 ]; then
   echo "  Note: no model key found in .env. The chat assistant is off, negotiations use rules and a scripted supplier,"
   echo "  and payments use a labelled rules-only Checker (intent, policy and contract checks still apply). Add"
-  echo "  DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env and rerun for the full agent."
+  echo "  DASHSCOPE_API_KEY (Qwen Cloud), DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env and rerun."
 fi
 echo
 echo "  Ctrl+C to stop."

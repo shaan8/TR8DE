@@ -12,6 +12,7 @@ import tempfile
 import warnings
 
 BASE_URL = "https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1"
+TOKEN_PLAN_URL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"  # Token Plan keys start with sk-sp-
 MODEL = "qwen3.7-plus"
 MODEL_KEYS = (
     "TIWALA_COORDINATOR_MODEL", "TIWALA_TREASURY_MODEL", "TIWALA_CHECKER_MODEL",
@@ -43,7 +44,7 @@ def update_env(path: Path, key: str) -> None:
         raise ValueError("The .env is a symbolic link; choose the actual project folder.")
     values = {
         "DASHSCOPE_API_KEY": key,
-        "DASHSCOPE_BASE_URL": BASE_URL,
+        "DASHSCOPE_BASE_URL": TOKEN_PLAN_URL if key.startswith("sk-sp-") else BASE_URL,
         "TIWALA_LLM_PROVIDER": "qwen",
         "QWEN_ENABLE_THINKING": "true",
         **dict.fromkeys(MODEL_KEYS, MODEL),

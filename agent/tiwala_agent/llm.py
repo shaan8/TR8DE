@@ -151,11 +151,43 @@ class OpenRouterLLM(DeepSeekLLM):
         super().__init__(model, max_tokens, client)
 
 
+class QwenLLM(DeepSeekLLM):
+    """Qwen Cloud's OpenAI-compatible API; reasoning stays out of replies and audit logs."""
+
+    BASE_URL = "https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1"
+    TOKEN_PLAN_URL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"  # Token Plan keys (sk-sp-...)
+
+    @classmethod
+    def base_url_for(cls, key: str) -> str:
+        """DASHSCOPE_BASE_URL if set, else the endpoint that matches the key type."""
+        return os.environ.get("DASHSCOPE_BASE_URL") or (cls.TOKEN_PLAN_URL if key.startswith("sk-sp-") else cls.BASE_URL)
+
+    def __init__(self, model: str = "qwen3.7-plus", max_tokens: int = 4096, client=None):
+        if client is None:
+            from openai import OpenAI
+
+            key = os.environ.get("DASHSCOPE_API_KEY", "").strip()
+            if not key:
+                raise ValueError("Qwen API key missing. Run: python3 scripts/setup_qwen.py")
+            client = OpenAI(api_key=key, base_url=self.base_url_for(key),
+                            timeout=180, max_retries=0)
+        self.enable_thinking = os.environ.get("QWEN_ENABLE_THINKING", "true").lower() in ("true", "1", "yes")
+        super().__init__(model, max_tokens, client)
+
+    def _create(self, kw, attempts: int = 5):
+        return super()._create({**kw, "extra_body": {"enable_thinking": self.enable_thinking}}, attempts)
+
+
 def from_env() -> dict[str, LLM]:
     """Coordinator, Treasury planner and Checker. TIWALA_LLM_PROVIDER = deepseek (default), openrouter or
     anthropic. The Checker defaults to a different model from the Coordinator so the two are less likely
     to share blind spots (except on openrouter, which is for free testing only)."""
     provider = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
+    if provider == "qwen":
+        return {
+            role: QwenLLM(os.environ.get(f"TIWALA_{role.upper()}_MODEL") or "qwen3.7-plus")
+            for role in ("coordinator", "treasury", "checker")
+        }
     if provider == "openrouter":
         free = "nvidia/nemotron-3-ultra-550b-a55b:free"
         return {
@@ -180,9 +212,9 @@ def negotiation_llms() -> dict:
     """Separate model instances per side, so no context is shared: the buyer's negotiator and reply interpreter, and
     the supplier agent. TIWALA_SUPPLIER_AGENT=scripted swaps the supplier agent for deterministic concessions."""
     provider = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
-    make = {"openrouter": lambda m: OpenRouterLLM(m), "anthropic": lambda m: AnthropicLLM(m)}.get(
+    make = {"qwen": lambda m: QwenLLM(m), "openrouter": lambda m: OpenRouterLLM(m), "anthropic": lambda m: AnthropicLLM(m)}.get(
         provider, lambda m: DeepSeekLLM(m))
-    default = {"openrouter": "nvidia/nemotron-3-ultra-550b-a55b:free", "anthropic": "claude-haiku-5-5"}.get(
+    default = {"qwen": "qwen3.7-plus", "openrouter": "nvidia/nemotron-3-ultra-550b-a55b:free", "anthropic": "claude-haiku-5-5"}.get(
         provider, "deepseek-flash")
     buyer = os.environ.get("TIWALA_NEGOTIATOR_MODEL", default)
     sup = os.environ.get("TIWALA_SUPPLIER_AGENT_MODEL", default)

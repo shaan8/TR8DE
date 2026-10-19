@@ -20,8 +20,8 @@ git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-dem
 
 Needs git, Node 18+ and Python 3.11+ (macOS or Linux). The script installs what it needs, starts a private local
 Ethereum chain, deploys the real contracts with seeded suppliers and history, and opens the console with a
-one-time login. No testnet funds, wallets or WhatsApp needed. Add a model key to `.env` (`DEEPSEEK_API_KEY`,
-`OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY`) for the chat assistant; without one, negotiations, escrow and owner
+one-time login. No testnet funds, wallets or WhatsApp needed. Add a model key to `.env` (`DASHSCOPE_API_KEY` for
+Qwen Cloud, or `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`) for the chat assistant; without one, negotiations, escrow and owner
 commands still work. To negotiate from your own supplier-side agent, see [`docs/supplier-api.md`](docs/supplier-api.md).
 
 ## Layout
@@ -162,3 +162,19 @@ Override per agent with `TIWALA_COORDINATOR_MODEL`, `TIWALA_TREASURY_MODEL`, `TI
 The Checker should run on a different model from the Coordinator so one model's blind spot cannot pass its own plan.
 OpenRouter's free tier allows 50 requests a day and returns short bursts of 429s; the client backs off on
 `Retry-After` and stops on the daily quota. In `.env`, write keys with no space after `=`.
+
+### Qwen Cloud
+
+Run `python3 scripts/setup_qwen.py` from this project. Paste your Qwen Cloud API key at the hidden
+prompt. The command preserves unrelated `.env` settings and saves `DASHSCOPE_API_KEY`, the matching
+Qwen Cloud endpoint (Token Plan keys `sk-sp-...` use the Token Plan endpoint), `TIWALA_LLM_PROVIDER=qwen`, and `qwen3.7-plus` for the wallet and negotiation
+agents with thinking enabled. The file is written atomically with owner-only permissions and remains
+ignored by Git. Restart the app after setup. No API request is made during setup.
+
+If running the command from elsewhere, pass `--project /path/to/tiwala_SEPOLIA`.
+Existing shell environment variables take precedence over `.env`; use a fresh terminal or reload
+the updated file with `set -a; source .env; set +a` before launching a CLI session.
+
+Qwen uses the existing tool-calling adapter and policy controls. Its final answer and tool calls are
+used by the agent; reasoning text is not printed or written to the audit log. All roles use the same
+model by default; a different Checker model can be set with `TIWALA_CHECKER_MODEL`.
