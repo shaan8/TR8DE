@@ -30,7 +30,7 @@ from typing import Callable, Optional
 
 from .whatsapp import Config, Contact, Gateway, Inbound, JsonStore
 
-API = "https://api.telegram.org"
+API = os.environ.get("TELEGRAM_API_BASE", "https://api.telegram.org")  # override only for local end-to-end tests
 INVITE_TTL_S = 7 * 86400
 POLL_TIMEOUT_S = 25
 CODE_RX = re.compile(r"^[A-Za-z0-9_-]{8,64}$")  # Telegram deep-link start parameters: up to 64 of these characters
@@ -181,6 +181,10 @@ class Poller:
                                  "/stop to opt out.")
             return {"status": "bound", "supplier": addr}
         if cmd in ("/start", "/stop"):
+            if cmd == "/start" and self.g.contacts.get_by_wa(m.wa_id) is None:
+                self._reply(m.wa_id, "Hello. This bot negotiates purchase orders for one buyer. Ask the buyer for "
+                                     "your invite link and open it here to connect.")
+                return {"status": "not_invited"}
             text = cmd[1:]
         elif cmd == "/help":
             text = "talk to a person" if self.g.contacts.get_by_wa(m.wa_id) else text

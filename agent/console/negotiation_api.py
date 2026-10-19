@@ -405,14 +405,24 @@ class InviteReq(BaseModel):
 def tg_invite(r: InviteReq):
     """Owner-only: a one-time t.me link that binds the supplier's Telegram chat when they press Start."""
     s = svc()
-    addr = next((a for a, e in s.t.directory.items()
-                 if r.supplier.strip().lower() in (a.lower(), e.name.lower())), None)
-    if addr is None:
-        raise HTTPException(400, "not a saved payee")
-    if not s.tg_cfg.token and not s.tg_cfg.username:
-        raise HTTPException(400, "Telegram is not configured: set TELEGRAM_BOT_TOKEN in .env")
     try:
-        link = s.tg.invite_link(addr)
+        text = s.invite_telegram(r.supplier)
     except Exception as e:
-        raise HTTPException(502, f"Telegram: {str(e)[:120]}")
-    return {"link": link, "supplier": s.t.directory[addr].name, "expires_in_days": 7, "single_use": True}
+        raise HTTPException(400, str(e)[:240])
+    link = next((w for w in text.split() if w.startswith("https://t.me/")), "")
+    return {"link": link, "message": text, "expires_in_days": 7, "single_use": True}
+
+
+class WaLinkReq(BaseModel):
+    supplier: str  # saved payee name or address
+    number: str
+
+
+@router.post("/api/whatsapp/contact")
+def wa_link(r: WaLinkReq):
+    """Owner-only: link a saved payee to a WhatsApp number the supplier agreed to be contacted on."""
+    s = svc()
+    try:
+        return {"ok": True, "message": s.link_whatsapp(r.supplier, r.number)}
+    except Exception as e:
+        raise HTTPException(400, str(e)[:240])

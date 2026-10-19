@@ -86,6 +86,8 @@ GUIDE = "\n".join([
     '- /resolve N release or /resolve N refund: settle a dispute',
     '- /freeze: stop the agent and pause the wallet on-chain; /unfreeze to resume',
     '- /anchor: record the audit log head on Sepolia so deleting entries is detectable',
+    '- /invite NAME: a one-time Telegram link for saved payee NAME; once they press Start, offers go to their chat',
+    '- /whatsapp NAME NUMBER: link saved payee NAME to a WhatsApp number (country code first)',
     '- Run monitor: check deadlines, attestations and balances now',
     '- /guide: show this list',
     '',
@@ -933,6 +935,18 @@ class Tiwala:
         op = parts[0].lower()
         if op in ("/freeze", "/unfreeze", "/anchor"):
             return self._safety_command(op)
+        if op in ("/invite", "/whatsapp"):
+            if self.negotiations is None:
+                return "Supplier chat is not available on this device."
+            try:
+                if op == "/invite":
+                    return self.negotiations.invite_telegram(cmd.split(None, 1)[1] if len(parts) > 1 else "")
+                m = re.match(r"^/whatsapp\s+(.+?)\s+(\+?[\d][\d\s-]{6,})$", cmd.strip(), re.I)
+                if not m:
+                    return "Usage: /whatsapp NAME NUMBER, for example /whatsapp Lumen Textiles +63 917 123 4567"
+                return self.negotiations.link_whatsapp(m.group(1), m.group(2))
+            except Exception as e:
+                return f"Not linked: {str(e)[:200]}"
         try:
             n = int(parts[1])
         except (IndexError, ValueError):

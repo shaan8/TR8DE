@@ -212,7 +212,31 @@ function SimPhone({ n, onSend, busy }) {
   );
 }
 
-function NewNegotiation({ payees, onOpen, busy }) {
+/** Connect the selected payee's person on Telegram (one-time invite link) or WhatsApp (their number). */
+function ConnectChat({ p, tg, onLinked }) {
+  const [num, setNum] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [link, setLink] = useState("");
+  if (!p) return null;
+  const run = async (fn) => { setMsg(null); try { await fn(); } catch (e) { setMsg({ bad: true, text: String(e.message || e) }); } };
+  const invite = () => run(async () => { const r = await call("/api/telegram/invite", "POST", { supplier: p.name }); setLink(r.link); setMsg({ text: r.message.split("\n")[1] || "" }); });
+  const linkWa = () => run(async () => { const r = await call("/api/whatsapp/contact", "POST", { supplier: p.name, number: num }); setMsg({ text: r.message }); setNum(""); onLinked(); });
+  return (
+    <div className="col-span-2 rounded border border-subtle p-3 text-sm">
+      <p className="mb-2 text-ink-2">Reach {p.name}'s person on a chat app{p.whatsapp ? ` (linked: ${p.whatsapp})` : ""}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" onClick={invite} disabled={!tg?.receive} title={tg?.receive ? "" : "Add TELEGRAM_BOT_TOKEN to .env and restart"}><Send size={14} aria-hidden="true" />Invite on Telegram</Button>
+        <input value={num} onChange={(e) => setNum(e.target.value)} placeholder="+63 917 123 4567" aria-label="WhatsApp number" className="w-44 rounded border border-subtle bg-canvas px-2 py-1.5 text-ink" />
+        <Button type="button" onClick={linkWa} disabled={num.replace(/\D/g, "").length < 8}><Phone size={14} aria-hidden="true" />Link WhatsApp</Button>
+      </div>
+      {link && <p className="mt-2 break-all">Send this to {p.name}: <a href={link} target="_blank" rel="noreferrer" className="font-mono">{link}</a> <button type="button" className="underline" onClick={() => navigator.clipboard?.writeText(link)}>copy</button></p>}
+      {msg && <p className={`mt-2 ${msg.bad ? "text-bad" : "text-ink-2"}`} role={msg.bad ? "alert" : undefined}>{msg.text}</p>}
+      {!tg?.receive && <p className="mt-1 text-cap text-ink-2">Telegram is off: add TELEGRAM_BOT_TOKEN and TELEGRAM_LIVE_SEND=1 to .env, then restart.</p>}
+    </div>
+  );
+}
+
+function NewNegotiation({ payees, onOpen, busy, tg, onLinked }) {
   const d = (k) => { const x = new Date(Date.now() + k * 86400000); return x.toISOString().slice(0, 10); };
   const [f, setF] = useState({ supplier: payees.find((p) => p.agent)?.name || payees[0]?.name || "", product: "Cotton fabric (metres)", mode: "agent",
     desired_qty: 500, min_qty: 300, target_unit_price_php: 100, max_total_php: 60000, min_reserve_php: 100000,
@@ -234,6 +258,7 @@ function NewNegotiation({ payees, onOpen, busy }) {
             <option value="agent" disabled={!p?.agent}>Supplier agent, simulated on this server{p?.agent ? "" : " (not set up)"}</option>
             <option value="whatsapp" disabled={!p?.whatsapp}>Supplier's person on WhatsApp or Telegram{p?.whatsapp ? ` (${p.whatsapp})` : " (no opted-in contact)"}</option>
             <option value="api" disabled={!p?.api}>Supplier's own system (API){p?.api ? "" : " (not connected)"}</option></select></label>
+        <ConnectChat p={p} tg={tg} onLinked={onLinked} />
         <div className="col-span-2">{inp("product", "Product", "text")}</div>
         {inp("desired_qty", "Quantity wanted")}{inp("min_qty", "Minimum quantity")}
         {inp("target_unit_price_php", "Opening unit price (₱)")}{inp("max_total_php", "Most you will commit (₱)")}
@@ -263,8 +288,9 @@ export default function Negotiate() {
   useEffect(() => { load(); }, []);
   const n = data?.negotiations.find((x) => x.id === sel);
   useEffect(() => {
-    if (fixture || !n || !(n.running || ["negotiating", "ready_for_escrow"].includes(n.state))) return undefined;
-    const id = setInterval(load, 1500);
+    const waitingOnPerson = n && n.mode !== "agent" && !["rejected", "expired", "cancelled", "escrow_created"].includes(n.state);
+    if (fixture || !n || !(n.running || waitingOnPerson || ["negotiating", "ready_for_escrow"].includes(n.state))) return undefined;
+    const id = setInterval(load, waitingOnPerson && !n.running ? 3000 : 1500);  // replies from WhatsApp or Telegram appear on their own
     return () => clearInterval(id);
   }, [n?.running, n?.state, n?.proposals.length]);
 
@@ -309,7 +335,7 @@ export default function Negotiate() {
       )}
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_360px]">
         <aside className="space-y-4" aria-label="Negotiations">
-          {!fixture && data.payees && <NewNegotiation payees={data.payees} onOpen={open} busy={busy} />}
+          {!fixture && data.payees && <NewNegotiation payees={data.payees} onOpen={open} busy={busy} tg={data.telegram} onLinked={load} />}
           <Panel title="Negotiations">
             {data.negotiations.length ? <ul className="space-y-1.5">{data.negotiations.map((x) => (
               <li key={x.id}><button onClick={() => setSel(x.id)} aria-current={x.id === sel ? "true" : undefined}

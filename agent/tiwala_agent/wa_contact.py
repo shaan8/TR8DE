@@ -2,7 +2,7 @@
 
     python -m tiwala_agent.wa_contact "John the fruit guy" 639270269627 --consent "agreed by phone 2026-10-19"
 
-The number must already be in WHATSAPP_ALLOWED_RECIPIENTS. This writes a local contact record only; it sends nothing.
+If WHATSAPP_ALLOWED_RECIPIENTS is set, the number must be in it. This writes a local contact record only; it sends nothing.
 """
 from __future__ import annotations
 
@@ -29,7 +29,8 @@ def main(argv=None) -> int:
     from console.server import _load_env
     _load_env()
     wa = re.sub(r"\D", "", a.number)
-    if wa not in Config.from_env().allowed:
+    allowed = Config.from_env().allowed
+    if allowed and wa not in allowed:
         print(f"{wa} is not in WHATSAPP_ALLOWED_RECIPIENTS; add it to .env first.")
         return 1
     hits = [(addr, e) for addr, e in load_directory(Path(a.data) / "suppliers.json").items()

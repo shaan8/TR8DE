@@ -11,8 +11,8 @@ October 2026; recheck before going live):
     outside it only an approved template may be sent. Business-initiated contact needs opt-in; honour opt-outs;
     automation needs a clear human escalation path.
 
-Nothing is sent to Meta unless WHATSAPP_LIVE_SEND=1, all credentials are set, and the recipient is listed in
-WHATSAPP_ALLOWED_RECIPIENTS. The simulator never contacts anyone and labels every message "simulator".
+Nothing is sent to Meta unless WHATSAPP_LIVE_SEND=1, all credentials are set, and the recipient is a contact the owner
+linked (and, if WHATSAPP_ALLOWED_RECIPIENTS is set, listed there too). The simulator never contacts anyone and labels every message "simulator".
 """
 from __future__ import annotations
 
@@ -92,8 +92,6 @@ class Config:
             out.append(f"Missing Meta credentials in .env: {' and '.join(empty)}.")
         if not self.live_send:
             out.append("Live sending is off: WHATSAPP_LIVE_SEND is not 1.")
-        if not self.allowed:
-            out.append("No WHATSAPP_ALLOWED_RECIPIENTS: every live recipient is refused.")
         if not self.can_receive:
             out.append("Supplier replies cannot arrive: WHATSAPP_APP_SECRET and WHATSAPP_VERIFY_TOKEN are empty, and Meta "
                        "needs a public HTTPS webhook URL (localhost is unreachable).")
@@ -282,9 +280,10 @@ class CloudSender:
         c = self.cfg
         if not c.can_send:
             return False, "", "live sending is off (WHATSAPP_LIVE_SEND=0 or credentials missing)"
-        if wa_id not in c.allowed:
+        if c.allowed and wa_id not in c.allowed:  # optional extra restriction; linking a contact is owner-only
             return False, "", "recipient is not in WHATSAPP_ALLOWED_RECIPIENTS"
-        url = f"https://graph.facebook.com/{c.graph_version}/{c.phone_number_id}/messages"
+        base = os.environ.get("WHATSAPP_GRAPH_BASE", "https://graph.facebook.com")  # override only for local tests
+        url = f"{base}/{c.graph_version}/{c.phone_number_id}/messages"
         if template_params is not None:
             tpl = {"name": c.template_name, "language": {"code": c.template_lang}}
             if template_params:
@@ -318,6 +317,7 @@ class Gateway:
         self.tg = tg  # telegram.TelegramSender, for contacts on the "telegram" channel
         self.clock = clock
         self._recent: dict[str, list[int]] = {}
+        self._notices: dict[str, int] = {}
 
     def now(self) -> int:
         return int(self.clock())
@@ -356,6 +356,22 @@ class Gateway:
                  kind=rec["kind"], error=rec.get("error", ""))
         return self.outbox.add(rec)
 
+    def _notice(self, c: Contact, text: str, key: str) -> None:
+        """A fixed system reply outside any negotiation (no data, no model), at most once per 10 minutes per kind,
+        so a supplier writing to the bot never meets silence."""
+        now = self.now()
+        k = f"{c.wa_id}:{key}"
+        if now - self._notices.get(k, 0) < RATE_S:
+            return
+        self._notices[k] = now
+        if c.channel == "telegram":
+            ok, _, err = self.tg.send(c.wa_id, text) if self.tg else (False, "", "Telegram is not configured")
+        elif c.channel == "live":
+            ok, _, err = self.sender.send(c.wa_id, text)  # they just wrote, so the 24-hour window is open
+        else:
+            ok, err = True, ""  # simulator: shown in the simulator log only
+        self.log("chat_notice", channel=c.channel, to=redact(c.wa_id), kind=key, ok=ok, error=err)
+
     # ---------------------------------------------------------- inbound
 
     def handle(self, m: Inbound, channel: str) -> dict:
@@ -385,14 +401,23 @@ class Gateway:
             self.contacts.put(c)
             self.log("whatsapp_opt_out", supplier=c.supplier_address)
             if nid:
-                self.escalate(nid, "The supplier opted out of WhatsApp. Contact them another way; nothing was accepted.")
+                self.escalate(nid, "The supplier opted out of chat messages. Contact them another way; nothing was "
+                                   "accepted.")
+            c_out = Contact(**{**asdict(c), "opted_out_at": 0})  # this one confirmation is still allowed
+            self._notice(c_out, "You will not get more messages from this buyer here. Send START to opt back in.",
+                         "opt_out")
             return {"status": "opted_out"}
         if START_RX.match(m.text):
-            c.opted_in_at, c.opt_in_source = now, f"supplier sent '{m.text.strip()}' on {channel}"
+            c.opted_in_at, c.opted_out_at = now, 0  # START wins over an earlier STOP, even in the same second
+            c.opt_in_source = f"supplier sent '{m.text.strip()}' on {channel}"
             self.contacts.put(c)
+            self._notice(c, "You are opted in. The buyer's agent will send offers here.", "opt_in")
             return {"status": "opted_in"}
         self.contacts.put(c)
         if not nid:
+            if c.opted_in:
+                self._notice(c, "Thanks. There is no open offer from the buyer right now; their agent will message you "
+                                "here when there is one.", "no_offer")
             return {"status": "ignored", "reason": "no open negotiation"}
         if out_of_order:
             self.log("whatsapp_out_of_order", negotiation=nid, id=m.id[-12:])

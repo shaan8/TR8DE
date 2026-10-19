@@ -135,6 +135,45 @@ class NegotiationService:
         return self.engine.open(self.t.wallet, self.t.directory[addr].name, addr, product, c, mode, channel, identity,
                                 kind, proposal_ttl_s=3600 if mode == "agent" else 86400)
 
+    # ---------------------------------------------------------- linking a supplier's chat (owner only)
+
+    def payee(self, name_or_addr: str) -> str:
+        q = name_or_addr.strip().lower()
+        hits = [a for a, e in self.t.directory.items() if q in (a.lower(), e.name.lower())]
+        if not hits:
+            hits = [a for a, e in self.t.directory.items() if q and e.name.lower().startswith(q)]
+        if len(hits) != 1:
+            names = ", ".join(e.name for e in self.t.directory.values())
+            raise NegotiationError(f"No single saved payee matches {name_or_addr.strip()!r}. Saved payees: {names}.")
+        return hits[0]
+
+    def invite_telegram(self, name_or_addr: str) -> str:
+        if not self.tg_cfg.token:
+            raise NegotiationError("Telegram is off: add TELEGRAM_BOT_TOKEN (from @BotFather) and TELEGRAM_LIVE_SEND=1 "
+                                   "to .env and restart.")
+        addr = self.payee(name_or_addr)
+        link = self.tg.invite_link(addr)
+        self._log("telegram_invite_created", supplier=addr)
+        note = "" if self.tg_cfg.live_send else " Note: TELEGRAM_LIVE_SEND is not 1, so the bot cannot reply yet."
+        return (f"Send this link to {self.t.directory[addr].name}: {link}\nIt works once, for 7 days. When they press "
+                f"Start their chat is linked and you can negotiate with them.{note}")
+
+    def link_whatsapp(self, name_or_addr: str, number: str) -> str:
+        import re as _re
+        addr = self.payee(name_or_addr)
+        wa = _re.sub(r"\D", "", number)
+        if not 8 <= len(wa) <= 15:
+            raise NegotiationError("That does not look like a WhatsApp number: use the country code, e.g. +63 917 123 4567.")
+        cfg = self.wa.cfg
+        if cfg.allowed and wa not in cfg.allowed:
+            raise NegotiationError("This number is not in WHATSAPP_ALLOWED_RECIPIENTS; add it there or empty that list.")
+        self.wa.contacts.put(Contact(addr, wa, "live", opted_in_at=int(time.time()),
+                                     opt_in_source="owner linked the number in the console and confirmed consent"))
+        self._log("whatsapp_contact_linked", supplier=addr, to=redact(wa))
+        gaps = [g for g in cfg.missing() if "ALLOWED_RECIPIENTS" not in g]
+        return (f"Linked {self.t.directory[addr].name} to WhatsApp {redact(wa)}." +
+                (" Before it can send or receive: " + " ".join(gaps) if gaps else " Ready to negotiate."))
+
     def mark_api_seen(self, addr: str) -> None:
         p = self.mandates.root / f"{addr.lower()}.api.json"
         p.write_text(json.dumps({"last_seen": int(time.time())}))

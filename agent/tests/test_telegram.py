@@ -113,3 +113,32 @@ def test_token_never_appears_in_errors(world):  # noqa: F811
         raise RuntimeError(f"failed https://api.telegram.org/bot{token}/sendMessage")
     ok, _, err = TelegramSender(TgConfig("T0KEN", True), boom).send(f"tg:{CHAT}", "x")
     assert not ok and "T0KEN" not in err and "<token>" in err
+
+
+def test_bot_always_answers_and_owner_link_needs_no_allowlist(world):  # noqa: F811
+    """Judges must never meet a silent bot: no invite, no open offer, STOP and START all get a fixed reply."""
+    bot, g, p, _ = setup(world)
+    bot.msg("/start", chat=4242)  # opened the bot without an invite
+    p.run_once()
+    assert "invite link" in bot.sent[-1]["text"] and bot.sent[-1]["chat_id"] == 4242
+    bind(bot, p)
+    bot.msg("hello, any orders?")  # linked, but nothing open
+    p.run_once()
+    assert "no open offer" in bot.sent[-1]["text"]
+    bot.msg("/stop")
+    p.run_once()
+    assert "Send START" in bot.sent[-1]["text"]
+    bot.msg("START")
+    p.run_once()
+    assert "opted in" in bot.sent[-1]["text"] and g.contacts.get(LUMEN).opted_in
+
+
+def test_whatsapp_sender_allows_owner_linked_numbers_without_an_env_list():
+    from tiwala_agent.whatsapp import CloudSender, Config
+    sent = []
+    s = CloudSender(Config(access_token="t", phone_number_id="P", live_send=True),
+                    lambda url, body, tok: sent.append(body) or {"messages": [{"id": "wamid.1"}]})
+    assert s.send("639171234567", "hi")[0] and sent
+    s2 = CloudSender(Config(access_token="t", phone_number_id="P", live_send=True, allowed=("639000000000",)),
+                     lambda *a: {"messages": [{"id": "x"}]})
+    assert s2.send("639171234567", "hi")[0] is False  # a list in .env still restricts

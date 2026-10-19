@@ -369,7 +369,7 @@ def test_supplier_model_gets_one_corrective_retry(world):
 def test_whatsapp_status_explains_what_is_missing():
     from tiwala_agent.whatsapp import Config
     empty = Config().status()
-    assert not empty["send"] and len(empty["missing"]) == 5
+    assert not empty["send"] and len(empty["missing"]) == 4  # the allowlist is optional now
     full = Config("tok", "pnid", "sec", "ver", template_name="tpl", live_send=True, allowed=("639170000000",)).status()
     assert full["send"] and full["receive"] and full["missing"] == []
     assert "tok" not in json.dumps(full) and "sec" not in json.dumps(full)
