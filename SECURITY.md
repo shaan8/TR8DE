@@ -107,6 +107,13 @@ Negotiations tab had nothing to negotiate with; `live.sh` now seeds the same lab
 simulator as the local demo. With only an OpenRouter key, a negotiation, escrow, deposit, attestation and balance
 release all completed.
 
+Supplier chat was then run end to end through the console against local stand-ins for the Telegram Bot API and
+Meta's Graph API: invite link, Start, opening offer, free-text reply, exact-code acceptance, escrow and the
+confirmation in the supplier's chat; for WhatsApp also Meta's verify handshake and signed replies through the
+tunnel gate, the `hello_world` template first and the held offer released on the reply. Design change: a number
+the owner links in the signed-in console is allowed to receive messages; `WHATSAPP_ALLOWED_RECIPIENTS` is now an
+optional extra restriction rather than a second required list. Linking stays owner-only, and STOP still opts out.
+
 Accepted for this deployment model: the global login lockout (30 failures in 15 minutes) can be triggered by anyone
 who can reach the login page, which would lock the owner out for 15 minutes. The console is meant to stay local, and
 the tunnel script exposes only the webhook, so the login is not reachable from the internet in the documented setup.

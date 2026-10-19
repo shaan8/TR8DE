@@ -1,5 +1,7 @@
 # Telegram supplier channel
 
+Live mode only: the local demo blanks every Telegram setting so it can never message anyone.
+
 Telegram is a second chat channel for the supplier's person, next to WhatsApp. It runs through the same Gateway, so the same rules apply: only bound chats are heard, every message is deduplicated, STOP opts out, "talk to a person" escalates to the owner, and only an exact `ACCEPT <code>` counts as acceptance. Free text is read as a candidate counteroffer only.
 
 ## No webhook needed
@@ -13,13 +15,9 @@ Telegram has no 24-hour window and no templates: a bot may message any chat that
 1. In Telegram, message @BotFather, send `/newbot`, and copy the token.
 2. In `.env`: `TELEGRAM_BOT_TOKEN=<token>` and `TELEGRAM_LIVE_SEND=1`.
 3. Restart the console. It starts polling on startup (the Negotiate page shows "Telegram bot listening").
-4. Make a one-time invite for a saved payee:
-
-   ```bash
-   .venv/bin/python -m tiwala_agent.telegram invite "John the fruit guy"
-   ```
-
-   or `POST /api/telegram/invite {"supplier": "John the fruit guy"}` from the signed-in console.
+4. Make a one-time invite for a saved payee: in the console's Negotiations tab pick the supplier and press
+   "Invite on Telegram", or type `/invite Lumen Textiles` in the Payments chat (no model key needed). From a shell:
+   `.venv/bin/python -m tiwala_agent.telegram invite "Lumen Textiles"`.
 5. The supplier opens the link and presses Start. Their chat is bound to that payee, and they get a confirmation.
 6. Open a negotiation with "Supplier's person on WhatsApp or Telegram". Offers go to their chat, and replies come back into the negotiation.
 

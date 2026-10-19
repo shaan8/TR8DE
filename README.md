@@ -27,10 +27,13 @@ Source: https://github.com/shaan8/TR8DE
 | --- | --- | --- |
 | `DASHSCOPE_API_KEY` (Qwen Cloud, the default model) | The chat assistant in both modes; payments in live mode | [Qwen Cloud](https://www.alibabacloud.com/en/product/modelstudio) console, or `python3 scripts/setup_qwen.py` to paste it privately. DeepSeek, OpenRouter (free models) or Anthropic keys also work; the first key present is used |
 | Sepolia test ETH, 0.02 | Live mode only | Free from a faucet; `live.sh` makes the key and prints the address to fund (step 2 below). Nothing to mine yourself |
-| `TELEGRAM_BOT_TOKEN`, plus `TELEGRAM_LIVE_SEND=1` | Optional: real supplier chat on Telegram | Message @BotFather in Telegram, send `/newbot`. Setup: [`docs/telegram.md`](docs/telegram.md) |
-| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ALLOWED_RECIPIENTS`, plus `WHATSAPP_LIVE_SEND=1` | Optional: real supplier chat on WhatsApp | A Meta developer app with the WhatsApp product. Setup: [`docs/whatsapp-webhook.md`](docs/whatsapp-webhook.md). The built-in WhatsApp simulator needs none of this |
+| `TELEGRAM_BOT_TOKEN`, plus `TELEGRAM_LIVE_SEND=1` | Optional, live mode: real supplier chat on Telegram | Message @BotFather in Telegram, send `/newbot`. Setup: [`docs/telegram.md`](docs/telegram.md) |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ALLOWED_RECIPIENTS`, plus `WHATSAPP_LIVE_SEND=1` | Optional, live mode: real supplier chat on WhatsApp | A Meta developer app with the WhatsApp product. Setup: [`docs/whatsapp-webhook.md`](docs/whatsapp-webhook.md). The built-in WhatsApp simulator needs none of this |
 
-The local demo needs none of them. Without a model key the chat is off, but negotiations, escrow and owner
+With a bot token or WhatsApp keys set, connect a supplier from the Negotiations tab ("Invite on Telegram" or "Link
+WhatsApp") or with `/invite NAME` and `/whatsapp NAME NUMBER` in the chat, then negotiate: offers go to their chat,
+their replies come back, and only an exact `ACCEPT <code>` from them counts. The local demo never sends real
+messages, whatever `.env` says. The local demo needs none of them. Without a model key the chat is off, but negotiations, escrow and owner
 commands still run.
 
 ### Demo: one command, no accounts

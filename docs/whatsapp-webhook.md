@@ -15,13 +15,22 @@ still checks the verify token and Meta's HMAC signature on every call.
 
 ## Setup
 
+Live mode only: the local demo blanks every WhatsApp setting so it can never message anyone.
+
+0. `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (Meta app > WhatsApp > API setup),
+   `WHATSAPP_TEMPLATE_NAME=hello_world` (Meta's pre-approved template, used for the first message), and
+   `WHATSAPP_LIVE_SEND=1`. `WHATSAPP_ALLOWED_RECIPIENTS` is optional: if set, only those numbers can be messaged.
 1. In `.env`: `WHATSAPP_APP_SECRET` (Meta app > App settings > Basic > App secret) and `WHATSAPP_VERIFY_TOKEN`
    (any string you choose). Restart the console.
 2. `brew install cloudflared` (free, no account). If it is missing, the script uses ngrok when installed.
 3. With the console running: `./scripts/whatsapp-tunnel.sh`. It prints the callback URL.
 4. Meta app > WhatsApp > Configuration > Webhook: paste the callback URL and the verify token, then subscribe to the
    `messages` field.
-5. Send a message from the supplier's phone. The gate prints one line per request (path and status only).
+5. Link the supplier: Negotiations tab, pick the payee, type their number and press "Link WhatsApp", or type
+   `/whatsapp Lumen Textiles +63 917 123 4567` in the Payments chat. Then start a negotiation with "Supplier's
+   person on WhatsApp or Telegram". The first message is the `hello_world` template; the offer follows as soon as
+   they reply (WhatsApp's 24-hour rule).
+6. Send a message from the supplier's phone. The gate prints one line per request (path and status only).
 
 ## Limits
 
