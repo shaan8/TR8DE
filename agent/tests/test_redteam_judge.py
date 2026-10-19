@@ -84,3 +84,23 @@ def test_offline_message_names_every_provider():
         OfflineLLM("DEEPSEEK_API_KEY").complete("", [])
     assert all(k in str(e.value) for k in ("DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY",
                                            "ANTHROPIC_API_KEY"))
+
+
+def test_password_file_is_owner_only_and_deploy_reads_env_without_running_it(tmp_path):
+    """J8: set-password could create .env world-readable; the deploy script ran .env as shell code, so a
+    double-quoted scrypt hash ("$3...") or a value with spaces aborted the deployment."""
+    import os
+    import subprocess
+    from pathlib import Path
+
+    from console.auth import write_env
+    env = tmp_path / ".env"
+    write_env({"TIWALA_ADMIN_PASS_HASH": "scrypt$32768$8$1$abc$def"}, env)
+    assert oct(env.stat().st_mode & 0o777) == "0o600"
+    env.write_text('PRIVATE_KEY=0xabc\nTIWALA_ADMIN_PASS_HASH="scrypt$32768$8$1$x$y"\nNOTE=two words here\n'
+                   "OWNER_PRIVATE_KEY='0xdef'  # owner\n")
+    script = Path(__file__).parents[2] / "scripts" / "deploy-sepolia.sh"
+    loader = script.read_text().split("set -euo pipefail\n", 1)[1].split("\n: ", 1)[0]
+    out = subprocess.run(["bash", "-c", "set -euo pipefail\n" + loader + '\necho "$PRIVATE_KEY $OWNER_PRIVATE_KEY"'],
+                         cwd=tmp_path, capture_output=True, text=True, env={"PATH": os.environ["PATH"]})
+    assert out.returncode == 0 and out.stdout.strip() == "0xabc 0xdef", "the .env loader failed"

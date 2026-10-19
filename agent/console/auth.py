@@ -251,7 +251,10 @@ def write_env(values: dict[str, str], env: Path = Path(__file__).resolve().paren
     keys = set(values)
     out = [l for l in lines if l.split("=", 1)[0].strip() not in keys]
     out += [f"{k}='{v}'" for k, v in values.items()]  # quoted: the scrypt hash contains "$"
-    env.write_text("\n".join(out) + "\n")
+    fd = os.open(env, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)  # owner-only, like the keys beside it
+    with os.fdopen(fd, "w") as f:
+        f.write("\n".join(out) + "\n")
+    os.chmod(env, 0o600)
 
 
 if __name__ == "__main__":

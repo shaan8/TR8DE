@@ -66,7 +66,10 @@ Red-team notes, what we tried and what was fixed: [`SECURITY.md`](SECURITY.md#ju
 1. Create a fresh key for testing only, fund it with about 0.1 Sepolia ETH from a faucet
    ([Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia),
    [Alchemy](https://www.alchemy.com/faucets/ethereum-sepolia)), and add it to `.env` as `PRIVATE_KEY=0x...`.
-   Never use a key that holds real funds.
+   Never use a key that holds real funds. Add a model key too (`OPENROUTER_API_KEY` has free models): on Sepolia
+   the independent Checker fails closed without one, so every payment is refused. Optional: `SEPOLIA_RPC_URL` for
+   your own RPC (the public one is used otherwise). Free OpenRouter models work but can take a minute per
+   turn, so a negotiation may take several minutes; a paid key is faster.
 2. Run:
 
 ```bash

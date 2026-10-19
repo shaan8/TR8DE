@@ -1,7 +1,27 @@
 #!/usr/bin/env bash
 # Deploy Tiwala to Sepolia and seed demo history. Run from the repo root: ./scripts/deploy-sepolia.sh
 set -euo pipefail
-set -a; source .env; set +a
+# Read only the keys this script needs, without running .env as shell code (values may contain "$" or spaces).
+# Values already in the environment win, as with the console.
+eval "$(python3 - <<'PY'
+import os, shlex
+keys = ("SEPOLIA_RPC_URL", "PRIVATE_KEY", "OWNER_PRIVATE_KEY", "AGENT_PRIVATE_KEY", "ACCOUNT_SALT", "ETHERSCAN_API_KEY",
+        "LATE_WINDOW", "DEMO_GRACE", "BUYER_FUND_WEI")
+vals = {}
+if os.path.exists(".env"):
+    for line in open(".env").read().splitlines():
+        line = "" if line.lstrip().startswith("#") else line.split(" #", 1)[0].strip()
+        k, sep, v = line.partition("=")
+        v = v.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
+            v = v[1:-1]
+        if sep and k.strip() in keys:
+            vals[k.strip()] = v
+for k, v in vals.items():
+    if not os.environ.get(k):
+        print(f"export {k}={shlex.quote(v)}")
+PY
+)"
 : "${SEPOLIA_RPC_URL:?}" "${PRIVATE_KEY:?}" "${OWNER_PRIVATE_KEY:?}" "${AGENT_PRIVATE_KEY:?}" "${ACCOUNT_SALT:?}"
 
 echo "Deployer: $(cast wallet address --private-key "$PRIVATE_KEY")"

@@ -90,6 +90,7 @@ We cloned the public repository into an empty folder, ran `./scripts/local-demo.
 | J5 | The local demo blanked WhatsApp settings but not Telegram: a `TELEGRAM_BOT_TOKEN` in `.env` would make the throwaway demo poll and send for real. Its supplier-token secret fell back to `date +%s%N` (predictable, and `%N` is not supported on macOS). | Low | Fixed: the demo blanks every Telegram setting; the secret comes from Python's `secrets` |
 | J6 | Python dependencies were version ranges, so a judge's install could differ from the tested one. | Low | Fixed: `agent/requirements.lock` pins the direct dependencies and starlette; checked to resolve on Python 3.11 to 3.14 for macOS, Linux and Windows; the scripts and CI install with it |
 | J7 | With no model key, the chat named only `DEEPSEEK_API_KEY`. | Info | Fixed: it names all four providers. Test: `test_offline_message_names_every_provider` |
+| J8 | `deploy-sepolia.sh` ran `.env` as shell code (`source .env`), so a double-quoted value containing `$` (a scrypt hash) or a value with spaces aborted the live deployment, and `set-password` could create `.env` readable by other users. | Low | Fixed: the deploy script reads only the keys it needs without executing the file; `.env` is written owner-only (0600). Found by running `live.sh` from a fresh clone against a Sepolia fork. Test: `test_password_file_is_owner_only_and_deploy_reads_env_without_running_it` |
 
 Probed and held: `//api/state`, `/API/state`, percent-encoded and `..` paths return only the static page shell or
 401; `/docs` and `/openapi.json` are off; fixture names and negotiation ids are checked against strict patterns
@@ -97,6 +98,13 @@ before any file is read; one supplier's token is refused on another supplier's n
 sinks and the CSP allows scripts from this origin only; every `.env` value was compared with the full public git
 history and none of the keys or tokens appear there; every state-changing contract function carries an owner,
 operator or platform modifier.
+
+The live path was walked the same way: `./scripts/live.sh` from a fresh clone against a Sepolia fork (archive RPC,
+fresh funded key, no other setup), including a run interrupted mid-deployment, the rerun after it, and a second run
+that reuses the deployment. Besides J8 it showed that a fresh live deployment had no simulated supplier side, so the
+Negotiations tab had nothing to negotiate with; `live.sh` now seeds the same labelled Lumen agent and Bayani
+simulator as the local demo. With only an OpenRouter key, a negotiation, escrow, deposit, attestation and balance
+release all completed.
 
 Accepted for this deployment model: the global login lockout (30 failures in 15 minutes) can be triggered by anyone
 who can reach the login page, which would lock the owner out for 15 minutes. The console is meant to stay local, and

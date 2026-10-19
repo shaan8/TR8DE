@@ -80,7 +80,11 @@ DEPLOYER="$(cast wallet address --private-key "$PK")"
 OWNER="$(cast wallet address --private-key "$(envval OWNER_PRIVATE_KEY)")"
 MODEL_KEY=0
 for k in DASHSCOPE_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY; do [ -n "$(envval $k)" ] && MODEL_KEY=1; done
-[ "$MODEL_KEY" = 1 ] || echo "  No model key in .env: the chat assistant will be off (add DASHSCOPE_API_KEY, DEEPSEEK_API_KEY, OPENROUTER_API_KEY or ANTHROPIC_API_KEY)."
+if [ "$MODEL_KEY" = 0 ]; then
+  echo "  No model key in .env. Live mode refuses every payment without one: the independent Checker fails closed."
+  echo "  The chat is off too. Add DASHSCOPE_API_KEY, DEEPSEEK_API_KEY, OPENROUTER_API_KEY (has free models) or"
+  echo "  ANTHROPIC_API_KEY to .env; the deployment and console still work without it."
+fi
 
 REUSE=0  # only a deployment this script finished, for these keys
 if [ -f "$DEP" ] && [ -f .live-deployed ] && [ "$(cat .live-deployed)" = "$(echo "$OWNER" | tr A-Z a-z)" ]; then
@@ -108,7 +112,8 @@ fi
 
 say "4/6 Wallet data"
 if [ ! -f agent/data/suppliers.json ]; then
-  (cd agent && ../.venv/bin/python -m tiwala_agent.setup_data "../$DEP" data >/dev/null)
+  (cd agent && ../.venv/bin/python -m tiwala_agent.setup_data "../$DEP" data >/dev/null \
+    && ../.venv/bin/python -m console.local_demo suppliers "../$DEP" data)  # simulated supplier side, labelled
 fi
 
 say "5/6 Owner login"
