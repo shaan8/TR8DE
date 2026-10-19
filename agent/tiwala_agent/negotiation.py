@@ -405,6 +405,21 @@ def offer_text(n: Negotiation, p: Proposal) -> str:
             f"Offer v{p.version}, code {p.code}.")
 
 
+def change_text(n: Negotiation, p: Proposal, theirs: Terms) -> str:
+    """Only what our offer changes from theirs, for a short chat turn: "15% deposit (₱5,400.00) instead of 20%"."""
+    from .core import _when
+    t, out = p.terms, []
+    if t.quantity != theirs.quantity:
+        out.append(f"{t.quantity:,} units instead of {theirs.quantity:,}")
+    if t.unit_price != theirs.unit_price:
+        out.append(f"{php(t.unit_price)} each instead of {php(theirs.unit_price)}")
+    if t.deposit_bps != theirs.deposit_bps:
+        out.append(f"{t.deposit_bps / 100:g}% deposit ({php(t.deposit)}) instead of {theirs.deposit_bps / 100:g}%")
+    if t.deliver_by != theirs.deliver_by:
+        out.append(f"delivery by {_when(t.deliver_by)}")
+    return "; ".join(out)
+
+
 def buyer_suggestion(llm: Optional[LLM], n: Negotiation, sup: Proposal, v: BuyerView) -> Optional[dict]:
     """Ask the buyer's model for a move. Returns None on outage or anything that does not parse."""
     if llm is None:
@@ -882,8 +897,19 @@ class Engine:
             note = ""  # never echo a note that carries a private number or answers flagged supplier text
         p = self._new_proposal(n, "buyer", t, source, note, final, accept_as="tiwala:buyer")
         self._set(n, State.AWAITING_ACCEPTANCE)
-        self._say(n, (note + " " if note else "") + ("Our final offer: " if final else "Our counteroffer: ") +
-                  offer_text(n, p) + f" Reply ACCEPT {p.code} to accept.", p)
+        changes = change_text(n, p, sup.terms)
+        why = ""
+        if sup.terms.deposit_bps > v.deposit_ceiling_bps and t.deposit_bps < sup.terms.deposit_bps:
+            # A rule, not a preference: saying it ends a deposit tug-of-war in one turn.
+            why = (f" Deposits are capped by your delivery record on our network: {v.deposit_ceiling_bps / 100:g}% "
+                   "for now, rising as on-time deliveries add up.")
+        if changes and len(n.props()) > 2:  # after the opening offer, say only what differs from theirs
+            body = (f"{'Our final offer' if final else 'We can do'}: {changes}; everything else as you proposed "
+                    f"(total {php(t.total)}).{why} Offer v{p.version}: reply ACCEPT {p.code} to accept.")
+        else:
+            body = (("Our final offer: " if final else "Our counteroffer: ") + offer_text(n, p) + why +
+                    f" Reply ACCEPT {p.code} to accept.")
+        self._say(n, (note + " " if note and not why else "") + body, p)
         self.log("negotiation_buyer_reason", negotiation=n.id, proposal=p.id, source=source,
                  failed_checks=[x.rule for x in checks if not x.ok and x.severity == "refuse"])
 
