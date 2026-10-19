@@ -46,7 +46,7 @@ export function ModeChips({ n }) {
   return (
     <span className="flex flex-wrap gap-1.5">
       {n.mode === "whatsapp"
-        ? <Chip tone={sim ? "warn" : "ok"} icon={Phone} wrap>{sim ? "WhatsApp simulator (local, not WhatsApp)" : "Live WhatsApp"}</Chip>
+        ? <Chip tone={sim ? "warn" : "ok"} icon={Phone} wrap>{sim ? "WhatsApp simulator (local, not WhatsApp)" : n.channel === "telegram" ? "Live Telegram" : "Live WhatsApp"}</Chip>
         : n.mode === "api" ? <Chip tone="ok" icon={Bot} wrap>Supplier's own system (API)</Chip>
         : <Chip tone="accent" icon={Bot} wrap>{n.agent_kind?.startsWith("live_model") ? `Supplier agent: live model ${n.agent_kind.split(":").slice(1).join(":")}` : "Supplier agent: scripted (not AI)"}</Chip>}
       {n.mode === "agent" && <Chip tone={n.controller === "human" ? "warn" : "muted"} icon={n.controller === "human" ? User : Bot}>
@@ -232,7 +232,7 @@ function NewNegotiation({ payees, onOpen, busy }) {
         <label className="col-span-2 text-sm"><span className="mb-1 block text-ink-2">Who answers for the supplier</span>
           <select value={f.mode} onChange={set("mode")} className="w-full rounded border border-subtle bg-canvas px-2 py-1.5 text-ink">
             <option value="agent" disabled={!p?.agent}>Supplier agent, simulated on this server{p?.agent ? "" : " (not set up)"}</option>
-            <option value="whatsapp" disabled={!p?.whatsapp}>Supplier's person on WhatsApp{p?.whatsapp ? ` (${p.whatsapp})` : " (no opted-in contact)"}</option>
+            <option value="whatsapp" disabled={!p?.whatsapp}>Supplier's person on WhatsApp or Telegram{p?.whatsapp ? ` (${p.whatsapp})` : " (no opted-in contact)"}</option>
             <option value="api" disabled={!p?.api}>Supplier's own system (API){p?.api ? "" : " (not connected)"}</option></select></label>
         <div className="col-span-2">{inp("product", "Product", "text")}</div>
         {inp("desired_qty", "Quantity wanted")}{inp("min_qty", "Minimum quantity")}
@@ -293,6 +293,7 @@ export default function Negotiate() {
           {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}
           {fixture && data.fixture?.validation && <Chip tone="muted" wrap>{data.fixture.validation}</Chip>}
           {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive || data.whatsapp.send ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : data.whatsapp.send ? "WhatsApp: live sending, replies via simulator" : "WhatsApp: simulator only (no credentials)"}</Chip>}
+          {!fixture && data.telegram?.receive && <Chip tone={data.telegram.polling && !data.telegram.error ? "ok" : "warn"} icon={Phone} wrap>{data.telegram.error ? `Telegram: ${data.telegram.error}` : data.telegram.polling ? `Telegram bot listening${data.telegram.send ? "" : " (sending off)"}` : "Telegram: not polling"}</Chip>}
           <ViewNav active="negotiate" />
         </div>
       </header>

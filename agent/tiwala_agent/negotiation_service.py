@@ -22,13 +22,14 @@ from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, Nego
 from .privacy import RedactingLLM
 from .reputation import DpPolicy, dp_cap, score
 from .supplier_agent import MandateStore, SupplierAgent, SupplierMandate, run_agent_turns
+from .telegram import Poller, TelegramSender, TgConfig
 from .whatsapp import Config, Contact, Gateway, redact
 
 
 class NegotiationService:
     def __init__(self, tiwala: Tiwala, root: str | Path, negotiator: Optional[LLM] = None,
                  interpreter: Optional[LLM] = None, supplier_llm: Optional[LLM] = None, supplier_model: str = "",
-                 wa_cfg: Optional[Config] = None, wa_sender=None):
+                 wa_cfg: Optional[Config] = None, wa_sender=None, tg_cfg: Optional[TgConfig] = None, tg_call=None):
         self.t = tiwala
         root = Path(root)
         self.mandates = MandateStore(root / "supplier")  # supplier side
@@ -37,8 +38,12 @@ class NegotiationService:
         wrap = lambda m: RedactingLLM(m) if m is not None else None  # supplier text can carry phones, accounts
         self.engine = Engine(Store(root / "negotiations"), self.buyer_view, self._log, wrap(negotiator),
                              wrap(interpreter), send=self._send)
+        self.tg_cfg = tg_cfg or TgConfig.from_env()
+        tg_kw = {"call": tg_call} if tg_call else {}
         self.wa = Gateway(root / "whatsapp", wa_cfg or Config.from_env(), self.engine.supplier_text, self.find_open,
-                          self._escalate, self._log, sender=wa_sender)
+                          self._escalate, self._log, sender=wa_sender, tg=TelegramSender(self.tg_cfg, **tg_kw))
+        self.tg = Poller(self.wa, self.tg_cfg, root / "whatsapp",
+                         lambda a: self.t.directory[a].name if a in self.t.directory else a, **tg_kw)
         self.t.on_executed.append(self._on_executed)
         self.t.negotiations = self
         self._runs: dict[str, threading.Thread] = {}
@@ -115,7 +120,7 @@ class NegotiationService:
         contact = self.wa.contacts.get(addr)
         if mode == "whatsapp":
             if contact is None or not contact.opted_in:
-                raise NegotiationError("This supplier has no opted-in WhatsApp contact on file.")
+                raise NegotiationError("This supplier has no opted-in WhatsApp or Telegram contact on file.")
             identity, channel, kind = contact.wa_id, contact.channel, "none"
         elif mode == "agent":
             m = self.mandates.get(addr)
@@ -156,7 +161,8 @@ class NegotiationService:
         mode = self._chat_mode(addr)
         if mode == "whatsapp":
             c = self.wa.contacts.get(addr)
-            return "WhatsApp simulator" if c.channel == "simulator" else f"WhatsApp {redact(c.wa_id)}"
+            names = {"simulator": "WhatsApp simulator", "telegram": f"Telegram {redact(c.wa_id)}"}
+            return names.get(c.channel, f"WhatsApp {redact(c.wa_id)}")
         return {"api": "the supplier's own system (API)", "agent": "supplier agent (simulated)"}.get(mode)
 
     def start_from_chat(self, spec: dict) -> dict:
@@ -177,10 +183,11 @@ class NegotiationService:
             out["sent"] = "The opening offer is waiting for the supplier's system to pick it up."
         else:
             last = (self.wa.outbox.for_negotiation(n.id) or [{}])[-1]
-            out["sent"] = {"sent": "Opening offer sent on WhatsApp." if last.get("kind") == "text" else
+            app = "Telegram" if last.get("channel") == "telegram" else "WhatsApp"
+            out["sent"] = {"sent": f"Opening offer sent on {app}." if last.get("kind") == "text" else
                            f"WhatsApp template {self.wa.cfg.template_name} sent; the offer follows when they reply.",
                            "delivered": "Opening offer shown in the WhatsApp simulator."}.get(
-                last.get("status"), f"WhatsApp message not sent: {last.get('error', 'unknown')}.")
+                last.get("status"), f"{app} message not sent: {last.get('error', 'unknown')}.")
         return out
 
     def agent_for(self, addr: str) -> SupplierAgent:
@@ -250,7 +257,8 @@ class NegotiationService:
             sup_acc = p.accepted_by.get("supplier", {})
             channel = {"supplier_agent_live_model": "supplier agent, live model",
                        "supplier_agent_scripted": "supplier agent, scripted", "supplier_console": "supplier console",
-                       "simulator_text": "WhatsApp simulator", "live_text": "WhatsApp"}.get(sup_acc.get("via", ""),
+                       "simulator_text": "WhatsApp simulator", "live_text": "WhatsApp",
+                       "telegram_text": "Telegram"}.get(sup_acc.get("via", ""),
                                                                                        sup_acc.get("via", "?"))
             via = f"{channel}, {redact(sup_acc.get('identity', ''))}"
             summary = (f"The owner asked to put negotiated agreement NEG-{n.id} v{p.version} into escrow. Agreed with "

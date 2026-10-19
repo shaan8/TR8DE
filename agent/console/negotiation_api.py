@@ -5,6 +5,7 @@ Trust boundaries:
   * /api/supplier/*      the supplier's console, authorised by a per-supplier token. Never returns buyer limits.
   * /api/sim/whatsapp/*  local simulator: messages are labelled "simulator" and never reach WhatsApp.
   * /webhooks/whatsapp   Meta's webhook: GET verification, POST only with a valid X-Hub-Signature-256.
+  * Telegram has no endpoint here: a background thread long-polls the Bot API (see tiwala_agent/telegram.py).
 Supplier text from any channel goes to the negotiation engine only, never to Tiwala.handle (the owner's path).
 """
 from __future__ import annotations
@@ -127,6 +128,8 @@ def list_negotiations(fixture: Optional[str] = Query(None)):
     s = svc()
     return {"negotiations": [s.buyer_dict(n) for n in s.engine.store.all()[:20]], **network(s.t),
             "whatsapp": s.wa.cfg.status(), "escalations": s.escalations[-10:],
+            "telegram": {**s.tg_cfg.status(), "polling": _tg_thread is not None and _tg_thread.is_alive(),
+                         "error": s.tg.last_error},
             "payees": [{"name": e.name, "address": a, "agent": s.mandates.get(a) is not None,
                         "whatsapp": (lambda c: c.channel if c and c.opted_in else None)(s.wa.contacts.get(a)),
                         "api": s.api_seen(a) is not None}
@@ -371,3 +374,42 @@ async def wa_event(request: Request):
     for st in sts:
         s.wa.status(st)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- Telegram (long polling, no public URL)
+
+_tg_thread: Optional[threading.Thread] = None
+
+
+def start_telegram() -> bool:
+    """Start the Telegram poller once, if a bot token is set and TELEGRAM_POLL is not 0."""
+    global _tg_thread
+    s = svc()
+    if not s.tg_cfg.token or os.environ.get("TELEGRAM_POLL", "1") == "0":
+        return False
+    with _svc_lock:
+        if _tg_thread is None or not _tg_thread.is_alive():
+            _tg_thread = s.tg.start()
+            print("telegram: polling for supplier messages", flush=True)
+    return True
+
+
+class InviteReq(BaseModel):
+    supplier: str  # saved payee name or address
+
+
+@router.post("/api/telegram/invite")
+def tg_invite(r: InviteReq):
+    """Owner-only: a one-time t.me link that binds the supplier's Telegram chat when they press Start."""
+    s = svc()
+    addr = next((a for a, e in s.t.directory.items()
+                 if r.supplier.strip().lower() in (a.lower(), e.name.lower())), None)
+    if addr is None:
+        raise HTTPException(400, "not a saved payee")
+    if not s.tg_cfg.token and not s.tg_cfg.username:
+        raise HTTPException(400, "Telegram is not configured: set TELEGRAM_BOT_TOKEN in .env")
+    try:
+        link = s.tg.invite_link(addr)
+    except Exception as e:
+        raise HTTPException(502, f"Telegram: {str(e)[:120]}")
+    return {"link": link, "supplier": s.t.directory[addr].name, "expires_in_days": 7, "single_use": True}

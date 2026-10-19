@@ -322,11 +322,12 @@ def _warm():
     chain read. Skipped with TIWALA_NO_WARM=1 (UI shots use fixtures only)."""
     if os.environ.get("TIWALA_NO_WARM") == "1":
         return
-    from .negotiation_api import list_negotiations
+    from .negotiation_api import list_negotiations, start_telegram
 
     def run():
         try:
             list_negotiations(None)
+            start_telegram()
         except Exception as e:  # no .env or RPC down: the request path reports it when someone asks
             print(f"warm-up skipped: {type(e).__name__}: {e}")
     threading.Thread(target=run, daemon=True).start()

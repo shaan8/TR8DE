@@ -37,6 +37,8 @@ HUMAN_RX = re.compile(r"\b(human|person|agent|tao|talk to (someone|a person))\b"
 def redact(wa_id: str) -> str:
     """Phone-number ids in logs and the UI: keep the last 4 digits only."""
     w = wa_id or ""
+    if w.startswith("tg:"):
+        return f"tg:••••{w[-4:]}"
     if w.startswith(("sim:", "agent:", "supplier-console:")):  # not phone numbers: keep the kind, shorten the address
         kind, _, rest = w.partition(":")
         return f"{kind}:{rest[:6]}…{rest[-4:]}" if len(rest) > 12 else w
@@ -307,11 +309,12 @@ class Gateway:
 
     def __init__(self, root: str | Path, cfg: Config, on_text: Callable, find_open: Callable[[str], Optional[str]],
                  escalate: Callable[[str, str], None], log: Callable[..., None], sender: Optional[CloudSender] = None,
-                 clock: Callable[[], float] = time.time):
+                 clock: Callable[[], float] = time.time, tg=None):
         root = Path(root)
         self.cfg, self.contacts, self.seen, self.outbox = cfg, Contacts(root), Seen(root), Outbox(root)
         self.on_text, self.find_open, self.escalate, self.log = on_text, find_open, escalate, log
         self.sender = sender or CloudSender(cfg)
+        self.tg = tg  # telegram.TelegramSender, for contacts on the "telegram" channel
         self.clock = clock
 
     def now(self) -> int:
@@ -330,6 +333,9 @@ class Gateway:
             rec.update(status="blocked", error="the supplier has not opted in, or opted out")
         elif c.channel == "simulator":
             rec.update(status="delivered", provider_id=rec["id"], note="local simulator: not sent to WhatsApp")
+        elif c.channel == "telegram":  # no service window or templates: a bot may message a chat that pressed Start
+            ok, pid, err = self.tg.send(c.wa_id, text) if self.tg else (False, "", "Telegram is not configured")
+            rec.update(status="sent" if ok else "failed", provider_id=pid, error=err)
         elif c.in_window(self.now()):
             ok, pid, err = self.sender.send(c.wa_id, text)
             rec.update(status="sent" if ok else "failed", provider_id=pid, error=err)
@@ -342,7 +348,8 @@ class Gateway:
         else:
             rec.update(status="blocked", error="outside the 24-hour window and no approved template configured")
         if rec["status"] in ("blocked", "failed"):
-            self.escalate(nid, f"WhatsApp message not sent: {rec.get('error')}")
+            app = "Telegram" if rec["channel"] == "telegram" else "WhatsApp"
+            self.escalate(nid, f"{app} message not sent: {rec.get('error')}")
         self.log("whatsapp_out", negotiation=nid, to=rec["to"], status=rec["status"], channel=rec["channel"],
                  kind=rec["kind"], error=rec.get("error", ""))
         return self.outbox.add(rec)

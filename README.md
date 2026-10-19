@@ -52,6 +52,7 @@ Then try:
 | Keys | Public Anvil test keys (worthless) | Your own keys, kept in `.env` |
 | Paying addresses outside the demo | No: only addresses on the local chain | Yes: any Sepolia address you save as a payee (24 h waiting period) |
 | WhatsApp | Simulator only, never sends | Live sending if you configure Meta credentials |
+| Telegram | Off unless you set a bot token | Same: long polling, no public URL needed ([docs/telegram.md](docs/telegram.md)) |
 | Without a model key | Chat assistant off; negotiations use rules and a scripted supplier; payments use a labelled rules-only Checker | Chat assistant off; the Checker fails closed, so no payments |
 | Persistence | Everything resets on each run | Contracts and history stay on Sepolia |
 
@@ -104,6 +105,7 @@ in [`reports/sepolia-evidence.md`](reports/sepolia-evidence.md).
 | `negotiation.py` | Versioned proposals, terms hashes, state machine, buyer checks and strategy | suggests only |
 | `supplier_agent.py` | Supplier mandate and agent (live model or scripted), checked in code | optional |
 | `whatsapp.py` | WhatsApp Cloud API adapter (webhook, signature, dedup, window, opt-in) and local simulator | no |
+| `telegram.py` | Telegram bot adapter on the same Gateway: long polling, one-time start-link binding, /stop | no |
 | `negotiation_service.py` | Fresh buyer views from chain, idempotent escrow handoff | no |
 
 Guarantees enforced in code: the Coordinator can only draft; execution needs a Gate authorization minted after the
@@ -187,7 +189,8 @@ Open `http://127.0.0.1:8000/?view=negotiate`. Tiwala negotiates quantity, price,
 on WhatsApp (or the local simulator) or with the supplier's agent, then carries the exact agreed terms into escrow
 through the same policy, Checker, Gate and your own yes. Replays: `?view=negotiate&fixture=neg_success` (also
 `neg_ready`, `neg_escrow`, `neg_impossible`, `neg_injection`) and `?view=supplier&fixture=neg_success`.
-Design, trust model, WhatsApp policy notes and limitations: [`docs/negotiation.md`](docs/negotiation.md).
+Design, trust model, WhatsApp policy notes and limitations: [`docs/negotiation.md`](docs/negotiation.md). Telegram
+setup (no webhook needed): [`docs/telegram.md`](docs/telegram.md).
 
 For a local demo without Meta credentials:
 
