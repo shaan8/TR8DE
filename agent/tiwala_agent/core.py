@@ -124,6 +124,32 @@ def _parse_deadline(s: str) -> int:
     return int(d.replace(hour=hh, minute=mm, tzinfo=user_tz()).timestamp())
 
 
+class ModelOffline(RuntimeError):
+    pass
+
+
+class OfflineLLM(LLM):
+    """Stands in when no model key is configured: the wallet, owner commands, monitor and negotiations keep working,
+    the chat explains how to turn the assistant on, and the Checker fails closed."""
+
+    def __init__(self, missing: str):
+        self.missing = missing
+
+    def complete(self, system, messages, tools=None):
+        raise ModelOffline(f"The chat assistant is off because no model key is set ({self.missing}). Add one to "
+                           ".env and restart. Owner commands such as /attest, /freeze and /guide still work, and "
+                           "nothing was drafted or sent.")
+
+
+def llms_or_offline(make) -> dict:
+    """Build the model clients, or offline stand-ins naming the missing key."""
+    try:
+        return make()
+    except KeyError as e:
+        off = OfflineLLM(str(e).strip("'"))
+        return {"coordinator": off, "checker": off, "treasury": None}
+
+
 # ---------------------------------------------------------------------- gate
 
 
@@ -531,6 +557,8 @@ class Tiwala:
             except Exception as e:  # model down or rate-limited: nothing was drafted, so drop the turn
                 del self.history[turn_start:]
                 self._log("coordinator_error", error=f"{type(e).__name__}: {str(e)[:200]}")
+                if isinstance(e, ModelOffline):
+                    return TurnResult(str(e), self._events)
                 return TurnResult(f"The assistant model is unavailable right now ({type(e).__name__}). "
                                   "Nothing was drafted or sent; please try again.", self._events)
             blocks = ([{"type": "text", "text": r.text}] if r.text else []) + [

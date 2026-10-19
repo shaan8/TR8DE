@@ -644,3 +644,13 @@ def test_real_tx_and_tool_amounts_pass_and_invented_amounts_are_flagged(env):
     t.llms["coordinator"] = coord(("tool", "get_overview", {}), ("text", "You have ₱987,654 free."))
     r = t.handle("How much is free?")
     assert "Check: ₱987,654" in r.reply, r.reply
+
+
+def test_without_a_model_key_the_console_still_works(env):
+    from tiwala_agent.core import OfflineLLM, llms_or_offline
+    llms = llms_or_offline(lambda: (_ for _ in ()).throw(KeyError("DEEPSEEK_API_KEY")))
+    assert isinstance(llms["coordinator"], OfflineLLM)
+    t = env["make"](llms["coordinator"], checker=llms["checker"])
+    r = t.handle("What is my balance?")
+    assert "chat assistant is off" in r.reply and "DEEPSEEK_API_KEY" in r.reply
+    assert "/attest N" in t.handle("/guide").reply

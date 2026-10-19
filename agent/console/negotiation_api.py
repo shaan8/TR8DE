@@ -39,7 +39,10 @@ def svc():
             from tiwala_agent.negotiation_service import NegotiationService
             from .server import live
             t = live()
-            m = negotiation_llms()
+            try:
+                m = negotiation_llms()
+            except KeyError:  # no model key: rule-based buyer, scripted supplier agent
+                m = {"negotiator": None, "interpreter": None, "supplier": None, "supplier_model": ""}
             _svc = NegotiationService(t, Path(t.data) / "negotiation", m["negotiator"], m["interpreter"],
                                       m["supplier"], m["supplier_model"])
         return _svc

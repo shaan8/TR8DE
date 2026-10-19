@@ -134,7 +134,8 @@ def live():
                 if os.environ.get("OWNER_PRIVATE_KEY") else None
             audit = AuditLog(os.environ.get("TIWALA_AUDIT", str(root / "agent" / "logs" / "audit.jsonl")))
             data = os.environ.get("TIWALA_DATA", str(root / "agent" / "data"))
-            _live = Tiwala(chain, dep["demoWallet"], data, from_env(), audit, owner)
+            from tiwala_agent.core import llms_or_offline
+            _live = Tiwala(chain, dep["demoWallet"], data, llms_or_offline(from_env), audit, owner)
         return _live
 
 
