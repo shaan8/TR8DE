@@ -104,3 +104,23 @@ def test_password_file_is_owner_only_and_deploy_reads_env_without_running_it(tmp
     out = subprocess.run(["bash", "-c", "set -euo pipefail\n" + loader + '\necho "$PRIVATE_KEY $OWNER_PRIVATE_KEY"'],
                          cwd=tmp_path, capture_output=True, text=True, env={"PATH": os.environ["PATH"]})
     assert out.returncode == 0 and out.stdout.strip() == "0xabc 0xdef", "the .env loader failed"
+
+
+@pytest.mark.parametrize("keys,want", [({"DASHSCOPE_API_KEY": "sk-q"}, "qwen"),
+                                       ({"DASHSCOPE_API_KEY": "sk-q", "OPENROUTER_API_KEY": "sk-or"}, "qwen"),
+                                       ({"OPENROUTER_API_KEY": "sk-or"}, "openrouter"),
+                                       ({}, None)])
+def test_empty_keys_from_env_example_fall_through_to_a_real_one(monkeypatch, keys, want):
+    """J9: .env.example set TIWALA_LLM_PROVIDER=deepseek with an empty DEEPSEEK_API_KEY; a judge who filled in only
+    a Qwen key got a console that crashed at start. Qwen Cloud is now the default and empty keys count as missing."""
+    from tiwala_agent.core import llms_or_offline
+    from tiwala_agent.llm import from_env
+    for k in ("DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.setenv(k, keys.get(k, ""))
+    monkeypatch.setenv("TIWALA_LLM_PROVIDER", "deepseek")
+    m = llms_or_offline(from_env)
+    if want is None:
+        assert isinstance(m["coordinator"], OfflineLLM)
+    else:
+        import os
+        assert os.environ["TIWALA_LLM_PROVIDER"] == want and not isinstance(m["coordinator"], OfflineLLM)

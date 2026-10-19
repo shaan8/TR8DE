@@ -179,10 +179,10 @@ class QwenLLM(DeepSeekLLM):
 
 
 def from_env() -> dict[str, LLM]:
-    """Coordinator, Treasury planner and Checker. TIWALA_LLM_PROVIDER = deepseek (default), openrouter or
+    """Coordinator, Treasury planner and Checker. TIWALA_LLM_PROVIDER = qwen (default), deepseek, openrouter or
     anthropic. The Checker defaults to a different model from the Coordinator so the two are less likely
     to share blind spots (except on openrouter, which is for free testing only)."""
-    provider = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
+    provider = (os.environ.get("TIWALA_LLM_PROVIDER") or "qwen").lower()
     if provider == "qwen":
         return {
             role: QwenLLM(os.environ.get(f"TIWALA_{role.upper()}_MODEL") or "qwen3.7-plus")
@@ -201,6 +201,8 @@ def from_env() -> dict[str, LLM]:
             "treasury": AnthropicLLM(os.environ.get("TIWALA_TREASURY_MODEL", "claude-haiku-5-5")),
             "checker": AnthropicLLM(os.environ.get("TIWALA_CHECKER_MODEL", "claude-haiku-5-5"), max_tokens=300),
         }
+    if provider != "deepseek":
+        raise ValueError(f"unknown TIWALA_LLM_PROVIDER {provider!r}: use qwen, deepseek, openrouter or anthropic")
     return {
         "coordinator": DeepSeekLLM(os.environ.get("TIWALA_COORDINATOR_MODEL", "deepseek-flash")),
         "treasury": DeepSeekLLM(os.environ.get("TIWALA_TREASURY_MODEL", "deepseek-flash")),
@@ -211,7 +213,7 @@ def from_env() -> dict[str, LLM]:
 def negotiation_llms() -> dict:
     """Separate model instances per side, so no context is shared: the buyer's negotiator and reply interpreter, and
     the supplier agent. TIWALA_SUPPLIER_AGENT=scripted swaps the supplier agent for deterministic concessions."""
-    provider = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
+    provider = (os.environ.get("TIWALA_LLM_PROVIDER") or "qwen").lower()
     make = {"qwen": lambda m: QwenLLM(m), "openrouter": lambda m: OpenRouterLLM(m), "anthropic": lambda m: AnthropicLLM(m)}.get(
         provider, lambda m: DeepSeekLLM(m))
     default = {"qwen": "qwen3.7-plus", "openrouter": "nvidia/nemotron-3-ultra-550b-a55b:free", "anthropic": "claude-haiku-5-5"}.get(

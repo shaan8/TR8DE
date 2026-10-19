@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Tiwala live on Sepolia: your own contracts on the public Ethereum test network, real transactions you can show
-# on Etherscan, then the console. Needs git, Node 18+, Python 3.11+, and ONE Sepolia key with about 0.1 test ETH.
+# on Etherscan, then the console. Needs git, Node 18+, Python 3.11+, and about 0.02 Sepolia test ETH
+# (free from a faucet; the script makes the key and tells you which address to fund).
 #
-#   1. Put PRIVATE_KEY=0x... (funded from a Sepolia faucet) and a model key in .env
-#   2. ./scripts/live.sh
+#   1. Put a model key in .env (OPENROUTER_API_KEY has free models), then run ./scripts/live.sh
+#   2. It creates a deployer key, prints its address and stops: send it 0.02 Sepolia ETH from a faucet, rerun
 #
 # The script creates the owner and agent keys if .env has none, deploys the token, factory and wallets, seeds
 # supplier history, and starts the console. Expect about 50 minutes on the first run: Sepolia confirms one block every
@@ -20,7 +21,9 @@ say()  { printf '\033[1m==> %s\033[0m\n' "$*"; }
 fail() { printf '\033[31mError: %s\033[0m\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || fail "$1 is not installed. $2"; }
 port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
-envval() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed -E "s/^['\"](.*)['\"]$/\1/" || true; }
+envval() {  # value of KEY in .env: inline "  # comment" and surrounding quotes removed
+  grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed -E "s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^['\"](.*)['\"]$/\1/" || true
+}
 setenv() {  # add or replace KEY=VALUE in .env without echoing the value
   .venv/bin/python - "$1" "$2" <<'PY'
 import os, sys
@@ -66,7 +69,11 @@ chmod 600 .env
 RPC="${SEPOLIA_RPC_URL:-$(envval SEPOLIA_RPC_URL)}"
 RPC="${RPC:-https://ethereum-sepolia-rpc.publicnode.com}"
 PK="$(envval PRIVATE_KEY)"
-[ -n "$PK" ] || fail "Add PRIVATE_KEY=0x... to .env: a Sepolia key with about 0.1 test ETH (faucets: https://cloud.google.com/application/web3/faucet/ethereum/sepolia, https://www.alchemy.com/faucets/ethereum-sepolia). Use a fresh key, never one with real funds."
+if [ -z "$PK" ]; then  # no deployer key yet: make one, so the judge only has to fund an address
+  setenv PRIVATE_KEY "$(.venv/bin/python -c 'from eth_account import Account; k = Account.create().key.hex(); print(k if k.startswith("0x") else "0x" + k)')"
+  PK="$(envval PRIVATE_KEY)"
+  echo "  Created a deployer key (PRIVATE_KEY in .env, owner-only file). It holds test ETH only."
+fi
 CHAIN="$(cast chain-id --rpc-url "$RPC" 2>/dev/null)" || fail "Cannot reach the Sepolia RPC at $RPC. Set SEPOLIA_RPC_URL in .env."
 [ "$CHAIN" = "11155111" ] || fail "$RPC is chain $CHAIN, not Sepolia (11155111)."
 for k in OWNER_PRIVATE_KEY AGENT_PRIVATE_KEY; do
@@ -82,8 +89,8 @@ MODEL_KEY=0
 for k in DASHSCOPE_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY; do [ -n "$(envval $k)" ] && MODEL_KEY=1; done
 if [ "$MODEL_KEY" = 0 ]; then
   echo "  No model key in .env. Live mode refuses every payment without one: the independent Checker fails closed."
-  echo "  The chat is off too. Add DASHSCOPE_API_KEY, DEEPSEEK_API_KEY, OPENROUTER_API_KEY (has free models) or"
-  echo "  ANTHROPIC_API_KEY to .env; the deployment and console still work without it."
+  echo "  The chat is off too. Add DASHSCOPE_API_KEY (Qwen Cloud, the default) to .env, or DEEPSEEK_API_KEY,"
+  echo "  OPENROUTER_API_KEY or ANTHROPIC_API_KEY. The deployment and console still work without one."
 fi
 
 REUSE=0  # only a deployment this script finished, for these keys
@@ -94,12 +101,18 @@ fi
 if [ "$REUSE" = 0 ]; then
   say "3/6 Deploying to Sepolia (about 50 minutes; leave it running)"
   BAL_WEI="$(cast balance "$DEPLOYER" --rpc-url "$RPC")"
-  .venv/bin/python -c "import sys; sys.exit(int('$BAL_WEI') < 8 * 10**16)" \
-    || fail "Deployer $DEPLOYER has $(cast from-wei "$BAL_WEI") ETH; it needs about 0.1 Sepolia ETH. Fund it from a faucet and rerun."
+  .venv/bin/python -c "import sys; sys.exit(int('$BAL_WEI') < 2 * 10**16)" || fail "Fund the deployer, then rerun ./scripts/live.sh.
+
+  Address   $DEPLOYER
+  Balance   $(cast from-wei "$BAL_WEI") Sepolia ETH; it needs 0.02 (test ETH, free, no real value)
+  Faucets   https://cloud.google.com/application/web3/faucet/ethereum/sepolia   (Google account)
+            https://sepolia-faucet.pk910.de   (no account: your browser mines for a few minutes)
+            https://www.alchemy.com/faucets/ethereum-sepolia   (needs a little mainnet ETH)"
   if [ -f "$DEP" ] && [ ! -f deployments/11155111.reference.json ]; then cp "$DEP" deployments/11155111.reference.json; fi
   # The seeded late deals need a deadline after all ~110 transactions land (12 s blocks): 45 minutes, as in the
   # original deployment.
-  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-2700}"
+  # Gas on Sepolia costs a few wei, so 0.002 ETH per seeded buyer (0.004 for owner and agent) is plenty.
+  export SEPOLIA_RPC_URL="$RPC" LATE_WINDOW="${LATE_WINDOW:-2700}" BUYER_FUND_WEI="${BUYER_FUND_WEI:-2000000000000000}"
   restore() { [ -f deployments/11155111.reference.json ] && cp deployments/11155111.reference.json "$DEP" || rm -f "$DEP"; }
   ./scripts/deploy-sepolia.sh 2>&1 | tee .live-deploy.log | grep -E "^(Deployer|Balance|Waiting|Done)" \
     || { restore; fail "The deployment failed; see .live-deploy.log. Rerun to start a fresh deployment."; }

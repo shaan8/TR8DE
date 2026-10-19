@@ -173,21 +173,23 @@ class RulesOnlyChecker(LLM):
                            'model Checker is off. Intent, policy and contract checks still apply."}')
 
 
-PROVIDER_KEYS = {"deepseek": "DEEPSEEK_API_KEY", "openrouter": "OPENROUTER_API_KEY",
-                 "anthropic": "ANTHROPIC_API_KEY", "qwen": "DASHSCOPE_API_KEY"}
+PROVIDER_KEYS = {"qwen": "DASHSCOPE_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "openrouter": "OPENROUTER_API_KEY",
+                 "anthropic": "ANTHROPIC_API_KEY"}  # fallback order: Qwen Cloud first
 
 
 def llms_or_offline(make) -> dict:
-    """Build the model clients. If the configured provider has no key, use the first provider that has one (and
-    tell the negotiation side through TIWALA_LLM_PROVIDER); with no key at all, offline stand-ins naming the gap."""
-    first = os.environ.get("TIWALA_LLM_PROVIDER", "deepseek").lower()
-    tried = [first] + [p for p in PROVIDER_KEYS if p != first and os.environ.get(PROVIDER_KEYS[p])]
-    err: Optional[Exception] = None
+    """Build the model clients. If the configured provider (TIWALA_LLM_PROVIDER, default qwen) has no key, use the
+    first provider in PROVIDER_KEYS order that has one, and tell the negotiation side through TIWALA_LLM_PROVIDER.
+    An empty key counts as missing. With no usable key at all, offline stand-ins naming the gap."""
+    first = (os.environ.get("TIWALA_LLM_PROVIDER") or "qwen").lower()
+    tried = [p for p in [first] + [p for p in PROVIDER_KEYS if p != first]
+             if os.environ.get(PROVIDER_KEYS.get(p, ""), "").strip()]
+    err: Optional[Exception] = None if tried else KeyError("no model key")
     for p in tried:
         os.environ["TIWALA_LLM_PROVIDER"] = p
         try:
             return make()
-        except (KeyError, ValueError) as e:  # a missing key (DeepSeek, OpenRouter, Anthropic: KeyError; Qwen: ValueError)
+        except Exception as e:  # a missing or unusable key: try the next provider
             err = err or e
     os.environ["TIWALA_LLM_PROVIDER"] = first
     if err is not None:

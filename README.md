@@ -17,12 +17,21 @@ Source: https://github.com/shaan8/TR8DE
 | | Demo (local) | Live (Sepolia) |
 | --- | --- | --- |
 | Chain | A private Ethereum chain on your machine | Sepolia, Ethereum's public test network |
-| You need | git, Node 18+, Python 3.11+ | The same, plus one Sepolia key with about 0.1 test ETH |
+| You need | git, Node 18+, Python 3.11+ | The same, plus 0.02 Sepolia test ETH from a free faucet and a model key (Qwen Cloud) |
 | Setup time | About 2 minutes | About 50 minutes the first time, then instant |
 | Proof | Disappears when you stop it | Public transactions anyone can open on Etherscan |
 
-A model key is optional for both: put one in `.env` (`DASHSCOPE_API_KEY` for Qwen Cloud, or `DEEPSEEK_API_KEY`,
-`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`) to talk to the agent in plain words. OpenRouter has free models.
+**Keys and accounts.** Copy `.env.example` to `.env` and fill in only what you need:
+
+| What | Needed for | Where to get it |
+| --- | --- | --- |
+| `DASHSCOPE_API_KEY` (Qwen Cloud, the default model) | The chat assistant in both modes; payments in live mode | [Qwen Cloud](https://www.alibabacloud.com/en/product/modelstudio) console, or `python3 scripts/setup_qwen.py` to paste it privately. DeepSeek, OpenRouter (free models) or Anthropic keys also work; the first key present is used |
+| Sepolia test ETH, 0.02 | Live mode only | Free from a faucet; `live.sh` makes the key and prints the address to fund (step 2 below). Nothing to mine yourself |
+| `TELEGRAM_BOT_TOKEN`, plus `TELEGRAM_LIVE_SEND=1` | Optional: real supplier chat on Telegram | Message @BotFather in Telegram, send `/newbot`. Setup: [`docs/telegram.md`](docs/telegram.md) |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ALLOWED_RECIPIENTS`, plus `WHATSAPP_LIVE_SEND=1` | Optional: real supplier chat on WhatsApp | A Meta developer app with the WhatsApp product. Setup: [`docs/whatsapp-webhook.md`](docs/whatsapp-webhook.md). The built-in WhatsApp simulator needs none of this |
+
+The local demo needs none of them. Without a model key the chat is off, but negotiations, escrow and owner
+commands still run.
 
 ### Demo: one command, no accounts
 
@@ -63,14 +72,16 @@ Red-team notes, what we tried and what was fixed: [`SECURITY.md`](SECURITY.md#ju
 
 ### Live: your own deployment on Sepolia
 
-1. Create a fresh key for testing only, fund it with about 0.1 Sepolia ETH from a faucet
-   ([Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia),
-   [Alchemy](https://www.alchemy.com/faucets/ethereum-sepolia)), and add it to `.env` as `PRIVATE_KEY=0x...`.
-   Never use a key that holds real funds. Add a model key too (`OPENROUTER_API_KEY` has free models): on Sepolia
-   the independent Checker fails closed without one, so every payment is refused. Optional: `SEPOLIA_RPC_URL` for
-   your own RPC (the public one is used otherwise). Free OpenRouter models work but can take a minute per
-   turn, so a negotiation may take several minutes; a paid key is faster.
-2. Run:
+1. Put a model key in `.env`: `DASHSCOPE_API_KEY` for Qwen Cloud (the default). On Sepolia the independent Checker
+   fails closed without a model key, so every payment is refused. Optional: `SEPOLIA_RPC_URL` for your own RPC.
+2. Run `./scripts/live.sh`. The first time, it creates a deployer key, prints its address and stops. Send that
+   address 0.02 Sepolia ETH from a faucet. This is free test ETH with no value, and nothing needs to be mined
+   by you. Any of these works:
+   [Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) (Google account),
+   [pk910 PoW faucet](https://sepolia-faucet.pk910.de) (no account; your browser works for a few minutes),
+   [Alchemy](https://www.alchemy.com/faucets/ethereum-sepolia) (needs a little mainnet ETH).
+   To use a key you already have, put it in `.env` as `PRIVATE_KEY=0x...` instead. Never use one that holds real funds.
+3. Run it again:
 
 ```bash
 ./scripts/live.sh
