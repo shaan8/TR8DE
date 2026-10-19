@@ -45,6 +45,10 @@ git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-dem
 The script installs what it needs, starts a private chain, deploys the same contracts used on Sepolia with
 seeded suppliers and trade history, and opens the console with a one-time login it prints. Ctrl+C stops it.
 
+In the demo, messaging is switched off on purpose, so a throwaway demo can never text anyone: WhatsApp and Telegram
+settings in `.env` are ignored, and supplier chat runs in the built-in WhatsApp simulator instead. Real WhatsApp and
+Telegram messages work in live mode.
+
 Then try (all of this works without a model key):
 
 1. Negotiations tab: start one with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator, where you type
@@ -68,8 +72,8 @@ Red-team notes, what we tried and what was fixed: [`SECURITY.md`](SECURITY.md#ju
 | Supplier reputation | Read from the chain, from seeded history plus your demo deals | Read from Sepolia, from seeded history plus your real test deals |
 | Keys | Public Anvil test keys (worthless) | Your own keys, kept in `.env` |
 | Paying addresses outside the demo | No: only addresses on the local chain | Yes: any Sepolia address you save as a payee (24 h waiting period) |
-| WhatsApp | Simulator only, never sends | Live sending if you configure Meta credentials |
-| Telegram | Off unless you set a bot token | Same: long polling, no public URL needed ([docs/telegram.md](docs/telegram.md)) |
+| WhatsApp | Built-in simulator only; never sends, whatever `.env` says | Real messages both ways with Meta credentials ([docs/whatsapp-webhook.md](docs/whatsapp-webhook.md)) |
+| Telegram | Off; never sends, whatever `.env` says | Real messages both ways with a bot token; no public URL needed ([docs/telegram.md](docs/telegram.md)) |
 | Without a model key | Chat assistant off; negotiations use rules and a scripted supplier; payments use a labelled rules-only Checker | Chat assistant off; the Checker fails closed, so no payments |
 | Persistence | Everything resets on each run | Contracts and history stay on Sepolia |
 
