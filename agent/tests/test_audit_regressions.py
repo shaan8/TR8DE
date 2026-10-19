@@ -1,4 +1,4 @@
-"""Regressions from the 20 October 2026 external audit of b4244b8 (SECURITY.md). Each failed on that commit.
+"""Regressions from the 20 October 2026 external audit of ccc2aaf, formerly b4244b8 (SECURITY.md). Each failed on that commit.
 Local Anvil chain, scripted models, test keys only: no production RPC, model keys, messaging.
 """
 import json

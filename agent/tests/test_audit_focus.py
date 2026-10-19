@@ -1,4 +1,4 @@
-"""Probes from the third external audit (20 October 2026) of a61a4ff (SECURITY.md). Each failed on that commit.
+"""Probes from the third external audit (20 October 2026) of 27f5196, formerly a61a4ff (SECURITY.md). Each failed on that commit.
 Local Anvil chain and scripted models only."""
 import json
 import pytest

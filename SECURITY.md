@@ -90,7 +90,7 @@ scripted models.
 
 ## Second independent audit (20 October 2026)
 
-A second external audit of commit `b4244b8` reproduced seven failures on a local Anvil chain with scripted models
+A second external audit of commit `ccc2aaf` (`b4244b8` before commit messages were edited; same files) reproduced seven failures on a local Anvil chain with scripted models
 and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` and all pass now.
 
 | Finding | Outcome |
@@ -106,7 +106,7 @@ and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` a
 
 ## Third independent audit (20 October 2026)
 
-A third external audit of commit `a61a4ff` reproduced six failures on a local Anvil chain with scripted models. Its
+A third external audit of commit `27f5196` (`a61a4ff` before commit messages were edited; same files) reproduced six failures on a local Anvil chain with scripted models. Its
 probes are kept as `agent/tests/test_audit_focus.py` and all pass now. They show a missing deterministic boundary,
 not a measured attack rate against the live models.
 
