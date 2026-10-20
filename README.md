@@ -246,8 +246,14 @@ signature or your verify token.
 5. Optional supplier chat: add the Telegram or WhatsApp keys (0.3), restart the console, and for WhatsApp start
    the tunnel.
 
-Every payment, attestation and refund is a Sepolia transaction, linked to Etherscan from the console. Restart the
-console after changing `.env`.
+**P.S. for judges — verifying a live transaction:** after a payment, attestation or refund is successfully
+broadcast in live mode, the console shows its transaction hash with a link to
+[Sepolia Etherscan](https://sepolia.etherscan.io). Open it to verify the status, block, sender, destination and
+contract events or token transfers. A newly broadcast transaction may take a short time to appear or confirm.
+These are public Sepolia testnet transactions using test funds. Local-demo hashes exist only on the private
+chain and cannot be viewed on Etherscan. Your live clone uses your own deployment, not the author's wallet.
+
+Restart the console after changing `.env`.
 
 Forgot your live password? From the repository root, run the command below, choose a new password twice, then
 restart the console. This resets the login for **your clone**; it does not reset an author's hosted instance.
