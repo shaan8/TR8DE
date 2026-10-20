@@ -331,6 +331,7 @@ class Tiwala:
         self.agreements: dict[str, dict] = {}  # Origin.detail -> agreed fields, registered by propose_negotiated
         self.on_executed: list = []  # callbacks(action, result) after an owner-confirmed action executes
         self._created_this_turn: set[str] = set()  # gate digests of creates broadcast in the current turn
+        self._turn_flags: tuple = ()  # guard flags on the owner's message this turn
         self.on_pending_dropped: list = []  # callbacks(action) when a card is declined or replaced unanswered
         self.before_confirm: list = []  # callbacks(action) -> reasons to refuse, run on fresh state before a yes signs
 
@@ -533,7 +534,8 @@ class Tiwala:
                 return f"{a.ref} already has open deal {dup.id}. Nothing was created twice."
         return None
 
-    def propose(self, a: Action, then_release_down: bool = False, system_note: str = "") -> dict:
+    def propose(self, a: Action, then_release_down: bool = False, system_note: str = "",
+                input_flags: tuple = ()) -> dict:
         if (f := self.frozen()) and a.kind in MONEY_MOVING:
             return {"status": "refused", "reasons": [f"The agent is frozen ({f['reason']}). Type /unfreeze to resume."]}
         if dup := self._duplicate(a):
@@ -541,7 +543,10 @@ class Tiwala:
             return {"status": "refused", "reasons": [dup]}
         ctx, deal = self._context(a)
         intent = self._intent(a, self.ledger[-6:], deal)
+        if system_note:  # the deposit of the deal this process just created: code chose it, not the model
+            intent.agent_filled = [f for f in intent.agent_filled if f != "deal"]
         ctx.intent_mismatches, ctx.agent_filled = intent.mismatches, intent.agent_filled
+        ctx.input_flags = tuple(input_flags) + (self._turn_flags if a.origin.kind == "user" else ())
         view = self._action_view(a, ctx, deal)
         request = self._request_desc(a, deal, system_note)
         ok, reason = checker_review(RedactingLLM(self.llms["checker"], self._redactor), request, view)
@@ -658,7 +663,8 @@ class Tiwala:
                 lines.append("Forecast: no shortfall")
         else:
             lines += [f"CONFIRM {a.kind.value.replace('_', ' ').upper()} for deal {a.deal_id}",
-                      f"Supplier: {names.get(deal.supplier, deal.supplier) if deal else '?'}"]
+                      f"Supplier: {names.get(deal.supplier, deal.supplier) if deal else '?'}",
+                      f"PO: {deal.ref}   Deal total: {php(deal.total)}" if deal else ""]
         if a.origin.kind == "negotiation":
             ag = self.agreements.get(a.origin.detail, {})
             lines.append(f"From negotiation {ag.get('label', a.origin.detail)}; supplier accepted these exact terms "
@@ -689,6 +695,7 @@ class Tiwala:
         self._events = []
         self._created_this_turn = set()
         t = tag_user(text)
+        self._turn_flags = t.flags
         self._log("user_message", text=t.text, flags=list(t.flags))
 
         if t.text.strip().lower() in ("/guide", "/help", "help"):
@@ -979,7 +986,7 @@ class Tiwala:
         return agent_authority(a, ctx) is None
 
     def propose_negotiated(self, detail: str, supplier: str, total: int, down_bps: int, deadline: int, ref: str,
-                           summary: str, label: str, supplier_via: str) -> dict:
+                           summary: str, label: str, supplier_via: str, input_flags: tuple = ()) -> dict:
         """Draft the escrow for an agreed negotiation. Same pipeline as a chat request: intent (the action must equal
         the agreement), Checker, policy, then a confirmation card the owner answers in their own words."""
         if self.pending:
@@ -991,7 +998,7 @@ class Tiwala:
                    down_bps=down_bps, deadline=deadline, ref=ref)
         self._events = []
         self.ledger = []
-        return self.propose(a, then_release_down=True)
+        return self.propose(a, then_release_down=True, input_flags=input_flags)
 
     # ------------------------------------------------------------ payees
 

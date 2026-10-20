@@ -12,6 +12,8 @@ from .models import Action, ActionKind, Deal, MONEY_MOVING, Status, SupplierEntr
 from .reputation import DpCap, Reputation
 
 ADDRESS_COOLING_S = 7 * 86400
+# Guard flags on the words behind an action (owner chat or supplier messages) that take away the agent's autonomy.
+SUSPICIOUS_INPUT = {"override_attempt", "role_hijack", "drain_request", "raw_address", "authority_claim"}
 
 
 @dataclass(frozen=True)
@@ -39,7 +41,7 @@ class PolicyContext:
     checker_reason: str = ""
     intent_mismatches: list[str] = field(default_factory=list)
     agent_filled: list[str] = field(default_factory=list)  # create terms the model supplied, not the owner's words
-    input_flags: tuple = ()
+    input_flags: tuple = ()  # guard flags on the owner's message or the negotiation's supplier messages
 
 
 def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = PolicySettings()) -> Verdict:
@@ -80,6 +82,14 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
         flags.append("checker_reject")
     elif ctx.checker_approved is None:
         refuse.append("No independent Checker review on record.")
+
+    if action.origin.kind != "monitor" and (hit := sorted(SUSPICIOUS_INPUT & set(ctx.input_flags))):
+        flags.append("flagged_input")
+        notes.append(f"The words behind this were flagged ({', '.join(hit)}), so you decide, not the agent.")
+    if (action.kind in (ActionKind.RELEASE_DOWN, ActionKind.RELEASE_BALANCE) and action.origin.kind == "user"
+            and "deal" in ctx.agent_filled):
+        tier = max(tier, Tier.CONFIRM)
+        notes.append("You did not name this deal or its PO, so please check it is the one you meant.")
 
     if action.kind == ActionKind.CREATE_DEAL:
         _check_create(action, ctx, settings, refuse, flags, notes)

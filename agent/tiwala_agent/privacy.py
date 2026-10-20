@@ -22,6 +22,18 @@ MASKS = [
     (re.compile(r"(?<![\d.x])\d{12,19}(?![\d.])"), "[account]"),
 ]
 
+HEX = re.compile(r"(0x[0-9a-fA-F]+)")
+
+
+def mask_pii(s: str) -> str:
+    """Mask phones, e-mails and account numbers, leaving 0x-hex (addresses, tx hashes) whole: a digit run inside
+    a hash is not an account number."""
+    parts = HEX.split(s)
+    for i in range(0, len(parts), 2):
+        for rx, rep in MASKS:
+            parts[i] = rx.sub(rep, parts[i])
+    return "".join(parts)
+
 
 class Redactor:
     def __init__(self):
@@ -36,10 +48,7 @@ class Redactor:
                 ph = f"ADDR_{len(self.to_ph) + 1}"
                 self.to_ph[key], self.from_ph[ph] = ph, a
             return self.to_ph[key]
-        s = ADDR.sub(addr, s)
-        for rx, rep in MASKS:
-            s = rx.sub(rep, s)
-        return s
+        return mask_pii(ADDR.sub(addr, s))
 
     def deep(self, obj):
         if isinstance(obj, str):

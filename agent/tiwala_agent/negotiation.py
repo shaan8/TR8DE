@@ -22,6 +22,7 @@ import secrets
 import threading
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional
@@ -283,6 +284,10 @@ class Negotiation:
     def by_id(self, pid: str) -> Optional[Proposal]:
         return next((p for p in self.props() if p.id == pid), None)
 
+    def input_flags(self) -> tuple:
+        """Guard flags on anything the supplier side sent in this negotiation, by any channel."""
+        return tuple(sorted({f for m in self.messages if m.get("dir") == "in" for f in m.get("flags", [])}))
+
     def last_by(self, party: str) -> Optional[Proposal]:
         return next((p for p in reversed(self.props()) if p.by == party), None)
 
@@ -394,7 +399,18 @@ def rules_accept(sup: Proposal, c: BuyerConstraints, v: BuyerView, rounds_left: 
 def _leaks(text: str, c: BuyerConstraints, v: BuyerView) -> bool:
     nums = {re.sub(r"[^\d]", "", m) for m in re.findall(r"\d[\d,]*", text or "")}
     secret = {str(x // PHP) for x in (c.max_total, c.min_reserve, v.free, v.free - c.min_reserve) if x > 0}
-    return bool(nums & secret)
+    return bool(nums & secret) or _names_date(text or "", c.latest_delivery)
+
+
+def _names_date(text: str, ts: int) -> bool:
+    """Whether the text names the day of `ts` in a common written form (2027-01-02, 2 January, Jan 2, 1/2)."""
+    from .core import user_tz
+    d = datetime.fromtimestamp(ts, user_tz())
+    low = text.lower()
+    forms = {d.strftime("%Y-%m-%d"), f"{d.month}/{d.day}", f"{d.day}/{d.month}"}
+    forms |= {f"{m} {d.day}" for m in (d.strftime("%B").lower(), d.strftime("%b").lower())}
+    forms |= {f"{d.day} {m}" for m in (d.strftime("%B").lower(), d.strftime("%b").lower())}
+    return any(re.search(rf"(?<![\w/]){re.escape(f)}(?![\w/])", low) for f in forms)
 
 
 def offer_text(n: Negotiation, p: Proposal) -> str:
@@ -708,13 +724,16 @@ class Engine:
                 t = action["terms"] if isinstance(action.get("terms"), Terms) else None
                 if t is None:
                     raise NegotiationError("counteroffer terms are missing")
-                p = self._new_proposal(n, "supplier", t, via, str(action.get("note", "")), bool(action.get("final")),
+                tag = tag_user(str(action.get("note", "")))  # an API note is supplier free text like any chat
+                p = self._new_proposal(n, "supplier", t, via, tag.text, bool(action.get("final")),
                                        accept_as=identity)
                 n.messages.append({"dir": "in", "party": "supplier", "text": offer_text(n, p) +
                                    (f" {p.note}" if p.note else ""), "channel": n.channel, "ts": self.now(),
-                                   "proposal": p.id, "via": via})
+                                   "proposal": p.id, "via": via, "flags": list(tag.flags)})
+                if tag.flags:
+                    self.log("negotiation_message", negotiation=n.id, dir="in", channel=via, flags=list(tag.flags))
                 self._set(n, State.NEGOTIATING)
-                self._buyer_respond(n, p)
+                self._buyer_respond(n, p, tag.flags)
             elif kind == "reject":
                 n.messages.append({"dir": "in", "party": "supplier", "text": "Rejected: " +
                                    str(action.get("reason", ""))[:200], "channel": n.channel, "ts": self.now(), "via": via})

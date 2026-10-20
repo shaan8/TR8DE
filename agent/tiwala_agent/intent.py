@@ -132,7 +132,9 @@ def verify(
     total = action.total if action.total is not None else (deal.total if deal else None)
     if parsed.amounts and total is not None:
         down = total * (bps or 0) // 10_000
-        if not any(a in (total, down, total - down) for a in parsed.amounts):
+        # a new deal's total must be an amount the owner said; a deposit figure never stands in for it
+        allowed = (total,) if action.kind == ActionKind.CREATE_DEAL else (total, down, total - down)
+        if not any(a in allowed for a in parsed.amounts):
             mm.append(
                 f"amount: you mentioned {', '.join(f'{a / PHP:,.2f}' for a in parsed.amounts)}, "
                 f"action is {total / PHP:,.2f} total"
@@ -149,6 +151,10 @@ def verify(
 
     if action.kind == ActionKind.CREATE_DEAL:
         filled.append("deadline")
+    elif action.kind in (ActionKind.RELEASE_DOWN, ActionKind.RELEASE_BALANCE, ActionKind.CANCEL):
+        named = {int(x) for t in request_texts for x in _DEAL.findall(t)}
+        if action.deal_id not in named and not (ref and ref in parsed.pos):
+            filled.append("deal")  # the model picked which deal; the owner sees it on a card
     return IntentResult(ok=not mm, mismatches=mm, agent_filled=filled)
 
 

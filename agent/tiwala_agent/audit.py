@@ -13,6 +13,8 @@ import threading
 import time
 from pathlib import Path
 
+from .privacy import mask_pii
+
 ANCHOR_PREFIX = b"TIWALA-AUDIT-v1"
 
 
@@ -46,8 +48,8 @@ def _redact(obj):
         return {k: ("[redacted]" if k.lower() in _REDACT_KEYS else _redact(v)) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_redact(v) for v in obj]
-    if isinstance(obj, str):
-        return obj  # tx hashes are 32-byte hex and must stay; private keys never reach here by key name
+    if isinstance(obj, str):  # tx hashes are 32-byte hex and must stay; private keys never reach here by key name
+        return mask_pii(obj)  # phones, e-mails and account numbers in free text are not kept at rest
     return obj
 
 

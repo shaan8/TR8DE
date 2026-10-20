@@ -19,6 +19,7 @@ from .llm import LLM
 from .models import PHP, Action, ActionKind, php
 from .negotiation import (BuyerConstraints, BuyerView, Engine, Negotiation, NegotiationError, Proposal, State, Store,
                           TERMINAL, Terms, buyer_checks, cash_impact, escrow_ref, passes)
+from .policy import SUSPICIOUS_INPUT
 from .privacy import RedactingLLM
 from .reputation import DpPolicy, dp_cap, score
 from .supplier_agent import MandateStore, SupplierAgent, SupplierMandate, run_agent_turns
@@ -290,6 +291,10 @@ class NegotiationService:
             if State(n.state) != State.AWAITING_BUYER_APPROVAL or not n.agreement:
                 return
             p = n.by_id(n.agreement["proposal_id"])
+            if flags := SUSPICIOUS_INPUT & set(n.input_flags()):  # a flagged supplier message: the owner decides
+                self._log("negotiation_settle_deferred", negotiation=nid, reason="flagged supplier input",
+                          flags=sorted(flags))
+                return
             if p is None or not self.t.agent_may_create(n.supplier_address, p.terms.total):
                 self._log("negotiation_settle_deferred", negotiation=nid, reason="beyond the agent's authority")
                 return
@@ -373,7 +378,7 @@ class NegotiationService:
                        f"creation, delivery by {_when(tt.deliver_by)}, PO reference {ref}. Supplier acceptance: {via}. "
                        f"Terms hash {p.terms_hash[:16]}.")
             out = t.propose_negotiated(detail, n.supplier_address, tt.total, tt.deposit_bps, tt.deliver_by, ref,
-                                       summary, f"NEG-{n.id} v{p.version}", via)
+                                       summary, f"NEG-{n.id} v{p.version}", via, n.input_flags())
             if out["status"] == "executed":  # within the agent's on-chain authority: _on_executed linked it
                 self._log("negotiation_handoff", negotiation=n.id, proposal=p.id, status=out["status"], ref=ref)
                 return {**out, "events": t._events}
