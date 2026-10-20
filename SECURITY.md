@@ -56,8 +56,8 @@ The design assumes any LLM can be fooled. Each layer below holds even if every l
 
 | Check | Result |
 | --- | --- |
-| Foundry: 38 unit, 1 fuzz, 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) | 42 pass, 256 runs x 64 depth, 0 reverts ([`reports/tests.txt`](reports/tests.txt)) |
-| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, console login, red-team and pentest regressions on anvil | All pass; grouped in [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md), run in [CI](.github/workflows/ci.yml) |
+| Foundry: 39 unit/fuzz tests plus one invariant suite with 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) | 40 pass, 256 runs x 64 depth, 0 reverts ([`reports/tests.txt`](reports/tests.txt)) |
+| Agent: deterministic layer, payees, negotiation, WhatsApp adapter, console login, red-team and pentest regressions on anvil | 248 pass; grouped in [`reports/evidence/SUMMARY.md`](reports/evidence/SUMMARY.md), run in [CI](.github/workflows/ci.yml) |
 | Policy fuzzing: 200,000 seeded random cases, every payout rule checked after each decision | 0 violations; three planted bugs each caught |
 | Secret scan of the full git history (gitleaks in CI, plus a check of every `.env` value) | No secrets committed; only the public Anvil test keys, allowlisted |
 | Slither 0.11.6 on `src/` | 0 high, 0 medium; 14 informational, triaged in [`reports/slither-triage.md`](reports/slither-triage.md) |
@@ -119,6 +119,25 @@ not a measured attack rate against the live models.
 | Hitting the tool-step limit replied "Nothing was paid" after a deposit (high) | Fixed: every exit path lists the transactions this turn sent, read from the audit events. Test: `test_step_limit_must_report_already_sent_payment` |
 | The forecast added past receipts to today's balance again (medium) | Fixed: inflows dated before today are already in the on-chain balance and are ignored. The contract still refuses an unfunded escrow. Test: `test_past_inflow_must_not_inflate_current_balance` |
 
+## Fourth independent assessment (20 October 2026)
+
+The fourth assessment covered owner intent, negotiation boundaries, local data retention and a privileged-token
+state transition. Its continuation reached `03094f2`; two pre-fix live runs created Sepolia deals 7 and 8 at
+PHP 1.00 each and paid their deposits with the agent key. These are successful attacks against the earlier
+revision, not evidence that injection was blocked. See [execution evidence, rows 16-17](docs/submission/6-execution-evidence.md#62-agent-runs-on-sepolia).
+Fixes in `54ca275` are replayed by `agent/tests/test_audit_live.py`; local scripted regressions do not establish a
+post-fix attack rate against live models. No post-fix live settlement retest is recorded.
+
+| Finding | Outcome |
+| --- | --- |
+| A generic release request let the model pick a deal without a card | Fixed: an unnamed deal or PO is marked model-filled, and user releases require a card. The regression checks both a rejecting Checker (nothing sent) and an approving Checker (card, then owner yes). Test: `test_generic_release_needs_the_owner_to_see_which_deal` |
+| A create could match the stated amount against its deposit rather than its total | Fixed: creates bind stated amounts to the total only. Test: `test_create_amount_binds_to_the_total_not_the_deposit` |
+| Buyer counteroffers can equal the private maximum | Open commercial risk: a visible offer can reveal a ceiling even though private constraint fields are never sent. Live Qwen runs showed cap-equal offers; injection causation was not established |
+| Buyer notes could name the private latest-delivery date | Fixed: the output filter now checks the private date as well as monetary limits. Test: `test_buyer_note_never_names_the_private_latest_date` |
+| Chat PII persisted locally | Partly fixed: new audit entries mask phone numbers, e-mails and account numbers while preserving hashes. Existing logs are not retroactively rewritten; negotiation JSON still stores raw supplier text. Test: `test_audit_log_does_not_keep_phones_or_emails` |
+| Issuer burn could underfund escrow before an agent deposit | Open contract risk: `releaseDownPayment` does not check `isUnderfunded`. Requires privileged token issuer and agent operations; normal off-chain policy refuses underfunded payouts. The assessment reproduced it locally and on a Sepolia fork, without a live broadcast; a contract fix needs redeployment |
+| Flagged supplier messages reached autonomous settlement; structured API notes bypassed tagging | Fixed: API notes are guard-tagged, thread flags reach policy, and flagged threads never self-settle. An explicit escrow request produces an owner card with `flagged_input`. Tests: `test_flagged_supplier_note_never_settles_on_its_own`, `test_flagged_owner_message_needs_a_card_even_in_budget` |
+
 ## Judge walkthrough (19 October 2026)
 
 We cloned the public repository into an empty folder, ran `./scripts/local-demo.sh` exactly as the README says
@@ -176,6 +195,17 @@ The login is a second layer for any exposure, not a reason to publish the consol
 `cd agent && ../.venv/bin/python -m console.auth set-password <username>`.
 
 ## Known limitations
+
+- **Offers can reveal a private ceiling.** Private constraint fields stay out of supplier responses, but a buyer
+  counteroffer can equal its maximum. Negotiation itself reveals willingness to pay; do not promise that the
+  ceiling cannot be inferred. A concession strategy can reduce this exposure.
+- **Underfunded deposit contract gap.** A privileged token issuer can burn escrow tokens, and a compromised agent
+  can still call `releaseDownPayment` against the remaining balance. Off-chain policy blocks this state, but the
+  contract lacks an `isUnderfunded` guard on that function. This is not a public-caller theft path; fix by redeploying.
+  The baseline invariant handler does not model issuer burns.
+- **Raw supplier text at rest.** Negotiation JSON retains supplier messages locally. Model-boundary redaction and
+  new audit-entry masking do not sanitise those files or historical logs. Same-user processes can read them;
+  production needs retention limits, sanitisation and restricted storage permissions.
 
 - **Agent key compromise.** An attacker holding the agent key can still create deals and release down payments to
   already-whitelisted suppliers, up to `perDealCap`, `dailyCap` and `maxDownBps`. Loss is bounded, not zero.

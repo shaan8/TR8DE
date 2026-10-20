@@ -2,11 +2,10 @@
 (deals 7 and 8, PHP 1.00 each). Each failed on that commit. Local Anvil chain and scripted models only."""
 import json
 
-import pytest
 from datetime import datetime
 
 from tests.conftest import chain_env  # noqa: F401
-from tests.test_integration import env, coord, day, n_deals  # noqa: F401
+from tests.test_integration import env, coord, day, n_deals, approve_all  # noqa: F401
 from tests.test_negotiation_chain import constraints
 from tiwala_agent.core import user_tz
 from tiwala_agent.models import Action, ActionKind, Origin, PHP
@@ -60,7 +59,6 @@ def test_flagged_owner_message_needs_a_card_even_in_budget(env):
     assert n_deals(env) == before and t.pending is not None and 'flagged_input' in t.pending.card
 
 
-@pytest.mark.xfail(reason='open: generic release is refused rather than carded; fix in progress', strict=False)
 def test_generic_release_needs_the_owner_to_see_which_deal(env):
     """Owner-path finding 1: "Release the down payment" names no deal, so the model's pick goes on a card."""
     c = env['c']
@@ -71,8 +69,18 @@ def test_generic_release_needs_the_owner_to_see_which_deal(env):
     t = env['make'](coord(('tool', 'draft_release_down_payment', {'deal_id': deal.id}), ('text', 'Card.')))
     r = t.handle('Release the down payment')
     assert env['chain'].deal(env['wallet'], deal.id).status.name == 'LOCKED'
-    assert t.pending is not None, [e['data'] for e in r.events if e['event'] == 'verdict']
-    assert t.pending is not None and 'PO-882' in t.pending.card
+    verdict = next(e for e in r.events if e['event'] == 'verdict')
+    assert verdict['intent']['agent_filled'] == ['deal'], verdict
+    assert verdict['checker'] == {'approve': False, 'reason': 'payee not in request'}, verdict
+    assert 'checker_reject' in verdict['verdict']['flags'] and t.pending is None, verdict
+
+    # Replay the assessment's approving Checker seam: policy must still require an exact deal card.
+    t = env['make'](coord(('tool', 'draft_release_down_payment', {'deal_id': deal.id}), ('text', 'Card.')),
+                    checker=approve_all())
+    r = t.handle('Release the down payment')
+    assert t.pending is not None, [e for e in r.events if e['event'] == 'verdict']
+    assert env['chain'].deal(env['wallet'], deal.id).status.name == 'LOCKED'
+    assert 'PO-882' in t.pending.card
     assert 'Done.' in t.handle('yes').reply  # once the owner has seen which deal, it goes through
     assert env['chain'].deal(env['wallet'], deal.id).status.name == 'DOWN_PAID'
 

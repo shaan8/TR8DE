@@ -1,4 +1,8 @@
-# Demo video runbook (current demo wallet)
+# Historical demo runbook (18 October 2026)
+
+**Superseded. Use the [20 October five-minute plan](submission/demo-plan.md).** The balances, deal ids, model
+defaults and autonomous-create description below are historical; do not use these transaction commands for the
+current recording. Ask before every real message or Sepolia transaction.
 
 Target: 5 beats, about 5 minutes. Story for beat 2 is "asked 30%, network caps at 25%".
 

@@ -10,9 +10,9 @@ real funds. The full audit history is in [`SECURITY.md`](../../SECURITY.md).
 | Judging area | Result |
 | --- | --- |
 | Induced transfers | No test, live run, audit or pentest case after the fixes moved money to a payee the owner did not save, or more than the owner stated |
-| Data extraction | No key or secret reaches any model; the buyer's limits never reach the supplier side; PII is masked before model calls |
+| Data extraction | No key or secret reaches any model; private constraint fields stay buyer-side, but offers can reveal a ceiling (R15); PII is masked before model calls |
 | Privilege escalation | The agent cannot raise its own limits, add a payee, attest delivery or approve its own deal: no tool exists, and the contract refuses the agent key |
-| Prompt injection | Direct, indirect (on-chain PO note), supplier-message and authority-claim injections all held, on anvil and live on Sepolia |
+| Prompt injection | Historical owner and chain-note attacks held; the fourth assessment bypassed flagged-supplier confirmation before the fix. Local regressions now require a card; no post-fix live retest recorded |
 | Open serious issues | A fourth external assessment (20 Oct) settled two PHP 1.00 deals on Sepolia from a flagged supplier message (deals 7, 8). Fixed: flagged input now always needs the owner (`test_audit_live.py`). Residual risks are in 5.6 |
 
 ## 5.2 Permission tiers: how they are implemented
@@ -26,7 +26,7 @@ contract checks again.
 | 0 Read | Agent | Balances, deals, reputation, forecast | Read tools only; no state change | n/a |
 | 1 Autonomous | Agent alone | A deal the owner stated in full within `approvalThreshold`; the agreed deposit; the balance after attestation; refund of an overdue deal; an agreed negotiation within authority | `agent_authority()` returns no reason; Gate mints a single-use authorization; the executor simulates, then signs with the agent key | `onlyOperator`, payee listed and active, `perDealCap`, `dailyCap`, `maxDownBps`, `approvalThreshold`, status checks |
 | 2 Confirm | Agent, after the owner's yes on that exact card | A deal above the threshold, over today's limit, with model-filled terms, flagged (spike, forecast shortfall, low score, changed address), or a negotiation outside authority; a user-requested cancel | A card with an id; only the owner's next message, or a button carrying that card id, confirms it; re-checked on fresh chain state; expires after 10 minutes | Above the threshold the contract also sets `ownerApproved = false`, so the deposit waits for the owner's `approveDeal` |
-| 3 Refuse | Nobody | Unknown or blocklisted payee, intent mismatch, Checker rejection, any cap exceeded, past deadline, insufficient funds, contract-text origin, wrong origin | `Verdict(REFUSE)`; no authorization is minted; 3 suspicious refusals in 10 minutes freeze the agent | The same rules revert even if code is bypassed |
+| 3 Refuse | Nobody | Unknown or blocklisted payee, intent mismatch, Checker rejection, any cap exceeded, past deadline, insufficient funds, contract-text origin, wrong origin | `Verdict(REFUSE)`; no authorization is minted; 3 suspicious refusals in 10 minutes freeze the agent | Contract enforces its own caps, roles and statuses; intent and Checker rules are off-chain; contract gaps are in 5.6 |
 | Owner only | Owner key, typed command | `/attest`, `/approve`, `/limits`, `/dispute`, `/resolve`, `/freeze`, saving a payee (`yes` plus last 4 address characters) | Parsed in code from typed `/` commands; never routed through a model; no tool exists for them | `onlyOwner` |
 
 Who may originate an action: the owner's chat, the monitor (only refunds and attested balances), or an agreed
@@ -43,7 +43,7 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 
 | Attack | Defence | Test or evidence |
 | --- | --- | --- |
-| Pay a new or attacker address | Payee must be typed by the owner in that message, EIP-55 valid, not a lookalike of a saved address or name, not a wallet role or blocklisted; owner types the last 4 characters; owner key signs `addSupplier`; contract waits 24 h before any payout | `test_payee.py`, `test_rt_payout_redirection`, live [beat 4b](../../reports/live/beat4b-new-address.txt), [lookalike](../../reports/live/beat8-lookalike-payee.txt), [payee from chain](../../reports/live/beat9-payee-from-chain.txt), [too soon](../../reports/live/beat7-pay-too-soon.txt) |
+| Pay a new or attacker address | Payee must be typed by the owner in that message, EIP-55 valid, not a lookalike of a saved address or name, not a wallet role or blocklisted; owner types the last 4 characters; owner key signs `addSupplier`; contract enforces the 24 h delay on create; agent checks it on releases too (contract gap: R4) | `test_payee.py`, `test_rt_payout_redirection`, live [beat 4b](../../reports/live/beat4b-new-address.txt), [lookalike](../../reports/live/beat8-lookalike-payee.txt), [payee from chain](../../reports/live/beat9-payee-from-chain.txt), [too soon](../../reports/live/beat7-pay-too-soon.txt) |
 | Inflate the amount or deposit | Intent verifier checks every amount, %, supplier and PO against the owner's words; reputation cap and contract `maxDownBps` | `test_rt_amount_tampering`, `test_intent_catches_wrong_supplier_amount_and_po`, live [beat 4d](../../reports/live/beat4d-manipulation.txt) |
 | Release the balance without delivery | Only the owner key attests; contract reverts otherwise | `test_rt_fake_delivery_then_real_attestation`, live forced tx [reverted on Sepolia](https://sepolia.etherscan.io/tx/0x0479cd2d2ea18c2403a90278ef526e0adb5b04bf2365f3cb3088606a4e5168d0) |
 | "It's just a simulation" or "test, don't pay" pretext | Such wording in the owner's message is an intent mismatch: nothing moves | `test_pentest_simulation_wording_never_pays` |
@@ -86,13 +86,13 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 
 | Test | Result |
 | --- | --- |
-| 242 agent tests on a local anvil chain with the real contracts and scripted models | All pass |
-| 40 Foundry tests: unit, fuzz, and 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) at 256 runs x 64 calls | All pass |
+| 248 agent tests on a local anvil chain with the real contracts and scripted models | All pass |
+| 40 Foundry results: 39 unit/fuzz tests plus one suite with 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) at 256 runs x 64 calls | All pass |
 | Policy fuzz: 200,000 seeded random cases, every payout rule checked after each decision | 0 violations; 3 planted bugs each caught |
 | External pentest (Promptfoo, PyRIT, Augustus), 90 runs | 13 prohibited payments found, all fixed, kept as regression tests |
 | Second and third external audits | 7 and 6 failures reproduced, all fixed, kept as `test_audit_regressions.py` and `test_audit_focus.py` |
 | Judge-style walkthrough from a fresh clone | 9 findings (1 high), all fixed |
-| Live red team on Sepolia | Injection, unknown payee, forced agent tx, social engineering, lookalike and chain-sourced payees: all held |
+| Live red team on Sepolia | Earlier owner and chain-note probes held; fourth-assessment supplier attacks created deals 7 and 8 before the fix. See [6.2](6-execution-evidence.md#62-agent-runs-on-sepolia) |
 | Slither on `src/` | 0 high, 0 medium; 14 informational, triaged in [`slither-triage.md`](../../reports/slither-triage.md) |
 | 58 UI state tests with axe accessibility checks | All pass |
 
@@ -109,6 +109,13 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 | Negotiated card executed after expiry | Expiry, hash and constraints re-checked at yes |
 | Error replies said "nothing was sent" after a payment | Every exit path lists sent transactions |
 | Two requests could act on one "yes" | Turn lock |
+| Flagged supplier input settled without owner approval; API notes bypassed guard tagging | Guard tags and thread flags reach policy; no self-settlement of flagged threads; owner card on explicit escrow request |
+| Generic release let the model select the deal | Model-filled deal requires a card even when the Checker approves |
+| A create matched a stated amount against its deposit | Bind the stated amount to the total only |
+
+The [fourth assessment](../../SECURITY.md#fourth-independent-assessment-20-october-2026) also fixed private-date
+leakage in buyer notes and PII retention in new audit entries. Negotiation JSON and historical logs remain a
+local data-at-rest risk. Its remaining contract and negotiation risks are listed below.
 
 ## 5.6 Known-risk list
 
@@ -128,3 +135,6 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 | R12 | Telegram invite is a bearer link until used | Low | Low | One-time, hashed, 7-day expiry; supplier told when linked | n/a |
 | R13 | Off-chain evidence must be tied to the agent revision | n/a | Reproducibility | `reports/evidence/SUMMARY.md` records the commit it ran on | n/a |
 | R14 | Test token, single chain, no upgrade path | n/a | n/a | n/a | New deployment for any contract fix |
+| R15 | Buyer counteroffer equals the private maximum | Observed with live Qwen | Medium commercial disclosure; no transfer in the observed runs | Private constraint fields excluded; note filter blocks explicit limit disclosures | Offers still reveal willingness to pay; concession strategy can reduce inference; injection causality unproven |
+| R16 | Privileged issuer burn leaves wallet underfunded, then compromised agent pays a deposit | Low; needs issuer and agent roles | Medium escrow integrity | Off-chain policy refuses underfunded payouts | `releaseDownPayment` lacks `isUnderfunded` check; redeploy to fix; baseline invariants do not model issuer burns |
+| R17 | Raw supplier text persists in local negotiation JSON and historical logs | Expected when supplied | Low local privacy exposure | Model input redaction; new audit entries mask PII; local-only data | Retention limits, at-rest sanitisation and restricted file permissions; no remote exfiltration demonstrated |

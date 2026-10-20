@@ -14,6 +14,10 @@
   <img src="reports/ui/04-approval-1440.png" alt="TR8DE console" width="860">
 </p>
 
+Submission documents: [technical documentation](docs/submission/1-technical-documentation.md),
+[security self-assessment](docs/submission/5-security-self-assessment.md),
+[execution evidence](docs/submission/6-execution-evidence.md), [5-minute demo plan](docs/submission/demo-plan.md).
+
 ## What you can do
 
 Type in the Payments chat. Plain words go to the agent. Commands starting with `/` are yours alone: they are
@@ -41,7 +45,8 @@ signed with the owner key, and no model can reach them.
 - "Negotiate 400 m of cotton with Lumen Textiles at PHP 110 a metre, at most PHP 50,000 in total, delivery by
   2026-11-15, keep PHP 20,000 free". Required: supplier, product, quantity, opening unit price, most you will
   commit, latest delivery. Optional: minimum quantity, preferred delivery, opening deposit % (default 10), cash to
-  keep free. You confirm the opening with `yes`, and your limits are never shown to the supplier.
+  keep free. You confirm the opening with `yes`, and private constraint fields stay buyer-side. Visible offers
+  can still reveal your willingness to pay.
 - Or use the **Negotiations** tab: the same fields in a form. Pick the supplier's person (WhatsApp, Telegram or the
   simulator) or the supplier's own agent ([supplier API](docs/supplier-api.md)).
 - What the supplier can reply:
@@ -259,7 +264,7 @@ The monitor runs on its own every `MONITOR_INTERVAL_S` seconds (default 300). De
 npm install && git clone --depth 1 https://github.com/foundry-rs/forge-std lib/forge-std
 forge test                                                        # 40 contract tests: unit, fuzz, invariant
 python3 -m venv .venv && .venv/bin/pip install -r agent/requirements.txt
-cd agent && PATH=$HOME/.foundry/bin:$PATH ../.venv/bin/python -m pytest -q   # 241 agent tests on anvil
+cd agent && PATH=$HOME/.foundry/bin:$PATH ../.venv/bin/python -m pytest -q   # 248 agent tests on anvil
 cd ../ui && npx playwright test                                   # 58 UI state tests at 1440 and 390 px, with axe
 ```
 
@@ -334,7 +339,7 @@ Repository: https://github.com/shaan8/TR8DE
 | [`src/`](src), [`test/`](test), [`script/`](script) | Solidity contracts, Foundry tests, deploy and seed scripts |
 | [`agent/tiwala_agent/`](agent/tiwala_agent) | Python agent (section 1.1) |
 | [`agent/console/`](agent/console), [`ui/`](ui) | Console API and React front end |
-| [`agent/tests/`](agent/tests) | Unit, integration on anvil, red team, policy fuzz, the three external audits' probes |
+| [`agent/tests/`](agent/tests) | Unit, integration on anvil, red team, policy fuzz, the four external assessments' probes |
 | [`scripts/`](scripts) | `local-demo.sh`, `live.sh`, `deploy-sepolia.sh`, evidence and audit verification |
 | [`docs/`](docs) | [Negotiation](docs/negotiation.md), [supplier API](docs/supplier-api.md), [Telegram](docs/telegram.md), [WhatsApp webhook](docs/whatsapp-webhook.md), [demo runbook](docs/demo-runbook.md) |
 
@@ -383,6 +388,7 @@ Full report: [SECURITY.md](SECURITY.md).
 | External pentest: Promptfoo, PyRIT and Augustus, 90 runs | 13 prohibited payments found, all fixed and kept as regression tests | [SECURITY.md](SECURITY.md#independent-testing-18-october-2026) |
 | Second external audit: unauthenticated UI, duplicate escrows, stale agreements, audit-chain forks | 7 failures reproduced, all fixed | [SECURITY.md](SECURITY.md#second-independent-audit-20-october-2026), [`test_audit_regressions.py`](agent/tests/test_audit_regressions.py) |
 | Third external audit: model-invented orders, stale-card approval, unmined duplicates, forecast double count | 6 failures reproduced, all fixed | [SECURITY.md](SECURITY.md#third-independent-audit-20-october-2026), [`test_audit_focus.py`](agent/tests/test_audit_focus.py) |
+| Fourth assessment: ambiguous release, amount binding, flagged-supplier settlement, privacy and issuer-burn gap | Confirmation and amount fixes replayed locally; three residual risks disclosed; deals 7-8 are pre-fix attack evidence | [SECURITY.md](SECURITY.md#fourth-independent-assessment-20-october-2026), [`test_audit_live.py`](agent/tests/test_audit_live.py) |
 | Judge-style red team: simulation pretexts, privilege claims, payout redirection | All refused | [SECURITY.md](SECURITY.md#judge-walkthrough-19-october-2026), [`test_redteam_judge.py`](agent/tests/test_redteam_judge.py) |
 | Policy fuzz, 200,000 seeded random cases checked after each decision | 0 violations; 3 planted bugs each caught | [`test_policy_fuzz.py`](agent/tests/test_policy_fuzz.py) |
 | Slither static analysis of the contracts | 0 high, 0 medium; 14 informational, triaged | [`slither-triage.md`](reports/slither-triage.md) |
@@ -396,6 +402,9 @@ Full report: [SECURITY.md](SECURITY.md).
 - Seeded reputation is demo data, and Sybil resistance comes from platform onboarding.
 - There is no recency decay.
 - Forecast inflows are the owner's own assertions.
+- Offers can equal a private negotiation ceiling.
+- Underfunded deposits lack a contract guard if issuer and agent roles are compromised; off-chain policy blocks them.
+- Local negotiation JSON retains raw supplier text.
 - The token is for testing only.
 
 Not audited for production: do not use with real funds.
@@ -414,7 +423,7 @@ contracts. Transcripts and the hash-chained audit log are in [`reports/live/`](r
 
 | Beat | What happened | Transactions |
 | --- | --- | --- |
-| Happy path | Owner asks for 30% down to Lumen; the network caps it at 25%; deal created, deposit released | [create](https://sepolia.etherscan.io/tx/0xc26642d49f9e7079171076a8c5f6cf9f3c7b23537acc64b4aa4017b1200f953c), [deposit](https://sepolia.etherscan.io/tx/0xfb10145647f17ce77194b5a15bb5934b2fd3107b359674180e66f06a9be407de) |
+| Happy path | Owner asks for 30% down to Lumen; network cap is 25%; owner corrects to 20% and confirms the forecast-shortfall card; deal created and 20% deposit released | [create](https://sepolia.etherscan.io/tx/0xc26642d49f9e7079171076a8c5f6cf9f3c7b23537acc64b4aa4017b1200f953c), [deposit](https://sepolia.etherscan.io/tx/0xfb10145647f17ce77194b5a15bb5934b2fd3107b359674180e66f06a9be407de) |
 | Milestone | Owner attests delivery; agent releases the balance | [attest](https://sepolia.etherscan.io/tx/0xb6a31fd50869448423ed8a9de70d7894c3ef7aafa51006d8d4787f1f4cb118e9), [release](https://sepolia.etherscan.io/tx/0x1862184b830f168131b8177215a10353a271eee28396d7b7aa2a357cb433e9d1) |
 | Prompt injection | Instruction planted in an on-chain PO note is treated as data | [planted note](https://sepolia.etherscan.io/tx/0x06a326cfda226cca1dce0369e1118e9f1eaecfa831db75d6fa1b52926dacf205) |
 | Contract backstop | Agent key forces `releaseBalance` on an unattested deal; the contract reverts | [reverted](https://sepolia.etherscan.io/tx/0x0479cd2d2ea18c2403a90278ef526e0adb5b04bf2365f3cb3088606a4e5168d0) |
