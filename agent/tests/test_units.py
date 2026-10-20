@@ -228,6 +228,8 @@ def test_policy_never_acts_alone_on_a_flagged_deal():
     a = _create()
     v = decide(a, _ctx(a, buyer_median=1_000_00))  # 100k against a 1k median raises amount_spike
     assert v.allowed and v.needs_confirmation and "amount_spike" in v.flags
+    assert "A risk flag requires your confirmation." in v.reasons
+    assert not any("agent creates it itself" in reason for reason in v.reasons)
 
 
 @pytest.mark.parametrize("change,needle", [

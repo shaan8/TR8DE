@@ -96,8 +96,6 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
         if why := agent_authority(action, ctx):
             tier = max(tier, Tier.CONFIRM)
             notes.append(f"This deal needs your confirmation: {why}.")
-        else:
-            notes.append("Within the authority you set on the wallet contract, so the agent creates it itself.")
     elif action.kind == ActionKind.RELEASE_DOWN:
         _check_release_down(action, ctx, refuse, flags)
     elif action.kind == ActionKind.RELEASE_BALANCE:
@@ -109,6 +107,7 @@ def decide(action: Action, ctx: PolicyContext, settings: PolicySettings = Policy
 
     if flags and not refuse:
         tier = max(tier, Tier.CONFIRM)
+        notes.append("A risk flag requires your confirmation.")
     if refuse:
         return Verdict(Tier.REFUSE, False, False, refuse + notes, flags)
     return Verdict(tier, True, tier == Tier.CONFIRM, notes, flags)
