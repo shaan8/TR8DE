@@ -1,17 +1,17 @@
 # TR8DE execution evidence
 
-Commit `719d386`, Python 3.14.7, 2026-10-20 05:18 UTC, 131 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `217fa48`, Python 3.14.7, 2026-10-20 06:13 UTC, 137 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
-**227/227 scenarios pass.**
+**228/228 scenarios pass.**
 
 | Group | Passed |
 | --- | --- |
 | C. Attacks blocked | 67/67 |
 | D. Privacy and integrity | 12/12 |
 | B. Safe execution and owner control | 36/36 |
-| A. Task completion | 112/112 |
+| A. Task completion | 113/113 |
 
 Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed payouts reached: cancel_deal 974, create_deal 141, release_balance 175, release_down_payment 198. Three deliberately planted bugs (no payee checks, no daily limit, no Checker) are each caught.
 
@@ -178,6 +178,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | the agent cannot raise its own authority | test_integration | pass |
 | agreement within both mandates | test_negotiation | pass |
 | liquidity accounting under full value lock | test_negotiation | pass |
+| buyer counter message comes from terms not model prose | test_negotiation | pass |
 | exact code accepts and old code does not | test_negotiation | pass |
 | parse messages and statuses | test_negotiation | pass |
 | one number two suppliers routes to the open deal | test_negotiation | pass |
