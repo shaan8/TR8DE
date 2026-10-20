@@ -180,12 +180,13 @@ class QwenLLM(DeepSeekLLM):
 
 def from_env() -> dict[str, LLM]:
     """Coordinator, Treasury planner and Checker. TIWALA_LLM_PROVIDER = qwen (default), deepseek, openrouter or
-    anthropic. The Checker defaults to a different model from the Coordinator so the two are less likely
-    to share blind spots (except on openrouter, which is for free testing only)."""
+    anthropic. Qwen, DeepSeek and Anthropic defaults use distinct Coordinator and Checker models; OpenRouter's
+    free-testing default shares one model. Environment settings can override these choices."""
     provider = (os.environ.get("TIWALA_LLM_PROVIDER") or "qwen").lower()
     if provider == "qwen":
+        defaults = {"coordinator": "qwen3.7-plus", "treasury": "qwen3.7-plus", "checker": "qwen3.8-flash"}
         return {
-            role: QwenLLM(os.environ.get(f"TIWALA_{role.upper()}_MODEL") or "qwen3.7-plus")
+            role: QwenLLM(os.environ.get(f"TIWALA_{role.upper()}_MODEL") or defaults[role])
             for role in ("coordinator", "treasury", "checker")
         }
     if provider == "openrouter":

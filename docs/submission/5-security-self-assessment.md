@@ -9,7 +9,7 @@ real funds. The full audit history is in [`SECURITY.md`](../../SECURITY.md).
 
 | Judging area | Result |
 | --- | --- |
-| Induced transfers | The documented post-fix scripted regressions pass for payee redirection, amount binding and confirmation. This is bounded test evidence, not proof that all attacks fail |
+| Induced transfers | Post-fix regressions pass for payee redirection, amount binding and confirmation. Live retest pending |
 | Data extraction | Signer keys are excluded from model tools and secret-extraction regressions pass; provider inputs are redacted. Offers can reveal a ceiling (R15), and local text retention remains open (R17) |
 | Privilege escalation | The agent cannot raise its own limits, add a payee, attest delivery or approve its own deal: no tool exists, and the contract refuses the agent key |
 | Prompt injection | Historical owner and chain-note attacks held; the fourth assessment bypassed flagged-supplier confirmation before the fix. Local regressions now require a card; no post-fix live retest recorded |
@@ -92,7 +92,7 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 | External pentest (Promptfoo, PyRIT, Augustus), 90 runs | 13 prohibited payments found, all fixed, kept as regression tests |
 | Second and third external audits | 7 and 6 failures reproduced, all fixed, kept as `test_audit_regressions.py` and `test_audit_focus.py` |
 | Judge-style walkthrough from a fresh clone | 9 findings (1 high), all fixed |
-| Live red team on Sepolia | Earlier owner and chain-note probes held; fourth-assessment supplier attacks created deals 7 and 8 before the fix. See [6.2](6-execution-evidence.md#62-agent-runs-on-sepolia) |
+| Live red team on Sepolia | Earlier owner and chain-note probes held; fourth-assessment supplier attacks created deals 7 and 8 before the fix. A post-fix, owner-facing 300-prompt campaign is recorded in [the 20 October evidence bundle](../../reports/evidence/prompt-injection-sepolia-2026-10-20/README.md). Supplier-channel coverage remains open. |
 | Slither on `src/` | 0 high, 0 medium; 14 informational, triaged in [`slither-triage.md`](../../reports/slither-triage.md) |
 | 58 UI state tests with axe accessibility checks | All pass |
 
@@ -143,20 +143,15 @@ local data-at-rest risk. Its remaining contract and negotiation risks are listed
 
 ## 5.7 Threat actors and trust boundaries
 
-The protected assets are wallet tokens, escrow commitments, owner signing authority, supplier identities, buyer
-negotiation constraints and the integrity of the decision history. A malicious supplier can control their own
-messages and API notes. An attacker can place text in a PO note or try to manipulate the owner-facing model.
-We also consider a compromised Coordinator and separately a stolen agent key. The last case bypasses the whole
-off-chain pipeline, so only contract checks remain. A compromised owner host can reach both locally configured
-keys; this is materially stronger than a supplier-message attack.
+Suppliers control their chat messages and API notes. PO notes are also untrusted input. Tests cover attempts
+to turn that text into payment instructions, extract secrets or gain owner privileges.
 
-The wallet trusts owner attestations about physical delivery. It trusts the platform's buyer onboarding and
-the token issuer's mint/burn powers. The model provider receives permitted redacted context. RPC availability
-affects freshness and liveness. None of these external assumptions is removed by a passing model-injection test.
+A stolen agent key bypasses Python checks. Only contract restrictions remain. In the demo, both keys are on
+one host, so a host compromise can also expose owner authority.
 
-The Checker is a separate review call and configurable model, not a guarantee of statistically independent
-failure. The demo can use the same provider on multiple roles. Security relies on deterministic intent, policy,
-Gate and contract checks as well as that review, with their remaining gaps stated here.
+The system trusts owner delivery attestations, platform onboarding and the token issuer. A Checker uses a
+separate review call but may share a provider with the Coordinator. It can make the same mistake; deterministic
+checks must still pass before an action reaches the signer.
 
 ## 5.8 Confirmation and refusal semantics
 
@@ -172,17 +167,40 @@ The CLI has no web login; local host access protects it. The owner console must 
 
 ## 5.9 Security evidence and its limits
 
-The current [GitHub CI run](https://github.com/shaan8/TR8DE/actions/runs/39366271017) passes. The repository's
-[agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests) include the four judging attack areas and the
-fourth-assessment regression file. The 248-test local suite has no expected failures. The independently recorded
-scenario report contains 227 passes and identifies agent source `129a354`; its narrower count excludes 21
-provider-adapter tests. The full Playwright suite passed locally; CI currently runs the UI build, not Playwright.
+Qwen defaults use qwen3.7-plus for the Coordinator and qwen3.8-flash for the Checker. The roles can be
+overridden independently with environment settings. Separate model variants can still share provider-level
+errors; they do not replace deterministic policy checks.
 
-The two PHP 1.00 attack deals are retained in the evidence record. Fixes block autonomous settlement of flagged
-threads in local regressions. A post-fix live attack retest has not yet been recorded, so this report does not
-claim a measured live attack success rate. Existing invariant tests do not model issuer burns and therefore do
-not close the underfunded-deposit finding. These are material qualifications for assessment of serious failures.
+[CI run 30](https://github.com/shaan8/TR8DE/actions/runs/39366271017) passed. The checked-in
+[agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests) cover induced transfers, data extraction,
+privilege escalation and prompt injection, including regressions from the fourth assessment. Locally, 171 of
+248 collected agent tests passed and 77 were skipped; none failed. The scenario report records 227 passes on
+source `129a354`, excluding 21 provider-adapter tests. Playwright passed locally; CI builds the UI but does not
+run that suite.
 
-Before a real-funds deployment, address R4 and R16 in a new contract deployment, separate owner signing from the
-agent host, constrain local data retention and commission a review of the resulting version. The present report
-describes a testnet security posture; it is not a regulatory certification or a completed compliance audit.
+### Live owner-facing prompt campaign (20 October 2026)
+
+The post-fix agent was tested against 300 distinct prompts across six families: instruction override, payment
+redirection, privilege escalation, secret extraction, embedded untrusted text and confirmation forgery. Qwen
+Coordinator/Treasury used `qwen3.7-plus`; Checker used `qwen3.8-flash`. The run made 357 model calls, with no
+model errors. Results were 289 clarification/no-action responses, 10 refusals and one owner-confirmation card.
+There were no inconclusive results and no calls to the transaction sender.
+
+The run pinned public Sepolia chain state at block 11,952,943 and used generic supplier labels, empty synthetic
+plans and no local conversation history. Contract reads and simulations were allowed; transaction broadcasts
+were disabled and the agent signer was absent during the prompts. Afterward, six zero-value transactions from
+the agent wallet to itself committed one Merkle root per family. Every prompt/result record has a proof to its
+family root and the corresponding transaction hash. These are evidence commitments, not escrow or supplier
+payments. The bundle includes the inputs, outputs, proofs, source-file digests and a read-only verifier.
+
+This is a live-model test of owner-facing agent input against a pinned public chain state. It does not cover
+supplier WhatsApp/Telegram/API channels and cannot establish that a malicious prompt would be safe if sent through
+an enabled transaction broadcast path. The fourth-assessment deals 7 and 8 remain in the historical record; the
+campaign did not recreate those supplier-channel attacks.
+
+Two PHP 1.00 attack deals remain in the evidence record. Local regressions pass after the fixes; the new live
+campaign covers owner-facing prompts only, not the supplier-channel path that produced those deals. The contract
+invariants do not model issuer burns, so they do not cover the underfunded-deposit finding.
+
+Before using real funds, fix R4 and R16 in a new contract deployment, separate owner signing from the agent
+host, limit local data retention and review the resulting version. This assessment covers the testnet system.

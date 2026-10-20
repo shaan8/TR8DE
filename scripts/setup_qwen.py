@@ -14,10 +14,14 @@ import warnings
 BASE_URL = "https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1"
 TOKEN_PLAN_URL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"  # Token Plan keys start with sk-sp-
 MODEL = "qwen3.7-plus"
-MODEL_KEYS = (
-    "TIWALA_COORDINATOR_MODEL", "TIWALA_TREASURY_MODEL", "TIWALA_CHECKER_MODEL",
-    "TIWALA_NEGOTIATOR_MODEL", "TIWALA_SUPPLIER_AGENT_MODEL",
-)
+MODEL_SETTINGS = {
+    "TIWALA_COORDINATOR_MODEL": "qwen3.7-plus",
+    "TIWALA_TREASURY_MODEL": "qwen3.7-plus",
+    "TIWALA_CHECKER_MODEL": "qwen3.8-flash",
+    "TIWALA_NEGOTIATOR_MODEL": "qwen3.7-plus",
+    "TIWALA_SUPPLIER_AGENT_MODEL": "qwen3.7-plus",
+}
+MODEL_KEYS = tuple(MODEL_SETTINGS)
 ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
 
@@ -47,7 +51,7 @@ def update_env(path: Path, key: str) -> None:
         "DASHSCOPE_BASE_URL": TOKEN_PLAN_URL if key.startswith("sk-sp-") else BASE_URL,
         "TIWALA_LLM_PROVIDER": "qwen",
         "QWEN_ENABLE_THINKING": "true",
-        **dict.fromkeys(MODEL_KEYS, MODEL),
+        **MODEL_SETTINGS,
     }
     original = ""
     if path.exists():
@@ -101,7 +105,7 @@ def main() -> int:
     except (ValueError, OSError) as exc:
         print(f"Setup failed: {exc}", file=sys.stderr)
         return 1
-    print(f"Saved. Wallet and negotiation agents are configured for {MODEL}, thinking enabled.")
+    print(f"Saved. Coordinator and Treasury use {MODEL}; Checker uses qwen3.8-flash. Thinking is enabled.")
     print("The .env is readable and writable only by your user. Restart TR8DE to load it.")
     return 0
 

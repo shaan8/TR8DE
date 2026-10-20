@@ -21,7 +21,7 @@ Status: hackathon prototype on testnet with a test token (tPHP). Not audited. Do
 
 The design assumes any LLM can be fooled. Each layer below holds even if every layer above it fails.
 
-1. **LLM agents (advisory only).** The Coordinator drafts; the Checker, on a different model, reviews and fails
+1. **LLM agents (advisory only).** The Coordinator drafts; the Checker reviews and fails
    closed on errors or unparseable output. Neither can sign.
 2. **Deterministic gate (`core.py`, `policy.py`, `intent.py`, `guard.py`).** Every action needs an HMAC Gate
    authorization minted only after the policy engine allows it. Tier 2 actions need a confirmation matched on the

@@ -28,8 +28,8 @@ def test_env_preserves_other_settings_replaces_duplicates_and_sets_all_roles(tmp
     assert "DASHSCOPE_API_KEY=sk-fake-test-key\n" in data
     assert "TIWALA_LLM_PROVIDER=qwen\n" in data
     assert "QWEN_ENABLE_THINKING=true\n" in data
-    for name in setup.MODEL_KEYS:
-        assert f"{name}=qwen3.7-plus\n" in data
+    for name, model in setup.MODEL_SETTINGS.items():
+        assert f"{name}={model}\n" in data
     if os.name != "nt":
         assert env.stat().st_mode & 0o777 == 0o600
     assert not list(tmp_path.glob(".qwen-config-*"))
@@ -100,8 +100,14 @@ def test_qwen_provider_and_negotiation_configuration(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     wallet = from_env()
     negotiation = negotiation_llms()
+    assert wallet["coordinator"].model == "qwen3.7-plus"
+    assert wallet["treasury"].model == "qwen3.7-plus"
+    assert wallet["checker"].model == "qwen3.8-flash"
     models = [*wallet.values(), *(negotiation[k] for k in ("negotiator", "interpreter", "supplier"))]
-    assert all(isinstance(model, QwenLLM) and model.model == "qwen3.7-plus" for model in models)
+    assert all(isinstance(model, QwenLLM) for model in models)
+    assert all(model.model == "qwen3.7-plus" for role, model in wallet.items() if role != "checker")
+    assert all(negotiation[k].model == "qwen3.7-plus" for k in ("negotiator", "interpreter", "supplier"))
+    assert wallet["coordinator"].model != wallet["checker"].model
     assert len({id(model) for model in models}) == len(models)
     assert all(str(model.client.base_url).rstrip("/") == setup.BASE_URL for model in models)
     monkeypatch.setenv("TIWALA_SUPPLIER_AGENT", "scripted")

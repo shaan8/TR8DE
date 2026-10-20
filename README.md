@@ -131,8 +131,9 @@ Pick one provider.
 - **Anthropic**: create a key at [console.anthropic.com](https://console.anthropic.com/settings/keys). Set `ANTHROPIC_API_KEY=`.
 
 Qwen is used when it has a key, otherwise the first provider that has one. With several keys,
-`TIWALA_LLM_PROVIDER` picks the one to try first. Optional: `TIWALA_CHECKER_MODEL` runs the
-Checker on a different model from the Coordinator, so one model's blind spot cannot pass its own plan.
+`TIWALA_LLM_PROVIDER` picks the one to try first. Qwen defaults to `qwen3.7-plus` for the Coordinator and
+Treasury, and `qwen3.8-flash` for the Checker. Set `TIWALA_CHECKER_MODEL` to override it. Separate models
+can reduce shared errors; deterministic policy checks still control execution.
 </details>
 
 <details>
@@ -372,7 +373,7 @@ Full report: [SECURITY.md](SECURITY.md).
   ([`core.py`](agent/tiwala_agent/core.py), [`policy.py`](agent/tiwala_agent/policy.py))
 - An input guard wraps PO notes and supplier text as data ([`guard.py`](agent/tiwala_agent/guard.py)). An intent
   verifier compares every action with the owner's own words ([`intent.py`](agent/tiwala_agent/intent.py))
-- A Checker on a separate model fails closed ([`agents.py`](agent/tiwala_agent/agents.py))
+- Checker review fails closed; Qwen defaults use qwen3.8-flash for the Checker and qwen3.7-plus for the Coordinator ([`agents.py`](agent/tiwala_agent/agents.py))
 - Payee rules, lookalike detection and an on-chain waiting period ([`payee.py`](agent/tiwala_agent/payee.py),
   [`TiwalaAgentWallet.sol`](src/TiwalaAgentWallet.sol))
 - Creates are once-only, even across unmined transactions. Confirmations are bound to the card they were shown on
