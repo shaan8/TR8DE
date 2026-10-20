@@ -65,10 +65,11 @@ Reserve ten seconds inside 2:50-3:50 for a labelled local replay of invalid buye
 rules. Show the model/rules label and the structured offer. If fallback occurs live, use that footage.
 Trim waiting time to keep the video within five minutes; retain the approval screens.
 
-The reported counter-message mismatch remains open: text said 500 metres at PHP 115 and 15% while proposal v3
-was 450 at PHP 105 and 20%. Record the structured version and acceptance code as authoritative. Do not narrate
-the prose as an agreed offer when it contradicts that version. If this appears during rehearsal, pause the take,
-correct or regenerate the proposal, and check the result before seeking any transaction approval.
+The older report captured a mismatch: text said 500 metres at PHP 115 and 15% while proposal v3 was 450 at
+PHP 105 and 20%. The buyer model's free-form message is now ignored; TR8DE builds the supplier-facing counter
+from the validated terms. The regression test uses deliberately conflicting model prose and checks that only the
+450 / PHP 105 / 20% proposal is sent. If a current run ever shows a mismatch, stop the take and preserve the
+negotiation record before seeking transaction approval.
 
 Record README clip 0.4 separately. Use a fresh PO and this plan; `docs/demo-runbook.md` is retired.
 The scenario report already records source `129a354`. Regenerate it if agent, contract or verification code changes.

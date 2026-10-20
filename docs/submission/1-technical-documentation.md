@@ -181,7 +181,7 @@ since they are already in the on-chain balance.
   lock, budget, per-deal cap, the supplier's deposit cap, quantity and delivery window. A model may suggest the
   counter. If it fails a check, does not parse or is down, the deterministic strategy concedes at most half of
   the remaining room per round. At most 8 rounds, then it comes back to the owner.
-- Private constraint fields stay in each side's model context and store (`test_private_limits_stay_on_their_own_side`). A visible counteroffer can still equal the private maximum and expose willingness to pay. Free-text notes are filtered, but their numerical consistency with the structured offer is an open presentation risk.
+- Private constraint fields stay in each side's model context and store (`test_private_limits_stay_on_their_own_side`). A visible counteroffer can still equal the private maximum and expose willingness to pay. The supplier-facing reply is rendered from validated terms; the buyer model's free-form message is ignored so its prose cannot conflict with the proposal.
 - An unflagged agreement inside the agent's authority goes to escrow by itself. Flagged supplier threads never self-settle; an explicit escrow request requires an owner card. Otherwise "Recheck and prepare escrow" rereads
   chain state and drafts a `create_deal` that must equal the agreement. Expiry, terms hash and every hard
   constraint are rechecked again at the owner's yes.

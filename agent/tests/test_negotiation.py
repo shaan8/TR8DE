@@ -180,6 +180,29 @@ def test_buyer_model_counter_outside_limits_is_ignored(world):
             assert p.terms.deposit_bps <= 2500 and p.terms.total <= 60_000_00
 
 
+def test_buyer_counter_message_comes_from_terms_not_model_prose(world):
+    world["eng"].negotiator = model(json.dumps({
+        "action": "counter", "quantity": 450, "unit_price_php": 105, "deposit_pct": 20,
+        "deliver_by": "2027-01-24", "message": "Offer 500 metres at PHP 115 with a 15% deposit."
+    }))
+    n = open_wa(world)
+    n = world["eng"].supplier_action(
+        n.id,
+        {"type": "counter", "terms": Terms(450, 115_00, 2000, T0 + 9 * DAY)},
+        n.supplier_identity,
+        "simulator_text",
+        n.current().version,
+    )
+    buyer_offer = n.last_by("buyer")
+    assert buyer_offer.source == "buyer_model"
+    assert (buyer_offer.terms.quantity, buyer_offer.terms.unit_price, buyer_offer.terms.deposit_bps) == (450, 105_00, 2000)
+    assert buyer_offer.terms.deliver_by > T0
+    assert buyer_offer.note == ""
+    assert "₱105.00 each instead of ₱115.00" in n.messages[-1]["text"]
+    assert "500 metres at PHP 115" not in n.messages[-1]["text"]
+    assert "15% deposit" not in n.messages[-1]["text"]
+
+
 def test_private_limits_stay_on_their_own_side(world):
     buyer_llm = ScriptedLLM(lambda *a: LLMResponse("{}"))
     sup_llm = ScriptedLLM(lambda *a: LLMResponse("{}"))
