@@ -271,13 +271,14 @@ hashes for execution evidence; the page lists a video of at most five minutes as
 
 ## 1.8 Reproduction and source verification
 
-On 20 October 2026, GitHub `main` matched `329b934`. The repository contains
+On 20 October 2026, GitHub `main` matched `bbfe5bc`. The repository contains
 [agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests),
 [contract tests](https://github.com/shaan8/TR8DE/tree/main/test) and
 [UI tests](https://github.com/shaan8/TR8DE/tree/main/ui/tests).
-[CI run 30](https://github.com/shaan8/TR8DE/actions/runs/39366271017) passed contracts, agent scenarios,
-UI build and the secret scan. All 248 agent tests and 58 Playwright checks passed locally; CI does not run Playwright.
+[CI run 33](https://github.com/shaan8/TR8DE/actions/runs/39379237989) passed contracts, agent scenarios,
+UI build and the secret scan. All 249 agent tests passed locally on 20 October 2026; 58 Playwright checks
+passed locally in the preceding verification. CI builds the UI but does not run Playwright.
 
-The evidence report records source `129a354`: 227/227 scenarios (21 provider-adapter tests excluded) and
-200,000 policy cases with zero observed violations. Foundry passed 39 unit/fuzz tests and one suite with
-three invariants. Generated evidence was committed in `329b934`.
+The [evidence report](../../reports/evidence/SUMMARY.md) pins source `217fa48`: 228/228 scenarios
+(21 provider-adapter tests excluded) and 200,000 policy cases with zero observed violations. Foundry
+passed 39 unit/fuzz tests and one suite with three invariants. Generated evidence was committed in `bbfe5bc`.

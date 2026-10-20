@@ -30,7 +30,9 @@ contract checks again.
 | Owner only | Owner key, typed command | `/attest`, `/approve`, `/limits`, `/dispute`, `/resolve`, `/freeze`, saving a payee (`yes` plus last 4 address characters) | Parsed in code from typed `/` commands; never routed through a model; no tool exists for them | `onlyOwner` |
 
 Who may originate an action: the owner's chat, the monitor (only refunds and attested balances), or an agreed
-negotiation (only its own escrow and deposit). Anything else is refused.
+negotiation (only its own escrow and deposit). Anything else is refused. A Tier 2 yes does not override a
+contract cap: if a deposit or balance exceeds the remaining daily payout limit, the agent must wait for
+the next UTC day or the owner must change the limit with an owner-signed command.
 
 Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 `test_policy_new_deal_beyond_agent_authority_needs_the_owner`, `test_owner_stated_in_budget_deal_still_runs_on_its_own`,
@@ -86,7 +88,7 @@ Tests: `test_policy_new_deal_within_agent_authority_is_autonomous`,
 
 | Test | Result |
 | --- | --- |
-| 248 agent tests on a local anvil chain with the real contracts and scripted models | All pass |
+| 249 agent tests on a local anvil chain with real contracts and scripted models | 249 passed locally on 20 October 2026 |
 | 40 Foundry results: 39 unit/fuzz tests plus one suite with 3 invariants (conservation, locked equals open deals, pre-attestation payout bounded) at 256 runs x 64 calls | All pass |
 | Policy fuzz: 200,000 seeded random cases, every payout rule checked after each decision | 0 violations; 3 planted bugs each caught |
 | External pentest (Promptfoo, PyRIT, Augustus), 90 runs | 13 prohibited payments found, all fixed, kept as regression tests |
@@ -171,12 +173,12 @@ Qwen defaults use qwen3.7-plus for the Coordinator and qwen3.8-flash for the Che
 overridden independently with environment settings. Separate model variants can still share provider-level
 errors; they do not replace deterministic policy checks.
 
-[CI run 30](https://github.com/shaan8/TR8DE/actions/runs/39366271017) passed. The checked-in
+[CI run 33](https://github.com/shaan8/TR8DE/actions/runs/39379237989) passed. The checked-in
 [agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests) cover induced transfers, data extraction,
-privilege escalation and prompt injection, including regressions from the fourth assessment. Locally, 171 of
-248 collected agent tests passed and 77 were skipped; none failed. The scenario report records 227 passes on
-source `129a354`, excluding 21 provider-adapter tests. Playwright passed locally; CI builds the UI but does not
-run that suite.
+privilege escalation and prompt injection, including regressions from the fourth assessment. All 249 local
+agent tests passed on 20 October 2026. The [scenario report](../../reports/evidence/SUMMARY.md) records
+228/228 passes on source `217fa48`, excluding 21 provider-adapter tests. Playwright passed locally; CI
+builds the UI but does not run that suite.
 
 ### Live owner-facing prompt campaign (20 October 2026)
 

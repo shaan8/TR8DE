@@ -102,7 +102,7 @@ and test tokens. Its tests are kept as `agent/tests/test_audit_regressions.py` a
 | A negotiated card still executed after the agreement expired, or below the negotiated reserve (high) | Fixed: just before the owner's yes signs, the negotiation re-checks expiry, the agreed terms hash and every hard buyer constraint on chain state read then. Tests: `test_negotiated_expiry_is_rechecked_when_owner_confirms`, `test_negotiated_min_reserve_is_rechecked_when_owner_confirms` |
 | Concurrent appends forked the audit hash chain (medium) | Fixed: appends hold a thread lock and an exclusive file lock, and re-read the head hash if another process wrote. Test: `test_audit_log_survives_concurrent_writers` |
 | The public WhatsApp tunnel reached the console's webhook with any request; only the console checked Meta's token and signature | Hardened: the gate now checks the verify token and the HMAC signature itself, accepts JSON only, rate-limits to 120 requests a minute, drops slow clients after 10 s and will not start without both secrets. Tests: `test_forged_calls_stop_at_the_gate`, `test_a_flood_is_rate_limited` |
-| Off-chain evidence does not pin the agent revision that produced it | Open. Deployed bytecode matches the pinned build; regenerated evidence should record the commit |
+| Off-chain evidence did not pin the agent revision that produced it | Fixed: `reports/evidence/SUMMARY.md` now records source commit `217fa48`; the generated report is committed in `bbfe5bc` |
 
 ## Third independent audit (20 October 2026)
 
