@@ -459,8 +459,9 @@ layer before it is fooled.
 - **Agent authority** ([`policy.py`](agent/tiwala_agent/policy.py) `agent_authority`). A new deal runs at Tier 1,
   meaning the agent acts alone, only if all of these hold: it is at or below the contract's `approvalThreshold`
   and within today's limit; the payee is whitelisted and past its waiting period; the Checker approves; nothing
-  is flagged; and the owner's own words state the supplier, total, down payment and PO. Otherwise it is Tier 2
-  and needs a confirmation card.
+  is flagged; and a chat order states the supplier, total, down payment and PO in the owner's own words.
+  Negotiated orders bind to the exact accepted offer within the owner's mandate. Reviewable exceptions need
+  a Tier 2 confirmation card; hard policy violations are refused.
 - **Reputation and deposit cap** ([`reputation.py`](agent/tiwala_agent/reputation.py)). Reads every closed deal
   from factory wallets on chain. Each outcome is weighted by size against the buyer's running median: successes
   count at most 1, failures at least 1 and at most 3. A further weight comes from the buyer's own history.
@@ -471,7 +472,8 @@ layer before it is fooled.
   delay, split or top-up fixes.
 - **Negotiation** ([`negotiation.py`](agent/tiwala_agent/negotiation.py), [design](docs/negotiation.md)).
   Proposals are versioned and hashed, and only an exact `ACCEPT <code>` for the open version counts. Agreed terms
-  are rechecked on fresh chain state before escrow and again at the owner's yes.
+  are rechecked on fresh chain state before autonomous escrow. When owner confirmation is required, they are
+  checked again at the owner's yes.
 - **Audit chain** ([`audit.py`](agent/tiwala_agent/audit.py)). Redacted JSONL with each entry hashing the previous
   one. `/anchor` writes the head to Sepolia, so a deleted tail is detected.
 
@@ -511,7 +513,7 @@ Full report: [SECURITY.md](SECURITY.md).
 | Tier | Who acts | Examples |
 | --- | --- | --- |
 | 0 Read | Agent | Balances, deals, reputation, forecasts |
-| 1 Autonomous | Agent alone | A deal stated in full inside `approvalThreshold`; deposit release; refund of an overdue deal; balance release after attestation |
+| 1 Autonomous | Agent alone | A complete chat order or an agreed negotiation inside `approvalThreshold`; deposit release; refund of an overdue deal; balance release after attestation |
 | 2 Confirm | Agent, after the owner's yes on that exact card | Deals above the threshold, flagged, with agent-filled terms, or from a negotiation outside the agent's authority |
 | 3 Refuse | Nobody | Unknown or blocklisted payee, intent mismatch, Checker rejection, over a cap |
 | Owner only | Owner key, typed command | `/attest`, `/approve`, `/limits`, `/dispute`, `/resolve`, `/freeze`, saving a payee |
