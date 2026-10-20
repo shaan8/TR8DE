@@ -1,284 +1,114 @@
 # 1. Technical documentation
 
-TR8DE, WeBank FinTechathon 2026, International Track, Topic F.
-Repository: https://github.com/shaan8/TR8DE. Live on Sepolia (chain 11155111).
+TR8DE | WeBank FinTechathon 2026 | International Track, Topic F
 
-## 1.0 What TR8DE is
+TR8DE helps a small business pay suppliers without giving an AI model unrestricted access to its money. The owner can ask about cash, supplier history or an order in ordinary language. The agent can negotiate and, when the owner has stated the deal completely and the deal fits the limits, create escrow and send the deposit on Sepolia. It holds a separate operator key and signs those transactions itself. The money sits in a wallet contract; the owner retains a different key for limits, payees, approvals and delivery attestation.
 
-TR8DE is an autonomous AI agent with its own on-chain wallet key. It works for a small business owner (the buyer)
-who pays suppliers in advance and risks losing the deposit. In plain language the owner asks it to check balances,
-judge a supplier, test cash flow, negotiate a purchase, and pay into escrow. The agent then signs and sends the
-Sepolia transactions itself.
-
-The agent and owner have different permissions:
-
-| The agent does on its own | Only the owner can do |
-| --- | --- |
-| Hold its own key (`0xCE2c…3e1a`) and sign transactions as the wallet's operator | Hold the owner key (`0x99d1…f3C3f8`) |
-| Create an escrow deal the owner stated in full, at or below the contract's `approvalThreshold` | Approve a deal above `approvalThreshold` (`/approve`) |
-| Release the agreed deposit, and the balance once delivery is attested | Attest delivery (`/attest`), the only path to a balance release |
-| Refund an overdue deal to the wallet, on a timer, with no human prompt | Save a payee, change limits, pause, dispute, withdraw |
-| Negotiate price, quantity, deposit and date with a supplier, round by round | Say yes to a card when the agent is outside its authority |
-
-Models can draft actions but cannot sign them. Python checks the draft against the owner's instruction and wallet
-policy, then passes an authorised action to the scoped signer. The contract enforces roles, caps and the escrow
-lifecycle. Some payee and intent checks run only in Python; their limits are listed in the security report.
+This document describes the deployed architecture, the decisions made in code, and the boundary between a model suggestion and a signed transaction. The [security self-assessment](5-security-self-assessment.md) gives the attack results and unresolved risks. tPHP is a test token with no redemption value; the system has not been tested with real businesses.
 
 ## 1.1 System architecture
 
 ```mermaid
 flowchart LR
-  O[Owner] -->|chat| C[Coordinator LLM]
-  O -->|"/attest /limits /freeze: owner key"| W
-  S[Supplier: WhatsApp, Telegram, API, simulator] -->|offers| N[Negotiation engine]
-  C -->|draft_* tools only| V
-  N -->|agreed terms| V
-  M[Monitor, every 300 s] -->|overdue refund, attested balance| V
-  V[Intent verifier + Checker LLM + policy engine] -->|allowed| G[Gate: single-use HMAC authorization]
-  G --> X[Scoped signer: simulate, then send]
-  X -->|agent key| W[TiwalaAgentWallet on Sepolia]
-  W -->|events| R[Reputation + forecast]
-  R --> V
-  V --> A[Hash-chained audit log]
+  O[Owner chat] --> C[Coordinator]
+  S[Supplier channels] --> N[Negotiation service]
+  M[Monitor] --> P[Intent and policy checks]
+  C --> P
+  N --> P
+  P --> K[Checker]
+  K --> G[Single-use Gate]
+  G --> X[Scoped signer]
+  X --> W[Escrow wallet on Sepolia]
+  O -->|typed owner commands| Y[Owner signer]
+  Y --> W
+  W --> R[Chain events and risk context]
+  R --> P
+  P --> A[Hash-chained audit log]
 ```
 
-### Layers
+There are three entry points. The authenticated owner console takes chat and typed commands; Streamlit uses the same login, and the CLI relies on local host access. A supplier can negotiate through WhatsApp, Telegram, the supplier page or its API. The monitor wakes every 300 seconds by default and checks open deals. All three paths use the same policy before an agent-key transaction. The owner-only command path is deliberately separate and never enters a model tool.
 
-| Layer | Trust | Files |
-| --- | --- | --- |
-| Interfaces | Owner console (FastAPI + React) behind a login; Streamlit with the same login; CLI protected by local host access; supplier console per supplier token | [`agent/console/`](../../agent/console), [`ui/src/`](../../ui/src), [`agent/app.py`](../../agent/app.py) |
-| LLM agents | Advisory only. Coordinator plans and drafts; Checker reviews and fails closed. Qwen defaults use qwen3.7-plus for the Coordinator and qwen3.8-flash for the Checker; environment settings can override them. Treasury explains forecast fixes; buyer and supplier negotiators | [`agents.py`](../../agent/tiwala_agent/agents.py), [`llm.py`](../../agent/tiwala_agent/llm.py), [`negotiation.py`](../../agent/tiwala_agent/negotiation.py) |
-| Deterministic gate | Input guard, intent verifier, policy engine, Gate, confirmations, circuit breaker | [`core.py`](../../agent/tiwala_agent/core.py), [`policy.py`](../../agent/tiwala_agent/policy.py), [`intent.py`](../../agent/tiwala_agent/intent.py), [`guard.py`](../../agent/tiwala_agent/guard.py), [`payee.py`](../../agent/tiwala_agent/payee.py) |
-| Chain access | Indexer, `eth_call` simulation before every send, scoped agent signer, separate owner signer | [`chain.py`](../../agent/tiwala_agent/chain.py) |
-| Contracts | Escrow, two key tiers, caps, payee waiting period, attestation | [`TiwalaAgentWallet.sol`](../../src/TiwalaAgentWallet.sol), [`TiwalaFactory.sol`](../../src/TiwalaFactory.sol), [`SettlementToken.sol`](../../src/SettlementToken.sol) |
-| Risk models | Pure functions over on-chain history and the owner's plans | [`reputation.py`](../../agent/tiwala_agent/reputation.py), [`forecast.py`](../../agent/tiwala_agent/forecast.py) |
-| Audit | Redacted, hash-chained JSONL; head hash written to Sepolia by `/anchor` | [`audit.py`](../../agent/tiwala_agent/audit.py), [`scripts/verify_audit.py`](../../scripts/verify_audit.py) |
+The Coordinator and Treasury roles default to Qwen `qwen3.7-plus`; the independent Checker defaults to `qwen3.8-flash`. Those settings can be changed per role. The Coordinator has read tools and `draft_*` tools. It has no signing, file or settings tool. The Checker reviews an action but cannot authorize it by itself. The core code is in [agents.py](../../agent/tiwala_agent/agents.py), [core.py](../../agent/tiwala_agent/core.py) and [policy.py](../../agent/tiwala_agent/policy.py).
 
-### Contracts
+The chain adapter in [chain.py](../../agent/tiwala_agent/chain.py) reads the wallet and its events, simulates a permitted call with `eth_call`, and then uses the scoped agent signer. The owner signer handles only typed owner commands. [reputation.py](../../agent/tiwala_agent/reputation.py) derives supplier history from factory wallets; [forecast.py](../../agent/tiwala_agent/forecast.py) uses free wallet balance and the owner's plans. [audit.py](../../agent/tiwala_agent/audit.py) records each decision and transaction in a redacted hash chain.
 
-`TiwalaFactory` (`0xDEF3…d569`) creates one `TiwalaAgentWallet` per onboarded buyer. Only the platform can create
-wallets. Account hashes cannot be reused across wallets, which reduces duplicate onboarding. This does not prove unique real-world identity: the platform must verify that the account identifiers belong to distinct businesses.
+### What is on-chain
 
-`TiwalaAgentWallet` (`0x2Fc3…8C1a`) holds tPHP (a test peso token, 2 decimals) and has two roles:
+[TiwalaFactory.sol](../../src/TiwalaFactory.sol) creates wallets only for platform-onboarded buyers and prevents reuse of an account hash. This limits duplicate onboarding but does not establish real-world identity; the platform must check that itself. The deployed factory is `0xDEF3…d569`. The demo [TiwalaAgentWallet.sol](../../src/TiwalaAgentWallet.sol) is `0x2Fc3…8C1a`; it holds [SettlementToken.sol](../../src/SettlementToken.sol) tPHP with two decimal places.
 
-| Role | Functions |
-| --- | --- |
-| Owner | `setAgent`, `setLimits`, `setEscrowPolicy`, `setPaused`, `addSupplier`, `removeSupplier`, `withdraw`, `approveDeal`, `confirmDelivery`, `extendDeadline`, `raiseDispute`, `resolveDispute` |
-| Operator (agent or owner) | `createDeal`, `releaseDownPayment`, `releaseBalance`, `cancelDeal` |
-
-Deal lifecycle:
+The contract gives the owner `setAgent`, `setLimits`, `setEscrowPolicy`, payee management, pause, withdrawal, deal approval, delivery attestation and dispute resolution. The owner or operator may create a deal, release a deposit, release an attested balance and cancel when the relevant conditions hold. The agent cannot call owner-only functions, even if the off-chain process is compromised.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Locked: createDeal (full PO locked)
-  Locked --> DownPaid: releaseDownPayment (needs ownerApproved)
-  DownPaid --> Delivered: confirmDelivery (owner only)
+  [*] --> Locked: createDeal locks full PO
+  Locked --> DownPaid: releaseDownPayment
+  DownPaid --> Delivered: owner confirmDelivery
   Delivered --> Completed: releaseBalance
-  Locked --> Refunded: cancelDeal (owner any time, agent after deadline + grace)
-  DownPaid --> Refunded: cancelDeal (after deadline + grace, supplier marked late)
-  DownPaid --> Disputed: raiseDispute (owner only)
-  Disputed --> Completed: resolveDispute(release)
-  Disputed --> Refunded: resolveDispute(refund, supplier marked late)
+  Locked --> Refunded: cancelDeal
+  DownPaid --> Refunded: overdue cancelDeal
+  DownPaid --> Disputed: owner raiseDispute
+  Disputed --> Completed: owner resolveDispute release
+  Disputed --> Refunded: owner resolveDispute refund
 ```
 
-What the contract enforces against the agent key, whatever the off-chain code does:
+A create requires a listed payee past its waiting period, a future deadline, enough free balance and a total within the per-deal cap. The agent's deposit percentage cannot exceed the contract maximum. Above the `approvalThreshold`, an agent-created deal remains locked until the owner sends `approveDeal`. Agent payouts count against the daily cap. A balance can be released only after the owner's `confirmDelivery`. The contract uses `SafeERC20`, reentrancy guards on transfers and an owner pause. Our deployment has a PHP 200,000 per-deal cap, PHP 150,000 daily agent-payout cap and PHP 150,000 autonomous approval threshold.
 
-- a create requires an owner-listed payee past `supplierDelay` (24 h on our deployment); the agent rechecks cooling on releases, but the deployed deposit function checks only `listed`
-- `total <= perDealCap` (PHP 200,000), `downBps <= maxDownBps`, deadline in the future, enough free balance
-- `needsApproval = msg.sender != owner && total > approvalThreshold` (PHP 150,000); the deposit then waits for
-  `approveDeal`
-- the agent's daily spend is capped (`dailyCap`, PHP 150,000 per UTC day)
-- `releaseBalance` only from `Delivered`, which only the owner's `confirmDelivery` sets
-- `pause` stops all agent payouts; every transfer path is `nonReentrant` and uses `SafeERC20`
+For a PHP 20,000 order at 20% down, `createDeal` locks PHP 20,000. `releaseDownPayment` sends PHP 4,000 to the supplier. The remaining PHP 16,000 stays locked until the owner attests delivery. If an overdue deal is cancelled, only the unpaid escrow returns to the wallet; a deposit already sent cannot be recovered by that refund.
 
-### One chat turn, end to end
+### One request through the agent
 
-1. **Input guard** ([`guard.py`](../../agent/tiwala_agent/guard.py)). The owner's message is tagged and scanned for
-   override, role-hijack, drain, raw-address, authority and delivery-claim patterns. Flags go to the audit log
-   and the model; they never loosen anything. Text from the chain (PO notes) is escaped, cut to 120 characters
-   and wrapped as quoted data.
-2. **Owner commands bypass the model.** A message starting with `/` is parsed in code and signed with the owner
-   key. No tool lets a model reach these functions.
-3. **Coordinator loop** (at most 8 tool steps). The model sees redacted context
-   ([`privacy.py`](../../agent/tiwala_agent/privacy.py): addresses become placeholders, phones and account numbers
-   are masked) and can call read tools (`get_overview`, `get_supplier`, `forecast`) or `draft_*` tools. It has
-   no tool that signs, reads files or reads settings.
-4. **Each draft goes through `propose()`** ([`core.py`](../../agent/tiwala_agent/core.py)):
-   frozen check, duplicate check, fresh chain context, intent verification against the owner's last messages,
-   Checker review, then `policy.decide()`. The result is Tier 3 refuse, Tier 2 card, or Tier 1 execute.
-5. **Execution.** The Gate mints an HMAC authorization over the exact action digest, tier and a nonce (60 s,
-   single use). The executor refuses without it, simulates the call with `eth_call`, then sends with the agent
-   key. A receipt timeout keeps the tx hash as `tx_pending`, and an unmined create blocks any second create for
-   that PO.
-6. **Grounded reply.** Any tx hash in the model's reply that this process did not produce replaces the reply, and
-   peso amounts not taken from wallet data are flagged. Every exit path, including model errors and the step
-   limit, lists the transactions already sent.
+1. [guard.py](../../agent/tiwala_agent/guard.py) tags override and authority claims. On-chain PO notes are truncated, escaped and presented as quoted data. They cannot become owner instructions.
+2. The Coordinator sees a redacted view of the conversation. [privacy.py](../../agent/tiwala_agent/privacy.py) masks contact and account identifiers and replaces wallet addresses with placeholders. It may read context or draft an action, with at most eight tool steps.
+3. For every draft, [core.py](../../agent/tiwala_agent/core.py) checks freeze state, duplicates and fresh chain data. [intent.py](../../agent/tiwala_agent/intent.py) compares the draft with the owner's words; the Checker reviews it; [policy.py](../../agent/tiwala_agent/policy.py) returns autonomous, confirm or refuse.
+4. An allowed action gets a single-use HMAC Gate authorization bound to its digest, tier and nonce for 60 seconds. The executor simulates the exact call and only then signs with the agent key. A receipt timeout retains the hash as `tx_pending`; an unmined create blocks another create for the same PO.
+5. The reply is grounded in the recorded outcome. A model-supplied transaction hash that this process did not produce is replaced. Errors and tool-step limits still report transactions already broadcast during the turn.
 
-## 1.2 Core algorithms
+## 1.2 Core decision rules
 
-### Agent authority (who decides)
+### How much the agent may do alone
 
-`policy.agent_authority()` is the single place that decides whether a new deal runs at Tier 1. It returns a reason
-for the owner, or nothing when the agent may act alone. All of these must hold for Tier 1:
+`policy.agent_authority()` controls autonomous creation. It requires the owner's own words to state the supplier, total, deposit percentage and PO reference. If the model filled any of those terms, the owner sees the term on a confirmation card. The total must fit the contract's approval threshold and today's remaining agent allowance. The payee must be active, the Checker must approve and there must be no risk flag. Flags include a deal more than three times the buyer's median, a forecast shortfall, a low-score large deal or a recently changed payout address.
 
-1. The owner's own words state the supplier, total, down payment % and PO. Any non-date term the model filled in
-   (`intent.agent_filled`) sends it to a card that lists those terms. Delivery-date wording is not independently
-   parsed by the intent verifier; the Checker reviews it and code requires a future deadline (risk R19 in document 5).
-2. `total <= approvalThreshold`, read from the contract.
-3. `total <=` what is left under today's `dailyCap`.
-4. The payee is listed on-chain and past its waiting period.
-5. The Checker approved, and `policy.decide()` raised no flag (amount spike above 3x the buyer's median deal,
-   forecast shortfall, low-score large deal, recently changed payout address).
+Refusal wins over confirmation. An unknown or blocked payee, mismatch with owner intent, rejected Checker, breached hard cap, insufficient free balance, past deadline or action traced to contract text is refused. A card cannot override those reasons. A create above the supplier's computed deposit cap is refused; a later fall in that cap on an existing deal is shown for confirmation. The owner can change contract limits with a typed, owner-signed `/limits` command. The agent cannot raise its own authority.
 
-Refusals (Tier 3) are unconditional: unknown or blocklisted payee, intent mismatch, Checker rejection, over a cap,
-a new create over the supplier's deposit cap, past deadline, insufficient free balance, per-supplier exposure above PHP 300,000,
-action traced to contract text, or an origin other than the owner, the monitor or an agreed negotiation. A new create over its computed supplier deposit cap is refused. An existing deal whose cap has since fallen is instead flagged for confirmation, provided no other rule refuses it.
+The intent verifier parses the last six owner messages for suppliers, peso amounts, percentages, PO references and deal numbers. The latest correction wins: “No, make it 20%” replaces an earlier 25%. Phrases such as “dry run” or “do not pay” block a payment. Delivery-date wording is a known gap: the parser does not independently bind the owner's date to the drafted deadline. The Checker reviews it and code requires a future deadline, but the [security assessment](5-security-self-assessment.md) lists the residual risk as R19.
 
-The owner moves the Tier 1 line with `/limits`, signed with the owner key. The agent cannot move it
-(`test_the_agent_cannot_raise_its_own_authority`).
+### Supplier history and deposit cap
 
-### Intent verification
+Reputation comes from closed deals emitted by every factory wallet on Sepolia: completed balances, cancellations and dispute resolutions. It is not a model judgment. For each supplier deal, the code compares its size with that buyer's causal median. A success counts at most one unit; a failure at least one and at most three. A buyer with little history receives a smaller weight, `beta = 0.25 + 0.75 × min(1, history / 3)`. With weighted successes `s`, failures `n` and effective distinct buyers `k_eff`, the score is `R = min(1, k_eff / 5) × (s + 1) / (n + 4)`. The deposit cap is `floor_to_5%(10% + 40% × R)`; a new buyer-supplier pair is also subject to a 25% stranger cap.
 
-[`intent.py`](../../agent/tiwala_agent/intent.py) parses the owner's last six messages in code: supplier names (also
-first-word short forms), peso amounts, percentages, PO references and deal numbers. Named suppliers, amounts, percentages, POs and deal ids must match. Delivery dates are a separate limitation: the intent verifier does not parse the owner's date wording, while the policy checks that the drafted deadline is in the future.
-The latest percentage wins, so "No, make it 20%" corrects an earlier 25%. Wording such as "simulation", "dry run" or
-"do not pay" is an intent mismatch, so nothing moves whatever the models say.
+The median is calculated from history available before each outcome, so later trades cannot reweight earlier ones. A failed small order cannot improve the score. The contract's `maxDownBps` remains a hard ceiling if this off-chain score is wrong. The starting supplier history was seeded for the demo and should not be presented as independent trade data.
 
-### Network reputation and deposit cap
+### Cash forecast
 
-[`reputation.py`](../../agent/tiwala_agent/reputation.py) reads every closed deal from every factory wallet on
-Sepolia (`BalanceReleased`, `DealCancelled`, `DisputeResolved`). For supplier deal j at buyer b:
-
-```
-v_j    = min(3, T_j / median_T_b(j))      size relative to that buyer's causal median
-w_j    = min(v_j, 1) for a success,  max(v_j, 1) for a failure, times beta_b
-beta_b = 0.25 + 0.75 * min(1, h_b / 3)    buyers with little history count less (Sybil damping)
-p      = (s + 1) / (n + 1 + 3)            Bayesian prior: a stranger starts at 0.25
-R      = min(1, k_eff / 5) * p            k_eff: effective number of distinct buyers
-cap    = floor_to_5%(10% + 40% * R), then a 25% stranger cap for a new buyer-supplier pair
-```
-
-The median is causal, so a later deal never re-weights an earlier one and a non-delivery never raises R. Size can
-make a failure count more but a success never more than 1, so failing only small orders buys no higher cap. The
-contract's `maxDownBps` is the hard ceiling if this code is wrong.
-
-### Liquidity forecast
-
-[`forecast.py`](../../agent/tiwala_agent/forecast.py): `H(t) = B_free + inflows(<= t) - outflows(<= t) - buffer`,
-day by day over the owner's planned POs and expected receivables. A new PO is tested before it is drafted. The
-first day H goes negative is the shortfall, and the Treasury agent ranks fixes: delay until a receivable lands,
-split the order, or top up. Open escrow is already outside `B_free`, and inflows dated before today are ignored,
-since they are already in the on-chain balance.
+For each future day, the forecast computes `H(t) = free balance + expected inflows by t - planned outflows by t - buffer`. It reports the first day H becomes negative. The Treasury role can suggest delaying a PO until a receivable arrives, splitting it or topping up. Escrow already locked is outside free balance; past-dated receivables are not added again. Planned inflows are owner assertions, so optimistic dates can hide a shortfall. The contract still refuses an unfunded escrow.
 
 ### Negotiation
 
-[`negotiation.py`](../../agent/tiwala_agent/negotiation.py), design in [`docs/negotiation.md`](../negotiation.md).
+[negotiation.py](../../agent/tiwala_agent/negotiation.py) stores each offer as `NEG-<id>-v<n>` with integer quantity, centavos, basis points and a Unix deadline. A 24-hour expiry and SHA-256 terms hash identify the open version. A supplier's “okay” is ambiguous and asks for the exact `ACCEPT <six-character code>`; only that code accepts the current version. A counter makes old codes stale.
 
-- Each offer is a version `NEG-<id>-v<n>` with integer terms (quantity, centavos, basis points, unix seconds), an
-  expiry (24 h) and a SHA-256 terms hash. A person accepts only with `ACCEPT <first 6 hex of the hash>` for the
-  open version. "okay" moves the negotiation to `awaiting_clarification` and asks for the code.
-- The buyer side checks every offer in code against private limits read fresh from chain: reserve after the full
-  lock, budget, per-deal cap, the supplier's deposit cap, quantity and delivery window. A model may suggest the
-  counter. If it fails a check, does not parse or is down, the deterministic strategy concedes at most half of
-  the remaining room per round. At most 8 rounds, then it comes back to the owner.
-- Private constraint fields stay in each side's model context and store (`test_private_limits_stay_on_their_own_side`). A visible counteroffer can still equal the private maximum and expose willingness to pay. The supplier-facing reply is rendered from validated terms; the buyer model's free-form message is ignored so its prose cannot conflict with the proposal.
-- An unflagged agreement inside the agent's authority goes to escrow by itself. Flagged supplier threads never self-settle; an explicit escrow request requires an owner card. Otherwise "Recheck and prepare escrow" rereads
-  chain state and drafts a `create_deal` that must equal the agreement. Expiry, terms hash and every hard
-  constraint are rechecked again at the owner's yes.
+Before any buyer counter, code checks budget, reserve after locking the full PO, per-deal and supplier deposit caps, quantity and delivery window against fresh chain state. A model may suggest terms; invalid or unparseable output falls back to a deterministic concession rule that moves at most half the remaining room per round. Eight rounds is the maximum. The supplier-facing sentence is rendered from the validated structured offer, so it cannot contradict the numbers. Private constraints stay buyer-side, although a visible offer can still reveal willingness to pay.
 
-### Monitor
+An unflagged agreement inside the agent's authority can create escrow itself. A flagged supplier thread cannot. If the owner requests escrow later, the agreement hash, expiry and hard constraints are checked again when the card is confirmed. The [negotiation design](../negotiation.md) describes the supplier interfaces and state transitions.
 
-Every `MONITOR_INTERVAL_S` (300 s) and on `/tick`, the monitor reads open deals. It refunds overdue deals past
-deadline plus grace (`cancelDeal`), releases balances the owner has attested, and warns about underfunding and
-forecast gaps. These run at Tier 1 without a human prompt, and the policy allows the monitor nothing else.
+### Monitor and audit
 
-### Audit chain
+The monitor runs every `MONITOR_INTERVAL_S` seconds, 300 by default, or when the owner types `/tick`. It may cancel an overdue deal after its grace period and release a balance that the owner already attested. It warns about underfunding and forecast gaps but cannot create a deal or pay a deposit.
 
-[`audit.py`](../../agent/tiwala_agent/audit.py): each JSONL entry stores `prev` and `hash = sha256(prev + entry)`.
-Secrets are redacted before writing. Appends hold a thread lock and an exclusive file lock. `/anchor` writes the
-head hash and entry count to Sepolia from the owner key, so edits, deletions and tail truncation up to the last
-anchor are detected offline by [`scripts/verify_audit.py`](../../scripts/verify_audit.py).
+The audit log stores JSONL entries with `prev` and `hash = SHA-256(prev + entry)`. Secrets are redacted before writing; appends use both a thread lock and file lock. An owner-signed `/anchor` writes the head hash and entry count to Sepolia. [verify_audit.py](../../scripts/verify_audit.py) can then detect edits, deletions and tail truncation up to that anchor.
 
-## 1.3 Security design
+## 1.3 Security boundaries and dialogue
 
-Intent matching, the blocklist and renewed cooling checks on releases run in Python. A stolen agent key bypasses them. The contract still enforces roles, caps and lifecycle rules; document 5 lists the remaining gaps.
+The model is useful for interpreting the request, explaining a forecast and proposing a counteroffer. Authority comes from code and keys. Intent matching, blocklists, renewed payee cooling on releases and duplicate prevention are off-chain; a stolen agent key can bypass them. The contract still enforces roles, caps and deal states, but its release-time payee and underfunded-deposit gaps are disclosed as R4 and R16 in [document 5](5-security-self-assessment.md).
 
-| # | Layer | What it stops |
-| --- | --- | --- |
-| 1 | Models only draft; no signing tool, no settings or file tool | Direct model access to signing keys and local files; downstream draft validation remains essential |
-| 2 | Input guard; contract and supplier text wrapped as data | Indirect prompt injection through PO notes and supplier replies |
-| 3 | Intent verifier in code against the owner's own words | Wrong supplier, amount, %, PO or deal; "it's only a simulation" pretexts |
-| 4 | Checker review fails closed; Qwen defaults use a different variant | Reduces shared model errors; policy checks still control execution |
-| 5 | Policy engine and `agent_authority()` | Anything outside the owner's envelope runs only after a yes, or never |
-| 6 | Single-use HMAC Gate authorization | Executing an action the policy did not allow, or twice |
-| 7 | Confirmation bound to a card id, re-checked on fresh chain state | Stale or replaced cards, expired negotiated terms |
-| 8 | Payee rules (owner-typed address, checksum, lookalikes, last-4 confirmation, owner key signs) | Address poisoning and induced transfers to new payees |
-| 9 | Scoped signer, `eth_call` simulation before every send | Sending a call the contract would reject |
-| 10 | Contract caps, create-time waiting period, attestation, `pause` | Bounds a stolen agent key within the implemented contract checks; known contract gaps remain |
-| 11 | Circuit breaker (3 suspicious refusals in 10 min) and `/freeze` | Repeated attack attempts |
-| 12 | Owner login, CSRF header, session limits, body cap, webhook gate | Reaching the console or webhook from outside |
-| 13 | Hash-chained audit log anchored on-chain | Hiding what happened afterwards |
+The conversation is designed to ask only where it must. A complete in-budget instruction can create and fund a deal in one turn. Missing or ambiguous terms lead to a question or a card showing the filled fields. A correction redraws the card and reruns checks. If a model provider fails, the system tries the next configured provider; the Checker fails closed if none is available. Negotiation has a rules-based fallback, while a supplier agent can hand the thread to its person. If a transaction was already sent before an error, the reply says so and gives its hash.
 
-Full threat model, tiers, test results and known risks: [5. Security self-assessment](5-security-self-assessment.md)
-and [`SECURITY.md`](../../SECURITY.md).
+The owner console is intended to bind to `127.0.0.1`. Its login, same-origin write checks, size limit and session expiry protect local access; the WhatsApp tunnel exposes only the signed webhook. The demo keeps owner and agent keys on one machine. A production version needs separate owner signing, a contract redeployment for the known gaps, and a supplier-data retention policy.
 
-## 1.4 Dialogue design
+## 1.4 Verification and reproduction
 
-| Behaviour | How it works | Evidence |
-| --- | --- | --- |
-| Efficient | A deal stated in full and inside the owner's limits is created and funded in one message, no card | `test_owner_stated_in_budget_deal_still_runs_on_its_own` |
-| Clarification | Missing or ambiguous fields (which PO, supplier, amount, %, date) are asked for, not invented; any field the agent fills is listed on the card; supplier "okay" asks for the exact code | Coordinator prompt in [`agents.py`](../../agent/tiwala_agent/agents.py), `test_ambiguous_okay_does_not_accept`, live [beat 2](../../reports/live/beat2-happy-path.txt) |
-| Correction | "Make it 15% down" redrafts the card and re-runs every check; the latest stated % wins | `test_correction_redraft_then_confirm`, `test_intent_correction_latest_percent_wins`, live beat 2 |
-| Fallback | Provider chain (Qwen, DeepSeek, OpenRouter, Anthropic); Checker fails closed; negotiation falls back to rules; supplier agent hands to its person; forecast offers delay, split or top-up; every error reply lists what was already sent | `test_provider_falls_back_to_the_one_with_a_key`, `test_buyer_model_garbage_falls_back_to_rules`, `test_model_failure_after_execution_must_not_say_nothing_was_sent` |
+The implementation is in [TR8DE on GitHub](https://github.com/shaan8/TR8DE): contracts and Foundry tests in `src/` and `test/`, Python agent and tests in `agent/`, console in `agent/console/`, React UI in `ui/`, and run scripts in `scripts/`. [README section 0](../../README.md#0-how-to-deploy) gives a local demo with a private chain and a live Sepolia setup. The code still uses the development name `tiwala_agent` and `TIWALA_*` settings, so those names match the deployed records.
 
-## 1.5 Technology
+[CI run 34](https://github.com/shaan8/TR8DE/actions/runs/39398585275) passed contract tests, agent scenarios, UI build and the secret scan. All 249 agent tests passed locally on 20 October 2026. The [scenario report](../../reports/evidence/SUMMARY.md) pins source commit `217fa48` and records 228/228 selected scenarios and 200,000 policy cases with no observed violation; the generated report was committed in `bbfe5bc`. Foundry passed 39 unit/fuzz tests and one invariant suite with three invariants. The 58 Playwright UI checks passed locally; CI builds the UI but does not run Playwright.
 
-Solidity 0.8 with OpenZeppelin and Foundry; Python 3.11+ with web3.py, FastAPI and Streamlit; React with Vite and
-Tailwind; models through Qwen Cloud (default), DeepSeek, OpenRouter or Anthropic; WhatsApp Cloud API and Telegram
-Bot API for supplier chat; Sepolia via any RPC.
-
-## 1.6 On-chain autonomy and the SME scenario
-
-The agent signs with its own EOA. Funds sit in the escrow contract. The owner keeps a separate key for
-limits, payees and delivery attestation. Payments use tPHP on Sepolia; the token has no redemption value.
-
-TR8DE handles supplier deposits for small businesses. Before committing cash, it checks supplier history,
-the cash left after locking the full order and the owner's spending limits. Negotiation supplies the agreed
-terms. An overdue refund returns unpaid escrow; it cannot recover a deposit already sent to the supplier.
-Supplier history is seeded for the demo. We have not yet tested the system with businesses.
-
-For a PHP 20,000 order at 20% down, the contract locks PHP 20,000 and the agent pays PHP 4,000. The remaining
-PHP 16,000 becomes payable after the owner attests delivery. A liquidity flag requires an owner card. A wrong
-payee or an amount that contradicts the instruction is refused.
-
-## 1.7 Judging criteria and evidence map
-
-The [official International Track rules](https://fintechathon.g-ican.com/#/en/rule), checked on 20 October 2026,
-allocate 40% to task completion, 30% to security and 30% to innovation and interaction. Topic F needs transaction
-hashes for execution evidence; the page lists a video of at most five minutes as required. The table links each criterion to the implementation and its evidence.
-
-| Criterion | TR8DE implementation | Evidence and limitation |
-| --- | --- | --- |
-| On-chain task completion | Escrow creation, deposit, attestation, monitor balance and overdue refund | Document 6 records real Sepolia hashes. Agent-signed calls and owner-approved calls are labelled separately. A clean post-fix autonomous-create hash is still pending |
-| Induced transfers | Intent binding, saved payees, cooling, caps, duplicate prevention and exact cards | Integration and audit regressions in document 5; signer compromise remains a known risk |
-| Data extraction | Keys excluded from model tools; provider redaction; private fields excluded from supplier views | Secret-extraction tests; open offer-inference and local-retention risks disclosed |
-| Privilege escalation | Owner-only typed commands and contract roles | Agent-key and authority-claim tests; owner attestation remains trusted |
-| Prompt injection | Tagged untrusted text, flagged-thread confirmation, independent review | Fourth-assessment attacks are disclosed; local post-fix regressions pass, live post-fix supplier retest pending |
-| Novelty and real-world value | Reputation-informed deposit, liquidity forecast and negotiated on-chain escrow in one owner workflow | Implemented integration and a concrete SME use case; seeded history and no measured business outcomes |
-| Dialogue efficiency | One complete instruction can create and pay inside authority | `test_owner_stated_in_budget_deal_still_runs_on_its_own`; flagged requests require review |
-| Clarification and correction | Missing terms prompt a question or a card; latest percentage redrafts and rechecks | `test_ambiguous_okay_does_not_accept`, `test_correction_redraft_then_confirm`; live recording still needed |
-| Fallback | Provider fallback, deterministic negotiation fallback, closed Checker failure and receipt recovery | Provider, negotiation and outage regressions; no-model fallback does not authorise live payouts |
-
-## 1.8 Reproduction and source verification
-
-On 20 October 2026, GitHub `main` matched `bbfe5bc`. The repository contains
-[agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests),
-[contract tests](https://github.com/shaan8/TR8DE/tree/main/test) and
-[UI tests](https://github.com/shaan8/TR8DE/tree/main/ui/tests).
-[CI run 33](https://github.com/shaan8/TR8DE/actions/runs/39379237989) passed contracts, agent scenarios,
-UI build and the secret scan. All 249 agent tests passed locally on 20 October 2026; 58 Playwright checks
-passed locally in the preceding verification. CI builds the UI but does not run Playwright.
-
-The [evidence report](../../reports/evidence/SUMMARY.md) pins source `217fa48`: 228/228 scenarios
-(21 provider-adapter tests excluded) and 200,000 policy cases with zero observed violations. Foundry
-passed 39 unit/fuzz tests and one suite with three invariants. Generated evidence was committed in `bbfe5bc`.
+Sepolia hashes for escrow, deposit, attestation, balance release, overdue refund and a reverted unauthorized release are linked in the [README evidence section](../../README.md#4-execution-evidence). The separate 300-prompt campaign used live Qwen against pinned public Sepolia state and committed its results with six zero-value transactions. Broadcasts were disabled during the prompts; those six hashes are evidence commitments, not payment outcomes. The planned live demo transaction and its inputs belong in execution evidence after the recording, so this document does not claim that recording has happened.
