@@ -62,6 +62,19 @@ Attacks with no transaction, because nothing was sent: unknown payee
 ([4d](../../reports/live/beat4d-manipulation.txt)), lookalike payee ([beat 8](../../reports/live/beat8-lookalike-payee.txt)),
 payee address taken from chain text ([beat 9](../../reports/live/beat9-payee-from-chain.txt)).
 
+
+### 6.2.1 New README recording, 20 October 2026
+
+The live-model request was “Create escrow for Lumen Textiles, PO JUDGE-20261020-VIDEO, PHP 1,000 total, 20% down, delivery by 2026-11-10.” The forecast-shortfall card required owner approval; the owner clicked Review & approve. The scoped agent signer `0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a` submitted both transactions to the existing demo wallet.
+
+| Function | Receipt | Verified result |
+| --- | --- | --- |
+| `createDeal` | [0x931ee83d…](https://sepolia.etherscan.io/tx/0x931ee83d1e6a73acb2dbb5e777f20b79320c40345210faef4e069bc257902231) | Status 1, block 11955228; deal 9, total 1000 tPHP, 20% down, matching PO |
+| `releaseDownPayment` | [0x3744d2bc…](https://sepolia.etherscan.io/tx/0x3744d2bc435ecd87f5575b94c9efcf5d853b6a1d152dc8c7d69fec54a8b22714) | Status 1, block 11955232; 200 tPHP from the wallet to saved Lumen supplier |
+
+Both receipts, methods, signer, destination and amounts were checked against public RPC; the video also shows Etherscan Success and event logs. This is owner-confirmed creation followed by the automatic deposit, not a card-free autonomous create. No real supplier message was sent. A separate 11-entry recording audit session verifies intact; the historical log was preserved rather than repaired.
+
+
 ## 6.3 Deployment and seeded network history
 
 111 transactions, 0 reverted: token, factory, 5 wallets, and 19 trades between 4 network buyers and 4 suppliers,
@@ -111,8 +124,9 @@ python3 scripts/verify_audit.py reports/live/audit.jsonl
 
 ## 6.7 Demo video
 
-Recording plan: [`demo-plan.md`](demo-plan.md). The final video is still pending. Add any new recording
-transactions to 6.2 after verifying their receipts and signer; do not treat planned beats as executed evidence.
+The ten [README walkthrough clips](../walkthrough-videos.md) are recorded and published, including live Sepolia
+login, a new owner-confirmed escrow/deposit, local negotiation through settlement and login/payment refusals.
+The separate five-minute submission film in [`demo-plan.md`](demo-plan.md) is still pending.
 
 ## 6.8 What the on-chain evidence proves
 
@@ -152,9 +166,10 @@ path is supported by local regression; a new post-fix public create hash remains
 | Post-fix flagged supplier path | Local regression passes; live recording pending | Agreement remains unsent, explicit escrow request produces `flagged_input` owner card, no automatic payout |
 | Clarification and correction | Tests and earlier transcript available | New video shows missing terms, corrected deposit and a rechecked card |
 | Fallback | Local provider, negotiation and outage tests pass | Clearly labelled local replay or prepared failure clip; no simulated receipt presented as Sepolia |
-| Five-minute demo and README clips | Recording and final links pending | Final video URL, verified new hashes, and any selected README clips |
+| README clips | Ten clips published; new deal 9 receipts verified | [Index and coverage](../walkthrough-videos.md) |
+| Five-minute submission film | Separate film pending | Final video URL with the remaining planned scenarios |
 | Repository visibility | Owner action still pending unless changed separately | A signed-out judge can open source, tests and evidence |
 
-The video plan specifies where each feature appears and how to label replays. No new transaction or real
-supplier message was sent while preparing these documents. Final evidence should be updated after recording,
-without removing the pre-fix failures or changing their classification.
+The video plan specifies the remaining submission-film scenarios. The new README recording sent the two
+Sepolia test transactions listed in 6.2.1; real supplier messaging was disabled. The pre-fix failures remain
+classified as failures and are not replaced by the new successful run.

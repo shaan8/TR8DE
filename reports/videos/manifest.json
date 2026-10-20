@@ -1,0 +1,274 @@
+[
+  {
+    "file": "0.2-local-demo-setup.mp4",
+    "seconds": 27.73,
+    "source_segments": [
+      [
+        0,
+        16
+      ],
+      [
+        23,
+        35
+      ]
+    ],
+    "title": "Local demo: startup output and generated login",
+    "scope": "Prerequisites installed; same real demo session. Idle time shortened.",
+    "sha256": "3d70ec86f225ea1432fd00af0cc2c7ecacd66e81002c8e43c993c19f886f801b",
+    "bytes": 329237,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/603aaf57-4132-47ee-a2e3-58a6ec503151"
+  },
+  {
+    "file": "0-hero.mp4",
+    "seconds": 24.4,
+    "source_segments": [
+      [
+        40,
+        51
+      ],
+      [
+        55,
+        61
+      ],
+      [
+        67,
+        77
+      ]
+    ],
+    "title": "TR8DE console overview",
+    "scope": "Local chain: workspace, payments, negotiation and saved suppliers.",
+    "sha256": "893543e8811fabbed07f8eb54393bbf7b5fa6013861266b751e0d41f8fe2129b",
+    "bytes": 510896,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/d3d83836-bff7-4a3b-8df2-f0d14aafdf49"
+  },
+  {
+    "file": "1a-wallet-planning.mp4",
+    "seconds": 58.87,
+    "source_segments": [
+      [
+        81,
+        91
+      ],
+      [
+        113,
+        123
+      ],
+      [
+        129,
+        139
+      ],
+      [
+        159,
+        169
+      ],
+      [
+        171,
+        182
+      ],
+      [
+        229,
+        238
+      ]
+    ],
+    "title": "Wallet, supplier history and cash forecast",
+    "scope": "Local chain + live model. Processing waits shortened between questions.",
+    "sha256": "4912d9a5c5808748cdff7d153a45f3e88912975e1520f1063ebf531b5828cb07",
+    "bytes": 942904,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/7df4091b-84f0-46d9-8a29-6b4458273a45"
+  },
+  {
+    "file": "1b-negotiation-lifecycle.mp4",
+    "seconds": 86.6,
+    "source_segments": [
+      [
+        442,
+        454
+      ],
+      [
+        532,
+        548
+      ],
+      [
+        574,
+        591
+      ],
+      [
+        624,
+        636
+      ],
+      [
+        724,
+        737
+      ],
+      [
+        773,
+        792
+      ]
+    ],
+    "title": "Negotiation to escrow, deposit and final settlement",
+    "scope": "Local chain; rules-based buyer and scripted supplier, with the live AI payment checker. Waits shortened.",
+    "sha256": "a70420b603f1aa5e40ca9ba438abf1d30cff3afca704cd9649a4de19bdc663fb",
+    "bytes": 1386302,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/5ea40fb8-f2a2-4bcb-9066-5c862a60870d"
+  },
+  {
+    "file": "0.5-fixture-replay.mp4",
+    "seconds": 30.4,
+    "source_segments": [
+      [
+        859,
+        873
+      ],
+      [
+        901,
+        906
+      ],
+      [
+        908,
+        921
+      ]
+    ],
+    "title": "Console fixture replay",
+    "scope": "Saved approval and transaction evidence. No new blockchain transactions or model calls.",
+    "sha256": "76758f404a2c55b610e2e74a07954c0805c4ad39a9ed79fe7c3be9cd5c29fd1e",
+    "bytes": 426242,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/b9569369-7f93-4bd0-97d2-f630a172ee42"
+  },
+  {
+    "file": "0.8-security-before-delivery.mp4",
+    "seconds": 28.2,
+    "source_segments": [
+      [
+        674,
+        684
+      ],
+      [
+        705,
+        724
+      ]
+    ],
+    "title": "Security: release refused before delivery attestation",
+    "scope": "Local chain. The AI checker approves, but deterministic policy refuses the payment. Wait shortened.",
+    "sha256": "05b89f0a8ebbd4d79dd1b0d8fa7091a1d7d6ddc3429d799a0592c2e17c56c3c0",
+    "bytes": 490206,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/27e6acac-96bb-43d7-b927-a52b6fea154a"
+  },
+  {
+    "file": "0.8-login-protections.mp4",
+    "seconds": 69.73,
+    "source_segments": [
+      [
+        948,
+        953
+      ],
+      [
+        959,
+        971
+      ],
+      [
+        995,
+        1015
+      ],
+      [
+        1030,
+        1048
+      ],
+      [
+        1060,
+        1077
+      ]
+    ],
+    "title": "Login security: logout, failed attempts and lockout",
+    "scope": "Real local requests. Five failed passwords trigger lockout; a correct password is also blocked.",
+    "sha256": "aa69443f3f9da2717a81a5dc6b93a9f56f65f4011afdd527d56090601b396375",
+    "bytes": 508470,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/54c42be1-e022-40f9-913d-bcc26bb40069"
+  },
+  {
+    "file": "1i-owner-commands.mp4",
+    "seconds": 48.87,
+    "source_segments": [
+      [
+        238,
+        249
+      ],
+      [
+        266,
+        285
+      ],
+      [
+        342,
+        362
+      ]
+    ],
+    "title": "Owner commands and wallet recovery",
+    "scope": "Local chain: /guide, /limits, /unfreeze (resuming a paused wallet). Idle time shortened.",
+    "sha256": "57a3a154f3c0ded19a2a19bddf7833d8524fc49a3543f33ebb85b23efb8cc43b",
+    "bytes": 902479,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/fa613beb-dc20-44d2-9163-a0cd2a9b6d46"
+  },
+  {
+    "file": "0.4-live-sepolia-signin.mp4",
+    "seconds": 43.2,
+    "source_segments": [
+      [
+        377,
+        406
+      ],
+      [
+        416,
+        431
+      ]
+    ],
+    "title": "Live Sepolia: owner password setup and sign-in",
+    "scope": "Existing deployment reused; a separate audit session, not a repair of historical logs. Setup waits shortened.",
+    "sha256": "384af18f50cfbda0db48af51e13bcc0623fc7682c5a0a234e48af9b0fba2fd74",
+    "bytes": 332436,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/525bfdf8-0e7f-496c-914f-9b665c6af441"
+  },
+  {
+    "file": "0.4-live-payment-etherscan.mp4",
+    "seconds": 88.07,
+    "source_segments": [
+      [
+        431,
+        447
+      ],
+      [
+        532,
+        550
+      ],
+      [
+        633,
+        655
+      ],
+      [
+        768,
+        781
+      ],
+      [
+        782,
+        791
+      ],
+      [
+        795,
+        807
+      ]
+    ],
+    "title": "Live Sepolia payment: escrow, deposit and Etherscan",
+    "scope": "Real Sepolia test funds + live model. Chain and explorer indexing waits shortened.",
+    "sha256": "ead082b920c729d3a77639d17679d0d478737658a7730478d3842e83950c7c8e",
+    "bytes": 1195870,
+    "review": "Visual contact sheet reviewed; full decode passed.",
+    "url": "https://github.com/user-attachments/assets/982cc5f3-d873-4a00-8a17-58cddb372a10"
+  }
+]

@@ -153,8 +153,8 @@ export default function App() {
           <div role="alert" className="mx-4 mb-4 flex items-start gap-3 rounded-md border border-bad/60 bg-[#2b1c18] p-3.5 md:mx-9">
             <ShieldAlert className="mt-0.5 shrink-0 text-bad" size={18} aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold text-bad">Halted: the escrow wallet is underfunded</p>
-              <p className="text-cap text-ink-2">Every money-moving action is disabled until the balance covers open deals. Owner commands and reading still work.</p>
+              <p className="text-sm font-semibold text-bad">{state.wallet.paused ? "Wallet paused by the owner" : "Halted: the escrow wallet is underfunded"}</p>
+              <p className="text-cap text-ink-2">{state.wallet.paused ? "Money-moving actions are blocked. Type /unfreeze to resume. Owner commands and reading still work." : "Money-moving actions are blocked until the balance covers open deals. Owner commands and reading still work."}</p>
             </div>
           </div>
         )}
@@ -165,7 +165,7 @@ export default function App() {
         </section>
         <div className="bg-gradient-to-t from-canvas from-85% to-transparent px-4 pb-4 pt-4 md:px-8">
           <Suggestions disabled={busy} onSend={send} onPick={(s) => { setDraft(s); inputRef.current?.focus(); }} />
-          <Composer disabled={halted} busy={busy} value={draft} setValue={setDraft} onSend={send} onTick={tick} inputRef={inputRef}
+          <Composer busy={busy} value={draft} setValue={setDraft} onSend={send} onTick={tick} inputRef={inputRef}
             model={state.agents?.coordinator && state.agents.coordinator !== "off" ? `Coordinator · ${state.agents.coordinator}` : "Coordinator"} />
           <p className="mx-0.5 mt-2.5 flex justify-between gap-3 text-micro text-ink-2">Your intent. Checked at every step.
             <span className="hidden sm:inline">{fixture ? "Replayed · no funds move" : "Money moves only through on-chain escrow"}</span></p>

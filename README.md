@@ -14,16 +14,17 @@
   <img src="reports/ui/04-approval-1440.png" alt="TR8DE console" width="860">
 </p>
 
-**Watch the console overview (36 seconds, local demo).** Payments, negotiations and the supplier directory;
-this clip tours the interface and does not show a completed payment.
+**Watch the console overview (24 seconds, local demo).** Payments, negotiations and the supplier directory.
+The walkthroughs below keep typing and results readable; processing waits are shortened and each clip labels its mode.
 
-https://github.com/user-attachments/assets/8bb2690a-1246-4278-b3dd-da9550c89834
+https://github.com/user-attachments/assets/d3d83836-bff7-4a3b-8df2-f0d14aafdf49
 
 Submission documents: [technical documentation](docs/submission/1-technical-documentation.md),
 [security self-assessment](docs/submission/5-security-self-assessment.md),
 [execution evidence](docs/submission/6-execution-evidence.md), [5-minute demo plan](docs/submission/demo-plan.md).
 The [judging evidence map](docs/submission/1-technical-documentation.md#17-judging-criteria-and-evidence-map)
-connects each criterion to tests, hashes and remaining recording work.
+connects each criterion to tests, hashes and recording coverage. See the [walkthrough index](docs/walkthrough-videos.md)
+for all ten clips, their recording modes and remaining coverage gaps.
 
 ## What you can do
 
@@ -36,10 +37,10 @@ signed with the owner key, and no model can reach them.
 - "What is Lumen Textiles' delivery record?" (network reputation and the deposit cap it allows you)
 - "Can I afford a PHP 80,000 PO on 2026-10-30?" (cash forecast, with delay, split or top-up options if you can't)
 
-**Watch a wallet status request (35 seconds, local demo).** Shows the request, processing trace and wallet
-response. It does not demonstrate every planning example above or broadcast a payment.
+**Watch wallet and planning (59 seconds, local chain + live model).** Balance and open deals, Lumen’s delivery
+record and deposit cap, then the PHP 80,000 cash forecast. No payment is broadcast in this clip.
 
-https://github.com/user-attachments/assets/0fae76d0-de02-4513-a9f7-ed1f34ba7a6d
+https://github.com/user-attachments/assets/7df4091b-84f0-46d9-8a29-6b4458273a45
 
 **Paying suppliers**
 
@@ -71,6 +72,13 @@ https://github.com/user-attachments/assets/0fae76d0-de02-4513-a9f7-ed1f34ba7a6d
   "Recheck and prepare escrow" and confirm. Each offer is valid for 24 hours, and each negotiation runs at most
   8 rounds before it comes back to you.
 
+**Watch negotiation through final settlement (87 seconds).** Local chain, rules-based buyer and scripted
+supplier, with the live AI payment checker. Agreement → owner confirmation → escrow and deposit → `/attest 2` →
+balance release and completed deal. This clip demonstrates the supplier-agent route; real WhatsApp/Telegram
+messages are disabled.
+
+https://github.com/user-attachments/assets/5ea40fb8-f2a2-4bcb-9066-5c862a60870d
+
 **Saving suppliers and their contacts**
 
 - "Save a new supplier, Kalinaw Crafts, payout 0x…". Rules, all checked in code:
@@ -100,10 +108,10 @@ https://github.com/user-attachments/assets/0fae76d0-de02-4513-a9f7-ed1f34ba7a6d
 - `/tick`: run the monitor now (deadlines, attestations, balances). `/verify`: check the audit chain
 - `/guide`: show all of this in the app
 
-**Watch command help (32 seconds, local demo).** Shows `/guide`, `/limits` and owner-command usage help.
-It does not show delivery attestation, a balance release or a freeze transaction being executed.
+**Watch owner commands and recovery (49 seconds, local demo).** `/guide`, `/limits` and an owner-signed
+`/unfreeze` transaction that resumes a paused wallet. Delivery attestation and settlement are in the negotiation clip.
 
-https://github.com/user-attachments/assets/ffea3c0d-ff8c-440f-ba23-a46c1225d772
+https://github.com/user-attachments/assets/fa613beb-dc20-44d2-9163-a0cd2a9b6d46
 
 # 0. How to deploy
 
@@ -135,11 +143,11 @@ consumed by signing in. Ctrl+C stops the demo. After signing in:
 2. **Payments**: confirm, then `/attest <deal>`. The balance is released and Lumen's on-chain record updates.
 3. With a model key in `.env` (0.3), try any prompt above.
 
-**Watch the demo sign-in screen and workspace (31 seconds).** Browser-only recording; cloning, terminal setup
-and copying credentials are not shown. Use the instructions above for your own generated password. The recording
-predates the login page's new “Where do I get my login?” help.
+**Watch local setup and sign-in (28 seconds).** Actual startup output shows where to find the generated login,
+followed by paced credential entry and the workspace. Prerequisites are already installed and setup waits are cut.
+Use the new password printed by your own run; the disposable recording session has been stopped.
 
-https://github.com/user-attachments/assets/51091579-a874-4b92-92a8-a52ad95b2575
+https://github.com/user-attachments/assets/603aaf57-4132-47ee-a2e3-58a6ec503151
 
 ### 0.3 Get your keys (For Live Mode)
 
@@ -267,12 +275,24 @@ signature or your verify token.
 5. Optional supplier chat: add the Telegram or WhatsApp keys (0.3), restart the console, and for WhatsApp start
    the tunnel.
 
+**Watch live owner sign-in (43 seconds).** Actual password-setup output (input hidden), paced sign-in and
+the Sepolia workspace. This recording reuses an existing deployment and a separate, verified audit session. It
+does not repair the preserved historical audit log or show the first 50-minute deployment.
+
+https://github.com/user-attachments/assets/525bfdf8-0e7f-496c-914f-9b665c6af441
+
 **P.S. for judges — verifying a live transaction:** after a payment, attestation or refund is successfully
 broadcast in live mode, the console shows its transaction hash with a link to
 [Sepolia Etherscan](https://sepolia.etherscan.io). Open it to verify the status, block, sender, destination and
 contract events or token transfers. A newly broadcast transaction may take a short time to appear or confirm.
 These are public Sepolia testnet transactions using test funds. Local-demo hashes exist only on the private
 chain and cannot be viewed on Etherscan. Your live clone uses your own deployment, not the author's wallet.
+
+**Watch a live payment and Etherscan (88 seconds).** A new PHP 1,000 test escrow for Lumen, the forecast-risk
+approval card, the confirmed 200 tPHP deposit, and the matching Etherscan **Success** and event logs. Processing,
+mining and explorer-indexing waits are shortened. The test payment is [deal 9’s deposit](https://sepolia.etherscan.io/tx/0x3744d2bc435ecd87f5575b94c9efcf5d853b6a1d152dc8c7d69fec54a8b22714).
+
+https://github.com/user-attachments/assets/982cc5f3-d873-4a00-8a17-58cddb372a10
 
 Restart the console after changing `.env`.
 
@@ -297,11 +317,11 @@ to their console, keys or deployment.
 | Terminal | `../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json` |
 | Contracts only | `./scripts/deploy-sepolia.sh` (about 110 txs, 0.1 to 0.3 Sepolia ETH) |
 
-**Watch the console replay option (33 seconds).** Shows the fixture selector switching from an approval card
+**Watch the console replay option (30 seconds).** Shows the fixture selector switching from an approval card
 to a recorded transaction receipt. This is a replay of saved evidence: it makes no new model calls or blockchain
 transactions, and is not a demonstration of Streamlit, the CLI or contracts-only deployment.
 
-https://github.com/user-attachments/assets/c3eb429f-b7d9-40f3-9110-c23df4e1631d
+https://github.com/user-attachments/assets/b9569369-7f93-4bd0-97d2-f630a172ee42
 
 The monitor runs on its own every `MONITOR_INTERVAL_S` seconds (default 300). Deadlines use the device timezone;
 `TIWALA_TZ=Asia/Manila` overrides it.
@@ -359,6 +379,17 @@ an HTTP backend directly. The WhatsApp webhook tunnel exposes its restricted web
 Both setup scripts force `TIWALA_AUTH_DISABLED=0` and disable automatic Uvicorn proxy-header interpretation.
 When starting Uvicorn manually behind that proxy, include `--no-proxy-headers` so the application checks the
 actual connecting peer. Keep `TIWALA_AUTH_DISABLED` unset; it is solely for local screenshot tests.
+
+**Watch login protections (70 seconds).** Logout removes access to `/api/state`; five wrong passwords trigger
+lockout, and the correct password is then blocked too. These are real requests to a disposable local console.
+
+https://github.com/user-attachments/assets/54c42be1-e022-40f9-913d-bcc26bb40069
+
+**Watch a payment refused before delivery (28 seconds).** The AI checker approves the draft, but deterministic
+policy refuses the balance release because the owner has not attested delivery. No payment is sent. The complete
+negotiation clip above shows the later owner attestation and successful release.
+
+https://github.com/user-attachments/assets/27e6acac-96bb-43d7-b927-a52b6fea154a
 
 **Try the controls:** in your own disposable clone, check a wrong password, repeated failures, unsigned owner
 API requests, cross-origin writes, logout and an expired session. Run the regression tests without a model key,
