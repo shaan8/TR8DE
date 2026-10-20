@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { BookOpen, Send, Timer, User } from "lucide-react";
+import { ArrowUp, BookOpen, Timer } from "lucide-react";
 import { ActionCard, ModelDown, OwnerReceipt, PayeeCard, PayeeNotSaved, PayeeReceipt, QuestionCard, RefusalCard, TxReceipt, UntrustedBlock } from "./Cards.jsx";
 import { Trace } from "./Trace.jsx";
-import { Button, Chip, Prose } from "./ui.jsx";
+import { Chip, Prose } from "./ui.jsx";
 
 const isMonitor = (e) => e.action?.origin?.kind === "monitor";
 
@@ -38,46 +37,61 @@ function cardsFor(turn, ctx) {
   return out;
 }
 
+export function AgentLabel({ note = "Your finance agent" }) {
+  return (
+    <p className="flex items-center gap-2.5 text-cap font-semibold">
+      <span className="grid h-6 w-6 place-items-center rounded-md border border-subtle bg-accent-soft text-[18px] leading-none text-accent-text" aria-hidden="true">✳</span>
+      TR8DE <span className="text-micro font-normal text-ink-2">{note}</span>
+    </p>
+  );
+}
+
 export function Turn({ turn, ctx }) {
   const cards = cardsFor(turn, ctx);
-  const owner = /^\/(attest|approve|dispute|resolve)\b/.test(turn.user || "");
+  const owner = /^\/(attest|approve|dispute|resolve|limits|freeze|unfreeze|anchor)\b/.test(turn.user || "");
   return (
-    <article className="space-y-3" aria-label={turn.user ? `Turn: ${turn.user}` : "System event"}>
+    <article className="space-y-5" aria-label={turn.user ? `Turn: ${turn.user}` : "System event"}>
       {turn.user && (
-        <div className="flex justify-end">
-          <div className="max-w-[85%] rounded bg-subtle px-4 py-2 text-base text-ink [overflow-wrap:anywhere]">
+        <div className="flex items-start gap-2.5">
+          <span className="grid h-[25px] w-[25px] shrink-0 place-items-center rounded-full bg-subtle text-micro text-ink" aria-hidden="true">O</span>
+          <div className="max-w-[85%] rounded-[0_10px_10px_10px] border border-line bg-raised px-4 py-3 text-sm leading-[1.8] text-ink [overflow-wrap:anywhere]">
             <span className="sr-only">You said: </span>
-            {owner && <Chip tone="accent" className="mr-2 border-ink text-ink">Owner command</Chip>}
+            {owner && <Chip tone="accent" className="mr-2">Owner command</Chip>}
             {turn.user}
           </div>
         </div>
       )}
       {turn.system && <p className="text-sm text-ink-2"><Chip tone="muted">Outside the agent</Chip> {turn.source}</p>}
-      <div className="rounded bg-surface p-4 sm:p-6">
-        <p className="mb-2 flex items-center gap-2 text-cap font-semibold uppercase tracking-wider text-ink-2">TR8DE</p>
-        {turn.reply && <div className="[overflow-wrap:anywhere]"><Prose text={turn.reply} /></div>}
-        {turn.untrusted?.map((u) => <div key={u.source} className="mt-3"><UntrustedBlock u={u} /></div>)}
-        {turn.question && <div className="mt-3"><QuestionCard q={turn.question} /></div>}
-        {cards.length > 0 && <div className="mt-3 space-y-3">{cards}</div>}
-        {!turn.reply && !cards.length && turn.inflight && <p className="text-sm text-ink-2">Working on it. Each check ticks as it finishes.</p>}
+      <div>
+        <AgentLabel />
         <Trace events={turn.events} inflight={turn.inflight} open={!!turn.inflight} />
-        {turn.source && !turn.system && <p className="mt-2 text-cap text-ink-2">Replayed from {turn.source}</p>}
+        {turn.reply && <div className="mt-4 [overflow-wrap:anywhere]"><Prose text={turn.reply} /></div>}
+        {turn.untrusted?.map((u) => <div key={u.source} className="mt-4"><UntrustedBlock u={u} /></div>)}
+        {turn.question && <div className="mt-4"><QuestionCard q={turn.question} /></div>}
+        {cards.length > 0 && <div className="mt-5 space-y-4">{cards}</div>}
+        {!turn.reply && !cards.length && turn.inflight && <p className="mt-4 flex items-center gap-2 text-sm text-accent-text"><span className="pulse h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />Reviewing your request. Each check ticks as it finishes.</p>}
+        {turn.source && !turn.system && <p className="mt-3 text-micro text-ink-2">Replayed from {turn.source}</p>}
       </div>
     </article>
   );
 }
 
-export function Composer({ disabled, busy, value, setValue, onSend, onTick, inputRef }) {
+export function Composer({ disabled, busy, value, setValue, onSend, onTick, inputRef, model }) {
+  const submit = () => { if (value.trim() && !busy && !disabled) onSend(value.trim()); };
   return (
-    <form className="flex flex-col gap-2 rounded bg-surface p-3 sm:flex-row"
-      onSubmit={(ev) => { ev.preventDefault(); if (value.trim()) onSend(value.trim()); }}>
+    <form className="rounded-[10px] border border-[#46513b] bg-[#1b2118] p-3.5 shadow-[0_4px_25px_#0002] focus-within:border-[#8caa6a]"
+      onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
       <label htmlFor="msg" className="sr-only">Message TR8DE</label>
-      <input id="msg" ref={inputRef} value={value} onChange={(ev) => setValue(ev.target.value)} disabled={disabled}
-        placeholder={disabled ? "Halted: actions are disabled" : "Ask TR8DE, or type /guide"}
-        className="min-h-[44px] flex-1 rounded border border-accent bg-raised px-3 text-base text-ink placeholder:text-ink-2 disabled:opacity-60" />
-      <div className="flex gap-2">
-        <Button type="submit" disabled={disabled || busy || !value.trim()} className="flex-1 sm:flex-none"><Send size={16} aria-hidden="true" />Send</Button>
-        <Button type="button" variant="ghost" onClick={onTick} disabled={disabled || busy} className="flex-1 sm:flex-none"><Timer size={16} aria-hidden="true" />Run monitor</Button>
+      <textarea id="msg" ref={inputRef} rows={2} value={value} onChange={(ev) => setValue(ev.target.value)} disabled={disabled}
+        onKeyDown={(ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); submit(); } }}
+        placeholder={disabled ? "Halted: actions are disabled" : "Ask your agent to pay, negotiate, or check your funds. Type /guide for everything"}
+        className="w-full resize-none bg-transparent text-sm leading-[1.7] text-ink outline-none placeholder:text-ink-2 disabled:opacity-60" />
+      <div className="mt-1.5 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={onTick} disabled={disabled || busy}
+          className="inline-flex items-center gap-1.5 text-micro text-ink-2 hover:text-accent-text disabled:opacity-50"><Timer size={14} aria-hidden="true" />Run monitor</button>
+        <span className="ml-auto flex items-center gap-1.5 text-micro text-accent-text"><span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />{model || "Coordinator"}</span>
+        <button type="submit" disabled={disabled || busy || !value.trim()} aria-label="Send message"
+          className="grid h-[30px] w-[30px] place-items-center rounded-md bg-accent text-accent-deep hover:bg-[#d9edbc] disabled:opacity-50"><ArrowUp size={17} aria-hidden="true" /></button>
       </div>
     </form>
   );
@@ -95,15 +109,14 @@ export const SUGGESTIONS = [
 /** Recommended prompts. A click fills the box so the owner can edit before sending; /guide sends at once. */
 export function Suggestions({ onPick, onSend, disabled }) {
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Suggested prompts">
-      <span className="text-cap text-ink-2">Try:</span>
+    <div className="mb-3 flex flex-wrap items-center gap-2" aria-label="Suggested prompts">
       <button type="button" disabled={disabled} onClick={() => onSend("/guide")}
-        className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-accent px-3 text-cap font-semibold text-ink hover:bg-subtle/40 disabled:opacity-50">
+        className="inline-flex items-center gap-1.5 rounded-md border border-subtle px-2.5 py-2 text-micro text-ink hover:border-accent hover:text-accent-text disabled:opacity-50">
         <BookOpen size={12} aria-hidden="true" />/guide</button>
-      {SUGGESTIONS.map((s) => (
+      {SUGGESTIONS.slice(0, 4).map((s) => (
         <button key={s} type="button" disabled={disabled} onClick={() => onPick(s)}
-          className="min-h-[32px] max-w-full rounded-full border border-subtle px-3 text-left text-cap text-ink-2 hover:border-accent hover:text-ink disabled:opacity-50">
-          {s}</button>
+          className="max-w-full truncate rounded-md border border-subtle px-2.5 py-2 text-left text-micro text-ink-2 hover:border-accent hover:text-accent-text disabled:opacity-50 sm:max-w-[260px]" title={s}>
+          {s} <span className="text-accent-text" aria-hidden="true">↗</span></button>
       ))}
     </div>
   );
@@ -111,9 +124,19 @@ export function Suggestions({ onPick, onSend, disabled }) {
 
 export function EmptyChat() {
   return (
-    <div className="rounded bg-surface p-6 text-ink-2">
-      <p className="flex items-center gap-2 text-base text-ink"><User size={16} aria-hidden="true" />Tell TR8DE what to pay, and to whom.</p>
-      <p className="mt-1 text-sm">For example: “Create escrow for Lumen PO-104, PHP 120,000, 30% down, delivery by 2026-10-25”. Every new deal comes back to you for a yes. Type <span className="font-mono text-ink">/guide</span> for everything TR8DE can do.</p>
+    <div>
+      <AgentLabel />
+      <h2 className="mt-5 font-display text-[28px] font-medium leading-[1.3] tracking-[-0.04em]">Tell me what to pay,<br />and to whom.</h2>
+      <p className="mt-4 max-w-[62ch] text-sm leading-[1.9] text-ink-2">
+        For example: “Create escrow for Lumen PO-104, PHP 120,000, 20% down, delivery by 2026-10-30”. Inside the limits you set,
+        a deal you describe in full is created and funded by the agent itself. Anything larger, flagged or filled in by the agent
+        comes back to you for a yes. Type <span className="font-mono text-ink">/guide</span> for everything TR8DE can do.
+      </p>
+      <div className="mt-6 flex gap-3 border-l-2 border-accent bg-gradient-to-r from-[#222c1b80] to-transparent px-4 py-3.5">
+        <span className="text-[20px] text-accent-text" aria-hidden="true">↗</span>
+        <div><strong className="text-cap font-medium text-accent-text">One request. Every check.</strong>
+          <p className="mt-1 text-cap leading-6 text-ink-2">The Coordinator drafts, your words are checked in code, the Checker reviews, the policy decides, and the contract enforces.</p></div>
+      </div>
     </div>
   );
 }

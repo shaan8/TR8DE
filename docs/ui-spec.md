@@ -48,36 +48,43 @@ then reply) · `POST /api/confirm` · `POST /api/tick` · `GET /api/verify` · `
 
 ## 3. Design tokens
 
-Contrast measured with the WCAG 2 formula. AA: 4.5:1 body text, 3:1 large text and UI boundaries.
+From the TR8DE workspace design (dark green). Contrast measured with the WCAG 2 formula. AA: 4.5:1 body text, 3:1
+large text and UI boundaries. The design's smallest labels were raised to 11 px and its dimmest greys lightened so
+every text colour passes AA.
 
 | Token | Hex | Role | Contrast on canvas / raised |
 |---|---|---|---|
-| `bg.canvas` | #0F0E47 | Page | n/a |
-| `bg.surface` | #1B1A52 | Panels, sidebar | n/a |
-| `bg.raised` | #272757 | Cards, inputs | n/a |
-| `border.subtle` | #505081 | Dividers only (decorative) | 2.4 / 1.9: never for text or required boundaries |
-| `accent` | #8686AC | Large text, icons, focus ring, selected | 5.1 / 4.0: body text only on canvas |
-| `accent.text` | #A9A8D9 | Links and accent body text on any surface | 7.9 / 6.1 |
-| `text.primary` | #F2F2F8 | Body and headings | 16.0 / 12.4 |
-| `text.secondary` | #B9B8D6 | Labels, metadata | 9.3 / 7.2 |
-| `success` | #6FD3A0 | Executed, approved, Tier 1 | 9.8 / 7.6 |
-| `warning` | #F2C14E | Needs you, Tier 2, shortfall | 10.7 / 8.3 |
-| `danger` | #FF8A80 | Refused, reverted, halted, Tier 3 | 7.8 / 6.1 |
+| `bg.canvas` | #111411 | Page | n/a |
+| `bg.surface` | #151915 | Sidebar, treasury panel | n/a |
+| `bg.raised` | #1c2318 | Cards, user messages | n/a |
+| `border.subtle` | #343e2c | Dividers only (decorative) | 1.7 / 1.4 |
+| `accent` | #c4df9b | Brand 8, primary button, links, focus ring, selected | 12.7 / 11.0 |
+| `text.primary` | #e6e9e0 | Body and headings | 15.1 / 13.1 |
+| `text.secondary` | #a3ab9b | Labels, metadata | 7.8 / 6.8 |
+| `success` | #a9d37f | Executed, approved, Tier 1 | 10.9 / 9.4 |
+| `warning` | #d9c27f | Needs you, Tier 2, shortfall | 10.6 / 9.2 |
+| `danger` | #eba08b | Refused, reverted, halted, Tier 3 | 8.8 / 7.6 |
 
 Status never relies on color alone: every chip carries its word (Approved, Refused, Tier 2).
 
-Type scale (px / line height): 12/16 caption · 14/20 body small · 16/24 body · 20/28 card title · 28/36 section ·
-40/48 headline. Font: Inter or IBM Plex Sans; IBM Plex Mono for hashes and amounts.
+Type scale (px / line height): 11/16 micro · 12/17 caption · 13/20 small · 14/22 body · 17/24 title · 26/34 section.
+Fonts: DM Sans for text, Manrope for the brand, headings and amounts, IBM Plex Mono for hashes and addresses.
 
-Spacing on an 8px grid: 4 (hairline only), 8, 16, 24, 32, 48, 64. Radius 8 (chips 999). Card padding 24.
-Breakpoints: 1440 (sidebar + feed + chat), 1024 (feed collapses under chat), 390 (single column, "Needs you" first).
+Radius 7 (cards 9). Breakpoints: 1024 and up (sidebar, chat, treasury panel side by side), 768 (sidebar behind a
+menu button), 390 (single column, "Needs you" first, treasury panel under the chat).
 
 ## 4. Layout
 
-- **Left (surface):** wallet split, daily limit, deals table showing each deal's lifecycle stage (Locked, DP paid, Delivered, Completed, Refunded, Disputed).
-- **Centre:** "Needs you" strip (pending ActionCards, shortfall and halt alerts) above the chat; agent replies hold
-  ActionCard / RefusalCard / TxReceipt components, each with a collapsible agent trace.
-- **Right:** activity feed of autonomous actions and owner-key actions, newest first, each with its receipt.
+- **Left sidebar:** brand, workspace navigation (Agent workspace, Payments, Negotiations, Suppliers), quick prompts
+  that fill the composer, connection status and sign-out.
+- **Centre:** "Needs you" bar (pending cards, payees, shortfall and halt alerts) above the conversation; agent replies
+  hold the approval card, refusal card and receipts, each with a collapsible "Checks complete" trace; the composer
+  with suggested prompts and Run monitor sits at the bottom.
+- **Right, Treasury overview:** wallet total with the available and locked split, the agent's daily limit and
+  on-its-own threshold, tabs for Activity (autonomous and owner-key actions, newest first), Escrows and Payees, and
+  the agent team with the model running each role.
+- **Suppliers:** saved payees with on-chain status, linked chat channel and contact controls. **Supplier console:**
+  the same shell without owner navigation, showing only the supplier's mandate and negotiations.
 
 ## 5. Acceptance
 

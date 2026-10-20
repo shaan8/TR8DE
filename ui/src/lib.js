@@ -20,7 +20,7 @@ export const KIND = {
   release_balance: "Release balance",
   cancel_deal: "Cancel and refund",
 };
-export const RULE = { overdue_cancel: "Overdue past grace", attested_release: "Owner attested delivery" };
+export const RULE = { overdue_cancel: "Overdue past grace", attested_release: "Owner attested delivery", within_authority: "Inside the authority you set on the contract" };
 
 export function query() {
   const p = new URLSearchParams(window.location.search);

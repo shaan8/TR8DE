@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { request } from "./lib.js";
+import { Brand } from "./components/Shell.jsx";
 
 /** Owner sign-in. The server checks the password against a scrypt hash and sets an HttpOnly session cookie. */
 export function Login({ onDone }) {
@@ -20,19 +21,20 @@ export function Login({ onDone }) {
     } catch (e2) { setErr(String(e2.message || e2)); } finally { setBusy(false); }
   };
   return (
-    <main className="mx-auto mt-24 max-w-sm px-4">
-      <form onSubmit={submit} className="space-y-3 rounded border border-subtle bg-surface p-5">
-        <h1 className="flex items-center gap-2 text-section font-bold"><Lock size={18} aria-hidden /> TR8DE</h1>
-        <p className="text-sm text-ink-2">Sign in to the owner console.</p>
-        <label className="block text-sm">Username
-          <input className="mt-1 w-full rounded border border-subtle bg-canvas px-2 py-1.5" autoComplete="username"
+    <main className="grid min-h-[100dvh] place-items-center px-4">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border border-[#414e36] bg-[#1b2218] p-7 shadow-[0_30px_80px_#0008]">
+        <Brand />
+        <p className="flex items-center gap-2 text-cap text-ink-2"><Lock size={14} aria-hidden /> Sign in to the owner console.</p>
+        <label className="block text-cap text-ink-2">Username
+          <input className="mt-1.5 w-full rounded-md border border-[#48593a] bg-[#11180e] px-3 py-2.5 text-sm text-ink" autoComplete="username"
             value={user} onChange={(e) => setUser(e.target.value)} required autoFocus /></label>
-        <label className="block text-sm">Password
-          <input type="password" className="mt-1 w-full rounded border border-subtle bg-canvas px-2 py-1.5"
+        <label className="block text-cap text-ink-2">Password
+          <input type="password" className="mt-1.5 w-full rounded-md border border-[#48593a] bg-[#11180e] px-3 py-2.5 text-sm text-ink"
             autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
-        {err && <p role="alert" className="text-sm text-bad">{err}</p>}
-        <button disabled={busy} className="min-h-[40px] w-full rounded bg-ink px-3 font-semibold text-canvas disabled:opacity-60">
+        {err && <p role="alert" className="text-cap text-bad">{err}</p>}
+        <button disabled={busy} className="min-h-[40px] w-full rounded-md bg-accent px-3 text-sm font-semibold text-accent-deep hover:bg-[#d9edbc] disabled:opacity-60">
           {busy ? "Signing in…" : "Sign in"}</button>
+        <p className="text-micro text-ink-2">Agents propose. Policy checks. You approve when required. The contract enforces.</p>
       </form>
     </main>
   );

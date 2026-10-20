@@ -151,6 +151,25 @@ def network(t) -> dict:
     return {"network": name, "explorer": explorer}
 
 
+def _agents(t) -> dict:
+    """What runs each role, for the console's agent panel: a model name, "rules only" or "off"."""
+    from tiwala_agent.core import OfflineLLM, RulesOnlyChecker
+    out = {}
+    for role in ("coordinator", "treasury", "checker"):
+        m = t.llms.get(role)
+        out[role] = ("off" if m is None or isinstance(m, OfflineLLM) else "rules only" if isinstance(m, RulesOnlyChecker)
+                     else getattr(m, "model", None) or type(m).__name__)
+    return out
+
+
+def _live_activity(t, last: int = 3000) -> list[dict]:
+    """The Activity tab from this console's own audit log: the newest 30 autonomous and owner-key actions."""
+    rows = t.audit.entries()[-last:]
+    base = t.audit.count - len(rows)
+    return fx.activity_from([{"event": e["event"], **e["data"], "ts": e["ts"], "line": base + i + 1}
+                             for i, e in enumerate(rows)])[:30]
+
+
 def _live_state() -> dict:
     from tiwala_agent.guard import tag_contract
     from tiwala_agent.models import PHP
@@ -175,9 +194,10 @@ def _live_state() -> dict:
         "wallet": {"free": ws.free / PHP, "locked": ws.locked / PHP, "balance": ws.balance / PHP,
                    "daily_left": ws.daily_remaining / PHP, "daily_cap": ws.daily_cap / PHP,
                    "per_deal_cap": ws.per_deal_cap / PHP, "paused": ws.paused, "underfunded": ws.underfunded,
-                   "source": f"{network(t)['network']}, live"},
+                   "approval_threshold": ws.approval_threshold / PHP, "source": f"{network(t)['network']}, live"},
+        "agents": _agents(t),
         "payees": payees, "pending_payee": {**pp.verdict.to_dict(), "card_text": pp.card} if pp else None,
-        "now": ws.now, "deals": deals, "activity": [], "alerts": list(_alerts), "suppliers": None,
+        "now": ws.now, "deals": deals, "activity": _live_activity(t), "alerts": list(_alerts), "suppliers": None,
         "turns": [], "pending": pending, **network(t),
     }
 

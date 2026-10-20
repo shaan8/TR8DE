@@ -3,7 +3,7 @@ import { ArrowRight, Ban, Bot, CheckCircle2, Clock, FileWarning, Handshake, KeyR
 import clsx from "clsx";
 import { Button, Card, Chip, Panel, Row } from "./components/ui.jsx";
 import { day, peso, request, setExplorer, short, txUrl, when } from "./lib.js";
-import { logout } from "./Login.jsx";
+import { Shell } from "./components/Shell.jsx";
 
 const P = (units) => peso(units / 100, 2);
 const STATE = {
@@ -26,19 +26,6 @@ async function call(path, method = "GET", body) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || `${r.status}`);
   return j;
-}
-
-export function ViewNav({ active }) {
-  const go = (v) => { const p = new URLSearchParams(); if (v) p.set("view", v); window.location.search = p; };
-  return (
-    <nav aria-label="Workspace" className="flex gap-1 rounded bg-surface p-1 text-sm">
-      {[["", "Payments"], ["negotiate", "Negotiations"]].map(([v, l]) => (
-        <button key={l} onClick={() => go(v)} aria-current={active === v ? "page" : undefined}
-          className={clsx("min-h-[36px] rounded px-3", active === v ? "bg-raised font-semibold text-ink" : "text-ink-2 hover:text-ink")}>{l}</button>
-      ))}
-      <button onClick={logout} className="min-h-[36px] rounded px-3 text-ink-2 hover:text-ink">Sign out</button>
-    </nav>
-  );
 }
 
 export function ModeChips({ n }) {
@@ -93,7 +80,7 @@ function Conversation({ n }) {
   const status = Object.fromEntries((n.outbox || []).map((o) => [o.ts + o.text.slice(0, 20), o]));
   return (
     <Panel title="Conversation" action={<ModeChips n={n} />}>
-      <ol className="max-h-[420px] space-y-2 overflow-y-auto pr-1" tabIndex={0} aria-label="Messages">
+      <ol className="relative max-h-[420px] space-y-2 overflow-y-auto pr-1" tabIndex={0} aria-label="Messages">
         {n.messages.map((m, i) => {
           const o = status[m.ts + m.text.slice(0, 20)];
           return (
@@ -213,7 +200,7 @@ function SimPhone({ n, onSend, busy }) {
 }
 
 /** Connect the selected payee's person on Telegram (one-time invite link) or WhatsApp (their number). */
-function ConnectChat({ p, tg, onLinked }) {
+export function ConnectChat({ p, tg, onLinked }) {
   const [num, setNum] = useState("");
   const [msg, setMsg] = useState(null);
   const [link, setLink] = useState("");
@@ -308,21 +295,20 @@ export default function Negotiate() {
   const cur = props[props.length - 1];
   const agreed = n && ["awaiting_buyer_approval", "ready_for_escrow", "escrow_created"].includes(n.state);
 
+  const actions = (
+    <>
+      {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}
+      {fixture && data.fixture?.validation && <Chip tone="muted" wrap>{data.fixture.validation}</Chip>}
+      {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive || data.whatsapp.send ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : data.whatsapp.send ? "WhatsApp: live sending, replies via simulator" : "WhatsApp: simulator only (no credentials)"}</Chip>}
+      {!fixture && data.telegram?.receive && <Chip tone={data.telegram.polling && !data.telegram.error ? "ok" : "warn"} icon={Phone} wrap>{data.telegram.error ? `Telegram: ${data.telegram.error}` : data.telegram.polling ? `Telegram bot listening${data.telegram.send ? "" : " (sending off)"}` : "Telegram: not polling"}</Chip>}
+    </>
+  );
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-6">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-section font-bold tracking-tight">TR8DE</h1>
-          <p className="text-sm text-ink-2">Negotiate supplier terms, then lock the exact agreement in escrow · {data?.network || "Sepolia testnet"}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {fixture && <Chip tone="accent" icon={FileWarning} wrap>Replayed: {data.fixture?.title}</Chip>}
-          {fixture && data.fixture?.validation && <Chip tone="muted" wrap>{data.fixture.validation}</Chip>}
-          {!fixture && data.whatsapp && <Chip tone={data.whatsapp.receive || data.whatsapp.send ? "ok" : "muted"} icon={Phone} wrap>{data.whatsapp.receive ? "WhatsApp webhook configured" : data.whatsapp.send ? "WhatsApp: live sending, replies via simulator" : "WhatsApp: simulator only (no credentials)"}</Chip>}
-          {!fixture && data.telegram?.receive && <Chip tone={data.telegram.polling && !data.telegram.error ? "ok" : "warn"} icon={Phone} wrap>{data.telegram.error ? `Telegram: ${data.telegram.error}` : data.telegram.polling ? `Telegram bot listening${data.telegram.send ? "" : " (sending off)"}` : "Telegram: not polling"}</Chip>}
-          <ViewNav active="negotiate" />
-        </div>
-      </header>
+    <Shell active="negotiate" crumb="Negotiations" actions={actions}
+      status={fixture ? "Replayed from reports/negotiation · no model, WhatsApp or chain calls" : `Live · ${data?.network || "Sepolia testnet"}`}>
+    <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-9">
+      <div className="mb-5"><p className="text-micro tracking-[0.14em] text-ink-2">SUPPLIER NEGOTIATION</p>
+        <h2 className="mt-2 font-display text-title font-semibold tracking-[-0.02em]">Negotiate terms, then lock the exact agreement in escrow</h2></div>
       {err && <p role="alert" className="mb-4 rounded border border-bad bg-raised p-3 text-sm text-bad">{err}</p>}
       {!fixture && data.whatsapp?.missing?.length > 0 && (
         <details className="mb-4 rounded border border-subtle bg-surface p-3 text-sm">
@@ -350,7 +336,9 @@ export default function Negotiate() {
           <main className="min-w-0 space-y-4" aria-label="Negotiation">
             <section className="rounded bg-surface p-4" aria-label="Status">
               <div className="flex flex-wrap items-center gap-2"><h2 className="text-title font-semibold">{n.product} · {n.supplier_name}</h2><StateChip s={n.state} />
-                {n.running && <Chip tone="accent" icon={Clock}>Agents exchanging offers…</Chip>}{n.escalated && <Chip tone="warn" icon={User}>Needs a person</Chip>}</div>
+                {n.running && <Chip tone="accent" icon={Clock}>Agents exchanging offers…</Chip>}{n.escalated && <Chip tone="warn" icon={User}>Needs a person</Chip>}
+                {!fixture && <button onClick={() => act(async () => { const r = await call(`/api/sim/supplier-link?supplier=${encodeURIComponent(n.supplier_address)}`); window.open(r.link, "_blank", "noopener"); })}
+                  className="ml-auto text-cap text-accent-text underline underline-offset-2 hover:text-ink" title="Local demo only: the supplier's own page, as the supplier sees it">Open supplier's console ↗</button>}</div>
               <p className="mt-1 text-sm text-ink-2">{n.reason || "Offers go back and forth within both sides' limits."} · round {props.length} of {n.max_rounds}</p>
             </section>
             {agreed ? <Agreement n={n} onEscrow={escrow} onConfirm={confirm} busy={busy} readonly={!!fixture} />
@@ -379,7 +367,8 @@ export default function Negotiate() {
           </aside>
         )}
       </div>
-      <footer className="mt-6 text-cap text-ink-2">{fixture ? "Replayed from reports/negotiation. No model, WhatsApp or chain calls." : "Negotiation never moves money: escrow needs your own yes through the payment checks."}</footer>
+      <footer className="mt-6 text-micro text-ink-2">{fixture ? "Replayed from reports/negotiation. No model, WhatsApp or chain calls." : "Negotiation never moves money by itself: escrow goes through the same payment checks, and your yes when it is above your limits."}</footer>
     </div>
+    </Shell>
   );
 }

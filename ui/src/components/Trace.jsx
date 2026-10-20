@@ -67,12 +67,12 @@ const PENDING = [["code", "Intent verifier"], ["llm", "Checker"], ["code", "Poli
 export function TraceList({ events, inflight }) {
   const list = steps(events);
   return (
-    <ol className="relative ml-2 space-y-2 border-l border-subtle pl-4">
+    <ol className="relative ml-1.5 space-y-2 border-l border-subtle pl-4">
       {list.map(([who, name, body], i) => {
         const W = WHO[who];
         return (
-          <li key={i} className="text-sm leading-5 text-ink">
-            <span className="mr-1 inline-flex items-center gap-1 rounded-full border border-subtle px-1.5 text-cap text-ink-2">
+          <li key={i} className="text-cap leading-5 text-ink">
+            <span className="mr-1 inline-flex items-center gap-1 rounded border border-subtle px-1.5 text-micro text-ink-2">
               <W.icon size={12} aria-hidden="true" />{W.label}
             </span>
             <span className="font-semibold">{name}</span> · {body}
@@ -82,8 +82,8 @@ export function TraceList({ events, inflight }) {
       {inflight && PENDING.map(([who, name], i) => {
         const W = WHO[who];
         return (
-          <li key={`p${i}`} className="text-sm leading-5 text-ink-2" aria-live={i === 0 ? "polite" : undefined}>
-            <span className="mr-1 inline-flex items-center gap-1 rounded-full border border-subtle px-1.5 text-cap">
+          <li key={`p${i}`} className="text-cap leading-5 text-ink-2" aria-live={i === 0 ? "polite" : undefined}>
+            <span className="mr-1 inline-flex items-center gap-1 rounded border border-subtle px-1.5 text-micro">
               <W.icon size={12} aria-hidden="true" />{W.label}
             </span>
             <span className="font-semibold">{name}</span> ·{" "}
@@ -105,10 +105,13 @@ export function Trace({ events, inflight, open: initial = false, label = "Agent 
   return (
     <div className="mt-3">
       <button onClick={() => setOpen(!open)} aria-expanded={open}
-        className="inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-ink">
-        <Icon size={16} aria-hidden="true" />{label} ({n} step{n === 1 ? "" : "s"}{inflight ? ", running" : ""})
+        className="inline-flex items-center gap-2 text-micro text-ink-2 hover:text-accent-text">
+        <span className={inflight ? "pulse text-warn" : "text-accent-text"} aria-hidden="true">{inflight ? "◷" : "✓"}</span>
+        {label === "Agent trace" ? (inflight ? "Running checks" : "Checks complete") : label}
+        <span className="text-ink-2">{n} step{n === 1 ? "" : "s"} · who acted</span>
+        <Icon size={13} aria-hidden="true" />
       </button>
-      {open && <div className="mt-2"><TraceList events={events} inflight={inflight} /></div>}
+      {open && <div className="mt-3"><TraceList events={events} inflight={inflight} /></div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Bot, CheckCircle2, FileWarning, Hand, Play, Save, Send, User, XCircle }
 import { Button, Card, Chip, Panel } from "./components/ui.jsx";
 import { day, peso, request, when } from "./lib.js";
 import { ModeChips } from "./Negotiate.jsx";
+import { Shell } from "./components/Shell.jsx";
 
 const P = (u) => peso(u / 100, 2);
 
@@ -34,22 +35,24 @@ export default function SupplierView() {
   if (err && !d) return <main className="p-6 text-bad">Supplier console: {err}</main>;
   if (!d) return <main className="p-6 text-ink-2">Loading…</main>;
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-4 lg:px-6">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-section font-bold tracking-tight">Supplier console</h1>
-          <p className="text-sm text-ink-2">{d.name} · your limits and your agent. The buyer never sees this page.</p></div>
-        {fixture && <Chip tone="accent" icon={FileWarning}>Replayed fixture</Chip>}
-      </header>
-      {err && <p role="alert" className="mb-4 rounded border border-bad bg-raised p-3 text-sm text-bad">{err}</p>}
-      <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <Mandate m={d.mandate} readonly={!!fixture} busy={busy} onSave={(f) => post("/api/supplier/mandate", f, "PUT")} />
-        <main className="min-w-0 space-y-4">
-          {d.negotiations.map((n) => <SupplierNeg key={n.id} n={n} readonly={!!fixture} busy={busy}
-            act={(what, move) => post(`/api/supplier/negotiations/${n.id}/${what}`, move)} />)}
-          {!d.negotiations.length && <p className="text-sm text-ink-2">No negotiations yet.</p>}
-        </main>
-      </div>
-    </div>
+    <Shell owner={false} crumb="Supplier console" status={fixture ? "Replayed fixture · no model or chain calls" : `Signed in as ${d.name} with your supplier link`}
+      actions={fixture ? <Chip tone="accent" icon={FileWarning}>Replayed fixture</Chip> : null}>
+      <main className="relative min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-9">
+        <p className="text-micro tracking-[0.14em] text-ink-2">YOUR SIDE OF THE DEAL</p>
+        <h2 className="mt-2 font-display text-title font-semibold tracking-[-0.02em]">Supplier console · {d.name}</h2>
+        <p className="mt-2 max-w-[70ch] text-cap leading-6 text-ink-2">Your limits and your agent. The buyer never sees this page, and the buyer's limits are never sent to it.
+          Accept an offer here or reply <span className="font-mono text-ink">ACCEPT &lt;code&gt;</span> in chat; only the exact open offer can be accepted.</p>
+        {err && <p role="alert" className="mt-4 rounded-md border border-bad/60 bg-raised p-3 text-sm text-bad">{err}</p>}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <Mandate m={d.mandate} readonly={!!fixture} busy={busy} onSave={(f) => post("/api/supplier/mandate", f, "PUT")} />
+          <div className="min-w-0 space-y-4">
+            {d.negotiations.map((n) => <SupplierNeg key={n.id} n={n} readonly={!!fixture} busy={busy}
+              act={(what, move) => post(`/api/supplier/negotiations/${n.id}/${what}`, move)} />)}
+            {!d.negotiations.length && <p className="text-sm text-ink-2">No negotiations yet.</p>}
+          </div>
+        </div>
+      </main>
+    </Shell>
   );
 }
 
@@ -61,7 +64,7 @@ function Mandate({ m, onSave, busy, readonly }) {
   const inp = (k, label, type = "number") => (
     <label className="text-sm"><span className="mb-1 block text-ink-2">{label}</span>
       <input type={type} value={f[k]} disabled={readonly} onChange={(e) => setF({ ...f, [k]: type === "number" ? Number(e.target.value) : e.target.value })}
-        className="w-full rounded border border-subtle bg-canvas px-2 py-1.5 text-ink" /></label>
+        className="w-full rounded-md border border-subtle bg-canvas px-2 py-1.5 text-ink" /></label>
   );
   return (
     <Panel title="Your agent's mandate" action={<Chip tone="muted">private to you</Chip>}>
@@ -110,7 +113,7 @@ function SupplierNeg({ n, act, busy, readonly }) {
           </form>
         </div>
       )}
-      <ol className="mt-4 max-h-64 space-y-1 overflow-y-auto text-sm" tabIndex={0} aria-label="Messages">
+      <ol className="relative mt-4 max-h-64 space-y-1 overflow-y-auto text-sm" tabIndex={0} aria-label="Messages">
         {n.messages.map((m, i) => <li key={i} className="text-ink-2"><span className="font-mono text-cap">{when(m.ts).slice(11)}</span> {m.dir === "out" ? "Buyer" : "You"}: <span className="text-ink">{m.text}</span></li>)}
       </ol>
     </Card>

@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FileWarning, ShieldAlert, ShieldCheck } from "lucide-react";
-import { Composer, EmptyChat, Suggestions, Turn } from "./components/Chat.jsx";
-import { Feed, NeedsYou } from "./components/Feed.jsx";
-import { DailyLimit, Deals, Payees, Suppliers, Wallet } from "./components/Sidebar.jsx";
+import { Composer, EmptyChat, SUGGESTIONS, Suggestions, Turn } from "./components/Chat.jsx";
+import { NeedsYou } from "./components/Feed.jsx";
+import { Shell } from "./components/Shell.jsx";
+import { Treasury, openDeals } from "./components/Sidebar.jsx";
 import { Chip } from "./components/ui.jsx";
 import { getJSON, postJSON, query, sendMessage, setExplorer } from "./lib.js";
-import { ViewNav } from "./Negotiate.jsx";
 
 function StatePicker({ fixture, list }) {
   if (!list.length) return null;
   return (
-    <label className="flex items-center gap-2 text-sm text-ink-2">
+    <label className="flex items-center gap-2 text-micro text-ink-2">
       <span>Screen state</span>
-      <select value={fixture || ""} className="min-h-[36px] max-w-[220px] rounded border border-accent bg-raised px-2 text-ink"
+      <select value={fixture || ""} className="min-h-[32px] max-w-[200px] rounded-md border border-subtle bg-raised px-2 text-cap text-ink"
         onChange={(e) => { const p = new URLSearchParams(window.location.search); e.target.value ? p.set("fixture", e.target.value) : p.delete("fixture"); window.location.search = p; }}>
         <option value="">Live agent</option>
         {list.map((f) => <option key={f.name} value={f.name}>{f.n}. {f.title}{f.synthetic ? " (synthetic)" : ""}</option>)}
@@ -35,6 +35,13 @@ export default function App() {
   const [audit, setAudit] = useState(null);
   const [list, setList] = useState([]);
   const inputRef = useRef(null);
+  const threadRef = useRef(null);
+  // Like any chat: open on the latest message, and follow new steps as they stream in.
+  const lastEvents = turns.length ? turns[turns.length - 1].events.length : 0;
+  useLayoutEffect(() => {
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [turns.length, lastEvents, !!state]);
 
   // Live refreshes keep the chat: /api/state has no conversation history, only wallet and deals.
   const load = async (initial = false) => {
@@ -58,6 +65,7 @@ export default function App() {
 
   if (error) return <main className="p-6 text-bad">Could not load the console: {error}. Is the API running on :8000?</main>;
   if (!state) return <main className="p-6 text-ink-2" aria-busy="true">Loading the console…</main>;
+  const view = new URLSearchParams(window.location.search).get("view");
 
   const halted = state.wallet.underfunded || state.wallet.paused;
   const ownerWords = turns.map((t) => t.user).filter((u) => u && !u.startsWith("/"));
@@ -119,59 +127,50 @@ export default function App() {
     onRetry: (text) => text && send(text),
   };
 
+  const network = state?.network || "Sepolia testnet";
+  const actions = (
+    <>
+      {fixture && <Chip tone="accent">Fixture {state.state_no}: {state.title}</Chip>}
+      {state.synthetic && <Chip tone="warn" icon={FileWarning}>Synthetic fixture</Chip>}
+      {audit && (audit.intact ? <Chip tone="ok" icon={ShieldCheck}>Audit chain intact · {audit.entries} entries</Chip>
+        : <Chip tone="bad" icon={ShieldAlert}>Audit chain broken</Chip>)}
+      <StatePicker fixture={fixture} list={list} />
+    </>
+  );
+  const tab = view === "payments" ? "deals" : state.highlight === "payees" ? "payees" : "activity";
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-6">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-section font-bold tracking-tight">TR8DE</h1>
-          <p className="text-sm text-ink-2">Escrow agent for your supplier payments · {state?.network || "Sepolia testnet"}</p>
+    <Shell active={view === "payments" ? "payments" : ""} crumb={view === "payments" ? "Payments" : "Agent workspace"} actions={actions}
+      prompts={SUGGESTIONS} onPrompt={(p) => { setDraft(p); inputRef.current?.focus(); }}
+      status={fixture ? `Replayed from ${state.audit_source || "audit log"} · no model or chain calls` : `Live · ${network} and the configured model`}
+      counts={{ payments: openDeals(state.deals).length }}
+      canvas={<Treasury key={tab} state={state} activity={activity} initialTab={tab} highlightFeed={state.highlight === "feed"} />}>
+      <main className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-end justify-between gap-3 px-4 pb-4 pt-6 md:px-9">
+          <div><p className="text-micro tracking-[0.14em] text-ink-2">SUPPLIER PAYMENTS</p>
+            <h2 className="mt-2 font-display text-title font-semibold tracking-[-0.02em]">Payments chat</h2></div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {fixture && <Chip tone="accent">Fixture {state.state_no}: {state.title}</Chip>}
-          {state.synthetic && <Chip tone="warn" icon={FileWarning}>Synthetic fixture</Chip>}
-          {audit && (audit.intact ? <Chip tone="ok" icon={ShieldCheck}>Audit chain intact · {audit.entries} entries</Chip>
-            : <Chip tone="bad" icon={ShieldAlert}>Audit chain broken</Chip>)}
-          <StatePicker fixture={fixture} list={list} />
-          <ViewNav active="" />
-        </div>
-      </header>
-
-      {halted && (
-        <div role="alert" className="mb-4 flex items-start gap-3 rounded border-2 border-bad bg-raised p-4">
-          <ShieldAlert className="mt-0.5 shrink-0 text-bad" aria-hidden="true" />
-          <div>
-            <p className="font-semibold text-bad">Halted: the escrow wallet is underfunded</p>
-            <p className="text-sm">Every money-moving action is disabled until the balance covers open deals. Owner commands and reading still work.</p>
+        {halted && (
+          <div role="alert" className="mx-4 mb-4 flex items-start gap-3 rounded-md border border-bad/60 bg-[#2b1c18] p-3.5 md:mx-9">
+            <ShieldAlert className="mt-0.5 shrink-0 text-bad" size={18} aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-bad">Halted: the escrow wallet is underfunded</p>
+              <p className="text-cap text-ink-2">Every money-moving action is disabled until the balance covers open deals. Owner commands and reading still work.</p>
+            </div>
           </div>
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_340px]">
-        <main className="order-1 space-y-4 lg:order-2 lg:col-start-2 lg:row-start-1">
-          <NeedsYou pending={pendingCard} payee={payeeDraft || null} alerts={state.alerts} highlight={state.highlight === "needs"}
-            onReview={(id = "pending-card") => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" })} />
-          <section aria-label="Conversation" className="space-y-4">
-            {turns.length ? turns.map((t, i) => <Turn key={i} turn={t} ctx={ctx} />) : <EmptyChat />}
-          </section>
-          <Composer disabled={halted} busy={busy} value={draft} setValue={setDraft} onSend={send} onTick={tick} inputRef={inputRef} />
+        )}
+        <NeedsYou pending={pendingCard} payee={payeeDraft || null} alerts={state.alerts} highlight={state.highlight === "needs"}
+          onReview={(id = "pending-card") => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" })} />
+        <section ref={threadRef} aria-label="Conversation" className="relative min-h-0 flex-1 space-y-8 overflow-y-auto px-4 pb-6 pt-5 md:px-9">
+          {turns.length ? turns.map((t, i) => <Turn key={i} turn={t} ctx={ctx} />) : <EmptyChat />}
+        </section>
+        <div className="bg-gradient-to-t from-canvas from-85% to-transparent px-4 pb-4 pt-4 md:px-8">
           <Suggestions disabled={busy} onSend={send} onPick={(s) => { setDraft(s); inputRef.current?.focus(); }} />
-        </main>
-
-        <aside aria-label="Wallet and deals" className="order-2 space-y-4 lg:order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1 xl:row-span-1">
-          <Wallet w={state.wallet} />
-          <DailyLimit w={state.wallet} />
-          <Payees list={state.payees} now={state.now} highlight={state.highlight === "payees"} />
-          {state.suppliers && state.fixture === "reputation" && <Suppliers list={state.suppliers} />}
-          <Deals deals={state.deals} />
-        </aside>
-
-        <div className="order-3 lg:col-start-2 xl:col-start-3 xl:row-start-1">
-          <Feed items={activity} highlight={state.highlight === "feed"} />
+          <Composer disabled={halted} busy={busy} value={draft} setValue={setDraft} onSend={send} onTick={tick} inputRef={inputRef}
+            model={state.agents?.coordinator && state.agents.coordinator !== "off" ? `Coordinator · ${state.agents.coordinator}` : "Coordinator"} />
+          <p className="mx-0.5 mt-2.5 flex justify-between gap-3 text-micro text-ink-2">Your intent. Checked at every step.
+            <span className="hidden sm:inline">{fixture ? "Replayed · no funds move" : "Money moves only through on-chain escrow"}</span></p>
         </div>
-      </div>
-      <footer className="mt-6 text-cap text-ink-2">
-        {fixture ? <>Replayed from <span className="font-mono">{state.audit_source}</span> and reports/live transcripts. No model or chain calls.</> : `Live: ${state?.network || "Sepolia testnet"} and the configured model.`}
-      </footer>
-    </div>
+      </main>
+    </Shell>
   );
 }

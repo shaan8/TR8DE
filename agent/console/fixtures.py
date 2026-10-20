@@ -14,9 +14,7 @@ from tiwala_agent.guard import tag_contract
 
 ROOT = Path(__file__).resolve().parents[2]
 LIVE = ROOT / "reports" / "live"
-AUDIT = ROOT / "agent" / "logs" / "audit.jsonl"
-if not AUDIT.exists():  # agent/logs is gitignored; the committed copy is a prefix of it
-    AUDIT = LIVE / "audit.jsonl"
+AUDIT = LIVE / "audit.jsonl"  # the committed live-run log, so every machine replays and verifies the same entries
 
 BAYANI, LUMEN = "Bayani Weaves", "Lumen Textiles"
 
@@ -169,27 +167,26 @@ def deals_at(end: int) -> list[dict]:
     return out
 
 
-def _tier_for(i: int, action: dict) -> int | None:
-    for j in range(i - 1, -1, -1):
-        e = ev(j)
-        if e["event"] == "verdict" and e["action"] == action:
-            return e["verdict"]["tier"]
-    return None
-
-
-def activity_at(end: int) -> list[dict]:
-    """Autonomous (monitor) and owner-key actions, newest first. Agent actions the owner asked for stay in chat."""
-    out = []
-    for i in range(min(end, len(audit()))):
-        e = ev(i)
+def activity_from(rows: list[dict]) -> list[dict]:
+    """Autonomous and owner-key actions, newest first: monitor rules, deals the agent made alone inside its on-chain
+    authority (a Tier 1 verdict, no confirmation card), and owner commands. Asked-for, confirmed actions stay in chat."""
+    out, verdicts = [], []
+    for e in rows:
         k = e["event"]
         origin = (e.get("action") or {}).get("origin") or {}
-        if k == "executed" and origin.get("kind") == "monitor":
-            prev = next((ev(j) for j in range(i - 1, -1, -1) if ev(j)["event"] == "verdict"), None)
-            out.append({"type": "autonomous", "status": "executed", "rule": origin["detail"].split(":")[0],
-                        "kind": e["action"]["kind"], "deal_id": e["action"]["deal_id"], "tx": e["tx"],
-                        "block": e.get("block"), "tier": _tier_for(i, e["action"]), "ts": e["ts"], "line": e["line"],
-                        "events": [prev, e] if prev else [e]})
+        if k == "verdict":
+            verdicts.append(e)
+        if k == "executed":
+            prev = next((v for v in reversed(verdicts) if v["action"] == e["action"]), None)
+            tier = prev["verdict"]["tier"] if prev else None
+            monitor = origin.get("kind") == "monitor"
+            alone = e["action"]["kind"] == "create_deal" and tier == 1 and not prev["verdict"].get("needs_confirmation")
+            if monitor or alone:
+                out.append({"type": "autonomous", "status": "executed",
+                            "rule": origin["detail"].split(":")[0] if monitor else "within_authority",
+                            "kind": e["action"]["kind"], "deal_id": e["action"].get("deal_id") or e.get("deal_id"),
+                            "tx": e["tx"], "block": e.get("block"), "tier": tier, "ts": e["ts"], "line": e["line"],
+                            "events": [prev, e] if prev else [e]})
         elif k == "verdict" and origin.get("kind") == "monitor" and not e["verdict"]["allowed"]:
             out.append({"type": "autonomous", "status": "refused", "rule": origin["detail"].split(":")[0],
                         "kind": e["action"]["kind"], "deal_id": e["action"]["deal_id"], "tier": e["verdict"]["tier"],
@@ -201,6 +198,10 @@ def activity_at(end: int) -> list[dict]:
             out.append({"type": "owner", "status": "executed" if e["ok"] else "failed", "command": e["command"],
                         "tx": e.get("tx"), "error": e.get("error"), "ts": e["ts"], "line": e["line"]})
     return out[::-1]
+
+
+def activity_at(end: int) -> list[dict]:
+    return activity_from([ev(i) for i in range(min(end, len(audit())))])
 
 
 SHORT_RX = re.compile(r"leave you (₱[\d,]+(?:\.\d+)?) short on (\S+)\.")

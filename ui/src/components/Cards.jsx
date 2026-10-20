@@ -24,29 +24,52 @@ function CheckerLine({ checker }) {
   );
 }
 
-/** Tier 2: everything the owner needs to say yes, plus Confirm / Edit. */
+/** Tier 2, in the design's approval card: the amount and split up front, every check one click away. */
 export function ActionCard({ e, pending, confirmed, diff, disabled, onConfirm, onEdit }) {
   const c = e.card || {}, v = e.verdict, view = e.view || {};
   const cap = c.cap;
   const within = cap && c.down_pct <= cap.final_pct;
+  const total = c.total_php ?? view.total_php, downPct = c.down_pct ?? view.down_payment_pct;
+  const down = c.down_php ?? view.down_payment_php, bal = c.balance_php ?? view.balance_php;
   return (
-    <Card tone="warn" id={pending ? "pending-card" : undefined} aria-label="Approval needed">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Chip tone="warn" icon={AlertTriangle}>Approval needed</Chip>
-        <TierChip tier={v.tier} />
-        {confirmed && <Chip tone="ok" icon={CheckCircle2}>Confirmed</Chip>}
-        {!pending && !confirmed && <Chip tone="muted">Superseded</Chip>}
+    <div id={pending ? "pending-card" : undefined} aria-label="Approval needed" role="group"
+      className="rounded-[9px] border border-[#4b5437] bg-raised p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-micro tracking-[0.12em] text-warn">
+          <span className="h-1.5 w-1.5 rounded-full bg-warn" aria-hidden="true" />
+          {confirmed ? "CONFIRMED BY YOU" : pending ? "YOUR APPROVAL NEEDED" : "SUPERSEDED"}
+        </span>
+        <span className="flex gap-1.5"><TierChip tier={v.tier} />{confirmed && <Chip tone="ok" icon={CheckCircle2}>Confirmed</Chip>}</span>
       </div>
-      <h3 className="mb-1 text-title font-semibold">{KIND[view.kind]} · {c.po || view.po_ref}</h3>
-      <p className="mb-4 text-sm text-ink-2">Nothing has moved yet. TR8DE sends it only after your own yes.</p>
+      <div className="my-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold">{c.supplier || view.supplier}</h3>
+          <p className="text-micro text-ink-2">{KIND[view.kind]} · {c.po || view.po_ref} · deliver by {c.deliver_by || view.deliver_by}</p>
+        </div>
+        <strong className="text-right font-display text-[22px] font-medium tracking-[-0.02em]">{peso(total)}
+          <span className="block font-sans text-micro font-normal tracking-normal text-ink-2">tPHP · full PO locked</span></strong>
+      </div>
+      <div className="grid grid-cols-2 gap-4 border-y border-subtle py-3.5">
+        <div><span className="block text-micro text-ink-2">Down payment · {downPct}%</span><strong className="font-display text-[15px] font-medium">{peso(down)}</strong>
+          {c.release_now && <span className="block text-micro text-ink-2">released right after creation</span>}</div>
+        <div><span className="block text-micro text-ink-2">Held in escrow · {100 - (downPct || 0)}%</span><strong className="font-display text-[15px] font-medium">{peso(bal)}</strong>
+          <span className="block text-micro text-ink-2">only after your /attest</span></div>
+      </div>
+      <p className="my-3.5 flex flex-wrap gap-x-5 gap-y-1 text-micro text-ok">
+        <span>{e.intent?.ok ? "✓ Matches your words" : "✕ Intent mismatch"}</span>
+        <span>{e.checker?.approve ? "✓ Checker approved" : "✕ Checker rejected"}</span>
+        {cap && <span className={within ? "" : "text-bad"}>{within ? "✓" : "✕"} Deposit within {cap.final_pct}% cap</span>}
+        <span className={c.forecast?.ok === false ? "text-warn" : ""}>{c.forecast?.ok === false ? "! Forecast shortfall" : "✓ No forecast shortfall"}</span>
+      </p>
+      {c.filled?.length > 0 && <p className="mb-3"><Chip tone="warn" icon={Pencil} wrap>Filled in by TR8DE, please check: {c.filled.join(", ")}</Chip></p>}
 
       {diff && (
-        <div className="mb-4 rounded border border-accent p-4" aria-label="Correction">
-          <p className="mb-2 text-sm font-semibold">Changed from your first request</p>
-          <p className="mb-2 text-sm text-ink-2">You first said: “{diff.against}”</p>
+        <div className="mb-4 rounded-md border border-accent/40 p-3.5" aria-label="Correction">
+          <p className="mb-2 text-cap font-semibold">Changed from your first request</p>
+          <p className="mb-2 text-micro text-ink-2">You first said: “{diff.against}”</p>
           <ul className="space-y-1">
             {diff.fields.map((f) => (
-              <li key={f.field} className="flex flex-wrap items-center gap-2 text-sm">
+              <li key={f.field} className="flex flex-wrap items-center gap-2 text-cap">
                 <span className="w-28 text-ink-2">{f.field}</span>
                 <span className="text-bad line-through decoration-2">{f.from}</span>
                 <ArrowRight size={14} aria-hidden="true" /><span className="sr-only">changed to</span>
@@ -54,61 +77,58 @@ export function ActionCard({ e, pending, confirmed, diff, disabled, onConfirm, o
               </li>
             ))}
           </ul>
-          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm"><RotateCcw size={14} aria-hidden="true" />Re-checked: {diff.rechecked.map((r) => <Chip key={r} tone="ok">{r}</Chip>)}</p>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-micro"><RotateCcw size={14} aria-hidden="true" />Re-checked: {diff.rechecked.map((r) => <Chip key={r} tone="ok">{r}</Chip>)}</p>
         </div>
       )}
-
-      <dl className="divide-y divide-subtle/60">
-        <Row label="Supplier">
-          <span className="font-semibold">{c.supplier || view.supplier}</span>
-          {c.r != null && <> · <span className="font-mono">R = {c.r.toFixed(2)}</span></>}
-          {c.record && <div className="text-cap text-ink-2">{c.record}</div>}
-        </Row>
-        <Row label="Locked now"><span className="font-mono">{peso(c.total_php ?? view.total_php)}</span> <span className="text-ink-2">(full PO, held in escrow)</span></Row>
-        <Row label="Down payment">
-          <span className="font-mono">{c.down_pct ?? view.down_payment_pct}% = {peso(c.down_php ?? view.down_payment_php)}</span>
-          {c.release_now && <span className="text-ink-2">, released right after creation</span>}
-        </Row>
-        <Row label="Balance"><span className="font-mono">{peso(c.balance_php ?? view.balance_php)}</span> <span className="text-ink-2">only after your delivery attestation</span></Row>
-        {cap && (
-          <Row label="Cap math">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono">
-              <span>network {cap.network_pct}%</span>
-              {cap.stranger_pct != null && <span>· stranger {cap.stranger_pct}% {cap.stranger_binds ? "(applies: new to you)" : "(does not bind)"}</span>}
-              <span>· final <strong>{cap.final_pct}%</strong></span>
-            </span>
-            <span className="mt-1 flex items-center gap-2">
-              {within ? <Chip tone="ok" icon={CheckCircle2}>Within cap</Chip> : <Chip tone="bad" icon={XCircle}>Over cap</Chip>}
-              <span className="text-ink-2">{c.down_pct}% asked vs {cap.final_pct}% allowed</span>
-            </span>
-          </Row>
-        )}
-        <Row label="Forecast impact">
-          {c.forecast?.ok === false ? (
-            <span className="flex flex-wrap items-center gap-2"><Chip tone="warn" icon={AlertTriangle}>Shortfall</Chip>
-              <span>short by <span className="font-mono">{peso(c.forecast.shortfall_php)}</span> on {c.forecast.date}</span></span>
-          ) : <Chip tone="ok">No shortfall</Chip>}
-        </Row>
-        <Row label="Deliver by">
-          {c.deliver_by || view.deliver_by}
-          {c.filled?.length > 0 && <div className="mt-1"><Chip tone="warn" icon={Pencil} wrap>Filled in by TR8DE, please check: {c.filled.join(", ")}</Chip></div>}
-        </Row>
-        <Row label="Intent">{e.intent?.ok ? <Chip tone="ok" icon={CheckCircle2}>Matches your words</Chip> : <Chip tone="bad">Mismatch</Chip>}</Row>
-        <CheckerLine checker={e.checker} />
-        <Row label="Policy">
-          <span className="mr-2"><TierChip tier={v.tier} /></span>
-          <span className="text-ink-2">{v.reasons.join(" ")}</span>
-          {v.flags?.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{v.flags.map((f) => <Chip key={f} tone="warn">{f}</Chip>)}</div>}
-        </Row>
-      </dl>
 
       {pending && (
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button onClick={onConfirm} disabled={disabled}><CheckCircle2 size={16} aria-hidden="true" />Confirm</Button>
-          <Button variant="ghost" onClick={onEdit} disabled={disabled}><Pencil size={16} aria-hidden="true" />Edit</Button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={onConfirm} disabled={disabled}
+            className="flex min-h-[38px] flex-1 items-center justify-between gap-2 rounded-md bg-accent px-3.5 text-cap font-semibold text-accent-deep hover:bg-[#d9edbc] disabled:opacity-50">
+            Review &amp; approve <span aria-hidden="true">↗</span></button>
+          <button onClick={onEdit} disabled={disabled}
+            className="min-h-[38px] rounded-md border border-subtle px-3.5 text-cap hover:border-accent hover:text-accent-text disabled:opacity-50">Edit terms</button>
         </div>
       )}
-    </Card>
+      <p className="mt-2.5 text-micro text-ink-2">{confirmed ? "Sent after your own yes." : "Nothing has moved yet. TR8DE sends it only after your own yes."}</p>
+
+      <details className="mt-3 text-cap text-ink-2">
+        <summary className="cursor-pointer py-2 hover:text-accent-text">View policy, liquidity &amp; independent checks <span aria-hidden="true" className="float-right">＋</span></summary>
+        <dl className="mt-1 divide-y divide-line">
+          <Row label="Supplier">
+            <span className="font-semibold">{c.supplier || view.supplier}</span>
+            {c.r != null && <> · <span className="font-mono">R = {c.r.toFixed(2)}</span></>}
+            {c.record && <div className="text-micro text-ink-2">{c.record}</div>}
+          </Row>
+          {cap && (
+            <Row label="Cap math">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono">
+                <span>network {cap.network_pct}%</span>
+                {cap.stranger_pct != null && <span>· stranger {cap.stranger_pct}% {cap.stranger_binds ? "(applies: new to you)" : "(does not bind)"}</span>}
+                <span>· final <strong>{cap.final_pct}%</strong></span>
+              </span>
+              <span className="mt-1 flex items-center gap-2">
+                {within ? <Chip tone="ok" icon={CheckCircle2}>Within cap</Chip> : <Chip tone="bad" icon={XCircle}>Over cap</Chip>}
+                <span className="text-ink-2">{c.down_pct}% asked vs {cap.final_pct}% allowed</span>
+              </span>
+            </Row>
+          )}
+          <Row label="Forecast impact">
+            {c.forecast?.ok === false ? (
+              <span className="flex flex-wrap items-center gap-2"><Chip tone="warn" icon={AlertTriangle}>Shortfall</Chip>
+                <span>short by <span className="font-mono">{peso(c.forecast.shortfall_php)}</span> on {c.forecast.date}</span></span>
+            ) : <Chip tone="ok">No shortfall</Chip>}
+          </Row>
+          <Row label="Intent">{e.intent?.ok ? <Chip tone="ok" icon={CheckCircle2}>Matches your words</Chip> : <Chip tone="bad">Mismatch</Chip>}</Row>
+          <CheckerLine checker={e.checker} />
+          <Row label="Policy">
+            <span className="mr-2"><TierChip tier={v.tier} /></span>
+            <span className="text-ink-2">{v.reasons.join(" ")}</span>
+            {v.flags?.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{v.flags.map((f) => <Chip key={f} tone="warn">{f}</Chip>)}</div>}
+          </Row>
+        </dl>
+      </details>
+    </div>
   );
 }
 
@@ -171,7 +191,7 @@ export function TxReceipt({ e, autonomous }) {
         {e.block && <Row label="Block" mono>{e.block.toLocaleString("en-US")}</Row>}
         {failed && <Row label="Decoded"><span className="font-mono text-bad">{e.error}</span>{e.selector && <span className="text-ink-2"> · selector <span className="font-mono">{e.selector}</span></span>}</Row>}
         <Row label="Tx">{e.tx ? <TxLink hash={e.tx} /> : "none"}</Row>
-        <Row label="Status">{failed ? "status 0, reverted by the contract; no funds moved" : "status 1, confirmed on Sepolia"}</Row>
+        <Row label="Status">{failed ? "status 0, reverted by the contract; no funds moved" : "status 1, confirmed on-chain"}</Row>
       </dl>
       {e.note && <p className="mt-2 text-sm text-ink-2">{e.note}</p>}
     </Card>
