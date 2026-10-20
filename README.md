@@ -14,6 +14,11 @@
   <img src="reports/ui/04-approval-1440.png" alt="TR8DE console" width="860">
 </p>
 
+**Watch the console overview (36 seconds, local demo).** Payments, negotiations and the supplier directory;
+this clip tours the interface and does not show a completed payment.
+
+https://github.com/user-attachments/assets/8bb2690a-1246-4278-b3dd-da9550c89834
+
 Submission documents: [technical documentation](docs/submission/1-technical-documentation.md),
 [security self-assessment](docs/submission/5-security-self-assessment.md),
 [execution evidence](docs/submission/6-execution-evidence.md), [5-minute demo plan](docs/submission/demo-plan.md).
@@ -30,6 +35,11 @@ signed with the owner key, and no model can reach them.
 - "What's my balance and what deals are open?"
 - "What is Lumen Textiles' delivery record?" (network reputation and the deposit cap it allows you)
 - "Can I afford a PHP 80,000 PO on 2026-10-30?" (cash forecast, with delay, split or top-up options if you can't)
+
+**Watch a wallet status request (35 seconds, local demo).** Shows the request, processing trace and wallet
+response. It does not demonstrate every planning example above or broadcast a payment.
+
+https://github.com/user-attachments/assets/0fae76d0-de02-4513-a9f7-ed1f34ba7a6d
 
 **Paying suppliers**
 
@@ -90,6 +100,11 @@ signed with the owner key, and no model can reach them.
 - `/tick`: run the monitor now (deadlines, attestations, balances). `/verify`: check the audit chain
 - `/guide`: show all of this in the app
 
+**Watch command help (32 seconds, local demo).** Shows `/guide`, `/limits` and owner-command usage help.
+It does not show delivery attestation, a balance release or a freeze transaction being executed.
+
+https://github.com/user-attachments/assets/ffea3c0d-ff8c-440f-ba23-a46c1225d772
+
 # 0. How to deploy
 
 ### 0.1 Requirements
@@ -119,6 +134,12 @@ consumed by signing in. Ctrl+C stops the demo. After signing in:
    as the supplier). When both sides agree, press "Recheck and prepare escrow".
 2. **Payments**: confirm, then `/attest <deal>`. The balance is released and Lumen's on-chain record updates.
 3. With a model key in `.env` (0.3), try any prompt above.
+
+**Watch the demo sign-in screen and workspace (31 seconds).** Browser-only recording; cloning, terminal setup
+and copying credentials are not shown. Use the instructions above for your own generated password. The recording
+predates the login page's new “Where do I get my login?” help.
+
+https://github.com/user-attachments/assets/51091579-a874-4b92-92a8-a52ad95b2575
 
 ### 0.3 Get your keys (For Live Mode)
 
@@ -275,6 +296,12 @@ to their console, keys or deployment.
 | Streamlit chat, same owner login | `../.venv/bin/streamlit run app.py` |
 | Terminal | `../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json` |
 | Contracts only | `./scripts/deploy-sepolia.sh` (about 110 txs, 0.1 to 0.3 Sepolia ETH) |
+
+**Watch the console replay option (33 seconds).** Shows the fixture selector switching from an approval card
+to a recorded transaction receipt. This is a replay of saved evidence: it makes no new model calls or blockchain
+transactions, and is not a demonstration of Streamlit, the CLI or contracts-only deployment.
+
+https://github.com/user-attachments/assets/c3eb429f-b7d9-40f3-9110-c23df4e1631d
 
 The monitor runs on its own every `MONITOR_INTERVAL_S` seconds (default 300). Deadlines use the device timezone;
 `TIWALA_TZ=Asia/Manila` overrides it.
