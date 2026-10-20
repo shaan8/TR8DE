@@ -1,0 +1,43 @@
+{
+  "chain_id": 11155111,
+  "audit_intact": true,
+  "audit_entries": 27,
+  "no_owner_confirmation": true,
+  "deal": 10,
+  "total_tPHP": 24800.0,
+  "deposit_pct": 15.0,
+  "deposit_tPHP": 3720.0,
+  "receipts": [
+    {
+      "hash": "0x57d5763dfe87d78c1ec960322e56aea79edda6021161b77433a78d1f25da14b4",
+      "function": "createDeal",
+      "args": {
+        "supplier": "0x3Ca6Ed8319FCd6C42A90110d198aB32A68628af3",
+        "total": 2480000,
+        "downBps": 1500,
+        "deadline": 1792943940,
+        "ref": "NEG-FDFE804D-v7 D0BC7E"
+      },
+      "status": 1,
+      "block": 11955434,
+      "from": "0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a",
+      "to": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a"
+    },
+    {
+      "hash": "0xdb10a76c922e5bbb247d93b622a2b5cdd483852451fb32e2de5387b9d709e4a4",
+      "function": "releaseDownPayment",
+      "args": {
+        "id": 10
+      },
+      "status": 1,
+      "block": 11955437,
+      "from": "0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a",
+      "to": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a"
+    }
+  ],
+  "cash_plan": {
+    "buffer": 2000000,
+    "inflows": [],
+    "planned": []
+  }
+}

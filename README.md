@@ -10,21 +10,37 @@
   <a href="https://sepolia.etherscan.io/address/0x2Fc37E4e02F4d10745875710cd54B52429A28C1a"><img src="https://img.shields.io/badge/live-Sepolia-5B5BD6" alt="Live on Sepolia"></a>
 </p>
 
-<p align="center">
-  <img src="reports/ui/04-approval-1440.png" alt="TR8DE console" width="860">
-</p>
+**Watch the autonomous AI wallet on Sepolia (2 min 16 sec).** Set a negotiation mandate once; the live buyer
+and supplier AI models agree on terms, then TR8DE creates escrow and pays the deposit **without an owner yes
+or approval click after agreement**. Deal 10 locks **24,800 tPHP** and pays **3,720 tPHP** to Lumen.
 
-**Watch the console overview (24 seconds, local demo).** Payments, negotiations and the supplier directory.
-The walkthroughs below keep typing and results readable; processing waits are shortened and each clip labels its mode.
+https://github.com/user-attachments/assets/fb32a346-2bb6-456b-adb2-29dbcb794922
+
+Verify the agent-signed [escrow creation](https://sepolia.etherscan.io/tx/0x57d5763dfe87d78c1ec960322e56aea79edda6021161b77433a78d1f25da14b4)
+and [deposit transfer](https://sepolia.etherscan.io/tx/0xdb10a76c922e5bbb247d93b622a2b5cdd483852451fb32e2de5387b9d709e4a4).
+Both receipts succeeded. This uses test funds, live Qwen models and a hosted test supplier agent. The isolated
+fictional cash plan has a PHP 20,000 buffer and no additional scheduled outflows; existing plans and all policy
+and contract controls remain unchanged. Model and chain waits are cut. The balance remains in escrow until
+the owner attests delivery. [Run evidence and audit](reports/videos/autonomous-sepolia.json).
+
+**Autonomy is the normal in-policy path.** Risk flags or terms beyond the agent’s authority require review;
+policy violations are refused. The separate approval-card clip in 0.4 shows that exception.
+
+<details>
+<summary>Short console overview (24 seconds, local demo)</summary>
+
+Payments, negotiations and the supplier directory.
 
 https://github.com/user-attachments/assets/d3d83836-bff7-4a3b-8df2-f0d14aafdf49
+
+</details>
 
 Submission documents: [technical documentation](docs/submission/1-technical-documentation.md),
 [security self-assessment](docs/submission/5-security-self-assessment.md),
 [execution evidence](docs/submission/6-execution-evidence.md), [5-minute demo plan](docs/submission/demo-plan.md).
 The [judging evidence map](docs/submission/1-technical-documentation.md#17-judging-criteria-and-evidence-map)
 connects each criterion to tests, hashes and recording coverage. See the [walkthrough index](docs/walkthrough-videos.md)
-for all ten clips, their recording modes and remaining coverage gaps.
+for all eleven clips, their recording modes and remaining coverage gaps.
 
 ## What you can do
 
@@ -265,8 +281,9 @@ signature or your verify token.
 2. Run `./scripts/live.sh`. The first run makes the deployer key and stops. Fund it (0.3).
 3. Run `./scripts/live.sh` again. It creates the owner and agent keys, then deploys the token, factory and wallets.
    It seeds supplier history, asks you to choose a console password and starts the console on
-   `http://127.0.0.1:8000`. Allow about 50 minutes the first time. Later runs reuse the deployment and start in
-   seconds.
+   `http://127.0.0.1:8000`. The full one-time deployment **and sample trade-history setup** can take about 50 minutes, including
+   deliberately waiting for example late deliveries. This is not a login or per-payment wait. Later runs reuse
+   the deployment.
 4. **Sign in to your live console:** when setup reaches **5/6 Owner login**, it shows your username (default
    **owner**) and asks you to choose and repeat a **15–256 character password**. Use a unique passphrase or
    password-manager-generated password. Typing is hidden: no dots or characters appear. This is expected.
@@ -288,9 +305,9 @@ contract events or token transfers. A newly broadcast transaction may take a sho
 These are public Sepolia testnet transactions using test funds. Local-demo hashes exist only on the private
 chain and cannot be viewed on Etherscan. Your live clone uses your own deployment, not the author's wallet.
 
-**Watch a live payment and Etherscan (88 seconds).** A new PHP 1,000 test escrow for Lumen, the forecast-risk
+**Exception path — forecast risk requires approval (88 seconds).** A new PHP 1,000 test escrow for Lumen, the forecast-risk
 approval card, the confirmed 200 tPHP deposit, and the matching Etherscan **Success** and event logs. Processing,
-mining and explorer-indexing waits are shortened. The test payment is [deal 9’s deposit](https://sepolia.etherscan.io/tx/0x3744d2bc435ecd87f5575b94c9efcf5d853b6a1d152dc8c7d69fec54a8b22714).
+mining and explorer-indexing waits are shortened. The autonomous headline clip above shows the no-confirmation path. This exception test payment is [deal 9’s deposit](https://sepolia.etherscan.io/tx/0x3744d2bc435ecd87f5575b94c9efcf5d853b6a1d152dc8c7d69fec54a8b22714).
 
 https://github.com/user-attachments/assets/982cc5f3-d873-4a00-8a17-58cddb372a10
 

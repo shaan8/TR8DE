@@ -75,6 +75,31 @@ The live-model request was “Create escrow for Lumen Textiles, PO JUDGE-2026102
 Both receipts, methods, signer, destination and amounts were checked against public RPC; the video also shows Etherscan Success and event logs. This is owner-confirmed creation followed by the automatic deposit, not a card-free autonomous create. No real supplier message was sent. A separate 11-entry recording audit session verifies intact; the historical log was preserved rather than repaired.
 
 
+
+### 6.2.2 Autonomous negotiated escrow on Sepolia, 20 October 2026
+
+Live Qwen buyer and supplier models negotiated `NEG-FDFE804D` within an owner mandate of 200 desired units,
+150 minimum, PHP 30,000 maximum and PHP 60,000 reserve. The supplier accepted buyer v7: 200 units at PHP 124,
+PHP 24,800 total, 15% deposit, delivery 25 October. After agreement, **no owner confirmation was submitted**.
+The agent created deal 10 and paid 3,720 tPHP. Both policy verdicts were Tier 1 with no risk flags.
+
+| Function | Receipt | Verified result |
+| --- | --- | --- |
+| `createDeal` | [0x57d5763d…](https://sepolia.etherscan.io/tx/0x57d5763dfe87d78c1ec960322e56aea79edda6021161b77433a78d1f25da14b4) | Status 1, block 11955434; deal 10, 24,800 tPHP, 15% deposit, exact agreed PO |
+| `releaseDownPayment` | [0xdb10a76c…](https://sepolia.etherscan.io/tx/0xdb10a76c922e5bbb247d93b622a2b5cdd483852451fb32e2de5387b9d709e4a4) | Status 1, block 11955437; 3,720 tPHP from the wallet to saved Lumen supplier |
+
+Both calls are signed by scoped agent `0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a` to the existing demo wallet.
+Public RPC checks validate methods, arguments, deal state `DOWN_PAID`, signer, destination and the token transfer.
+The video shows both Etherscan Success pages. The [27-entry audit](../../reports/videos/autonomous-sepolia-audit.jsonl)
+verifies intact and contains no `confirmed` or owner `user_message` events. [Receipt verification](../../reports/videos/autonomous-sepolia.json).
+The payment code is the existing post-fix path at `91b00ff`; presentation fixes clarify autonomy and keep status
+polling active through the settlement worker. No policy or contract limits were relaxed.
+
+The test uses an isolated fictional plan with a PHP 20,000 buffer and no other planned outflows; existing plans
+are unchanged. Buyer and supplier use live models; the supplier is a hosted test agent. No real supplier message
+was sent. The agent commits the full PO to escrow; only the deposit transfers before delivery attestation.
+
+
 ## 6.3 Deployment and seeded network history
 
 111 transactions, 0 reverted: token, factory, 5 wallets, and 19 trades between 4 network buyers and 4 suppliers,
@@ -124,7 +149,7 @@ python3 scripts/verify_audit.py reports/live/audit.jsonl
 
 ## 6.7 Demo video
 
-The ten [README walkthrough clips](../walkthrough-videos.md) are recorded and published, including live Sepolia
+The eleven [README walkthrough clips](../walkthrough-videos.md) are recorded and published, including live Sepolia
 login, a new owner-confirmed escrow/deposit, local negotiation through settlement and login/payment refusals.
 The separate five-minute submission film in [`demo-plan.md`](demo-plan.md) is still pending.
 
@@ -142,8 +167,8 @@ receipts when establishing Topic F task execution.
 
 Of the successful agent-signed create examples, deal 2, deal 5 and deal 6 required owner cards. Deals 7 and 8
 were autonomous creations through the pre-fix supplier vulnerability. They must not be presented as clean proof
-of safe autonomous creation. Autonomous release and refund paths have historical transaction examples. The current autonomous-create
-path is supported by local regression; a new post-fix public create hash remains pending.
+of safe autonomous creation. The new post-fix autonomous negotiation-to-create/deposit run is verified in 6.2.2.
+Autonomous release and refund paths also have historical transaction examples.
 
 ## 6.9 Verification procedure
 
@@ -162,14 +187,14 @@ path is supported by local regression; a new post-fix public create hash remains
 
 | Item | Current status | Completion evidence |
 | --- | --- | --- |
-| Post-fix autonomous create | Pending a separately approved Sepolia run | Fresh PO, no card, create and deposit receipts, matching agent signer and recording |
+| Post-fix autonomous create | Verified on Sepolia: deal 10, no owner payment confirmation | Section 6.2.2: new create/deposit receipts, agent signer, audit and headline video |
 | Post-fix flagged supplier path | Local regression passes; live recording pending | Agreement remains unsent, explicit escrow request produces `flagged_input` owner card, no automatic payout |
 | Clarification and correction | Tests and earlier transcript available | New video shows missing terms, corrected deposit and a rechecked card |
 | Fallback | Local provider, negotiation and outage tests pass | Clearly labelled local replay or prepared failure clip; no simulated receipt presented as Sepolia |
-| README clips | Ten clips published; new deal 9 receipts verified | [Index and coverage](../walkthrough-videos.md) |
+| README clips | Eleven clips published; deals 9 and 10 receipts verified | [Index and coverage](../walkthrough-videos.md) |
 | Five-minute submission film | Separate film pending | Final video URL with the remaining planned scenarios |
 | Repository visibility | Owner action still pending unless changed separately | A signed-out judge can open source, tests and evidence |
 
-The video plan specifies the remaining submission-film scenarios. The new README recording sent the two
-Sepolia test transactions listed in 6.2.1; real supplier messaging was disabled. The pre-fix failures remain
+The video plan specifies the remaining submission-film scenarios. The new README recordings sent the four
+Sepolia test transactions listed in 6.2.1 and 6.2.2; real supplier messaging was disabled. The pre-fix failures remain
 classified as failures and are not replaced by the new successful run.

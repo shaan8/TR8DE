@@ -215,7 +215,7 @@ def test_supplier_own_system_negotiates_over_the_api(env, svc, monkeypatch):
 
 
 
-def test_agreement_inside_the_agent_authority_needs_no_owner(env, tmp_path):
+def test_agreement_inside_the_agent_authority_needs_no_owner(env, tmp_path, monkeypatch):
     """Topic F's core claim: inside the budget the owner set on the wallet contract, the agent commits the funds
     itself. No confirmation card is raised and the deposit goes out in the same run."""
     (env["data"] / "plans.json").write_text(json.dumps({"buffer": 0, "inflows": [], "planned": []}))
@@ -223,9 +223,25 @@ def test_agreement_inside_the_agent_authority_needs_no_owner(env, tmp_path):
     s = NegotiationService(t, tmp_path / "auto", wa_cfg=Config())
     now = env["chain"].now()
     s.mandates.put(SupplierMandate(env["lumen"], 150_00, 110_00, 450, 200, now + 5 * DAY, 1500, [[400, 2000]]))
+    # Keep settlement active after offer exchange ends, as on a slower live chain.
+    # The console must continue polling until the automatic receipts arrive.
+    from threading import Event
+    entered, proceed = Event(), Event()
+    request_escrow = s.request_escrow
+    def held_escrow(nid):
+        entered.set()
+        assert proceed.wait(30)
+        return request_escrow(nid)
+    monkeypatch.setattr(s, "request_escrow", held_escrow)
     before = n_deals(env)
     n = s.run_agent(s.open("Lumen Textiles", "Cotton fabric", constraints(env), "agent").id)
+    try:
+        assert entered.wait(5)
+        assert s.running(n.id)  # offer exchange ended; settlement alone is active
+    finally:
+        proceed.set()
     s.await_settlement(n.id)
+    assert not s.running(n.id)
     n = s.engine.store.get(n.id)
     assert n.state == State.ESCROW_CREATED.value, (n.state, n.reason)
     assert n_deals(env) == before + 1

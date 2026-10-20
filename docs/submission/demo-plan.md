@@ -48,8 +48,8 @@ It was inspected and left unchanged. Check and adjust demo-only plans before cla
 ## Evidence and submission checklist
 
 - Add every newly approved broadcast to [6.2](6-execution-evidence.md#62-agent-runs-on-sepolia), with actual signer,
-  function, receipt status, deal id and approval mode. The missing public proof is a **post-fix autonomous create**;
-  deal 6 was owner-confirmed and deals 7-8 are pre-fix attack evidence.
+  function, receipt status, deal id and approval mode. The **post-fix autonomous create/deposit is now recorded for deal 10** in the README headline clip and
+  execution evidence 6.2.2. Deal 6 was owner-confirmed and deals 7-8 remain pre-fix attack evidence.
 - Re-run `python3 scripts/check_hashes.py docs/submission/6-execution-evidence.md`. If system Python lacks its
   CA bundle, use `SSL_CERT_FILE="$(.venv/bin/python -m certifi)" python3 scripts/check_hashes.py docs/submission/6-execution-evidence.md`.
 - Do not expose keys, `.env`, supplier bearer tokens, access tokens or personal chat details in the recording.
@@ -73,3 +73,9 @@ negotiation record before seeking transaction approval.
 
 Record README clip 0.4 separately. Use a fresh PO and this plan; `docs/demo-runbook.md` is retired.
 The scenario report already records source `129a354`. Regenerate it if agent, contract or verification code changes.
+
+## Completed autonomous headline recording
+
+The [README headline clip](../../README.md) now records negotiation with live buyer and supplier models through
+automatic Sepolia escrow and deposit, verified as deal 10. It uses an isolated fictional cash plan; original plans
+remain unchanged. This two-minute clip can supply the autonomous sequence in the separate submission film.

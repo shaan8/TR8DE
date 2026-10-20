@@ -8,7 +8,7 @@ import { Shell } from "./components/Shell.jsx";
 const P = (units) => peso(units / 100, 2);
 const STATE = {
   awaiting_acceptance: ["Waiting for the supplier", "accent"], negotiating: ["TR8DE is answering", "accent"],
-  awaiting_clarification: ["Needs a clear reply", "warn"], awaiting_buyer_approval: ["Agreed: your review", "warn"],
+  awaiting_clarification: ["Needs a clear reply", "warn"], awaiting_buyer_approval: ["Agreement reached", "accent"],
   ready_for_escrow: ["Confirm in chat", "warn"], escrow_created: ["Escrow created", "ok"], rejected: ["No deal", "bad"],
   expired: ["Expired", "muted"], cancelled: ["Cancelled", "muted"],
 };
@@ -144,7 +144,7 @@ function Agreement({ n, onEscrow, onConfirm, busy, readonly }) {
         <Chip tone="ok" icon={Handshake}>Both accepted v{p.version}</Chip><StateChip s={n.state} />
       </div>
       <h3 className="mb-1 text-title font-semibold">Agreement with {n.supplier_name}</h3>
-      <p className="mb-3 text-sm text-ink-2">Supplier acceptance is not your payment approval. Escrow needs your own yes, after every check runs again on fresh chain data.</p>
+      <p className="mb-3 text-sm text-ink-2">The exact agreement is checked against fresh chain data. Within your authority and with all checks passing, the agent creates escrow and pays the deposit automatically. Otherwise, review is required.</p>
       <dl className="divide-y divide-subtle/60">
         <Row label="Terms">{t.quantity.toLocaleString("en-US")} × {n.product} at {P(t.unit_price)} = <strong className="font-mono">{P(t.total)}</strong></Row>
         <Row label="Deposit">{t.deposit_bps / 100}% = <span className="font-mono">{P(t.deposit)}</span>, paid right after the deal is created</Row>
@@ -367,7 +367,7 @@ export default function Negotiate() {
           </aside>
         )}
       </div>
-      <footer className="mt-6 text-micro text-ink-2">{fixture ? "Replayed from reports/negotiation. No model, WhatsApp or chain calls." : "Negotiation never moves money by itself: escrow goes through the same payment checks, and your yes when it is above your limits."}</footer>
+      <footer className="mt-6 text-micro text-ink-2">{fixture ? "Replayed from reports/negotiation. No model, WhatsApp or chain calls." : "Once both sides agree, escrow and the deposit run automatically within your authority if all payment checks pass. Risk flags or terms beyond that authority require your approval."}</footer>
     </div>
     </Shell>
   );

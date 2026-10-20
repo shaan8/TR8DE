@@ -2,8 +2,9 @@
 
 Escrow handoff (request_escrow) is idempotent: it returns the existing deal if the negotiation already has one or if
 a deal with the same on-chain reference exists, returns the same pending card on a repeated request, and rechecks
-funds, reserve, supplier status, deposit ceiling and expiry before drafting. The deal is created only when the owner
-confirms the card in their own words, through TR8DE's policy, Checker, Gate and signer.
+funds, reserve, supplier status, deposit ceiling and expiry before drafting. An agreed deal inside the owner's
+authority settles automatically when every check passes. A required confirmation must come from the owner.
+Both paths use the same policy, Checker, Gate and signer.
 """
 from __future__ import annotations
 
@@ -264,8 +265,10 @@ class NegotiationService:
             self._log("negotiation_agent_error", negotiation=nid, error=f"{type(e).__name__}: {str(e)[:200]}")
 
     def running(self, nid: str) -> bool:
-        th = self._runs.get(nid)
-        return bool(th and th.is_alive())
+        # Automatic settlement continues after the offer-exchange thread exits.
+        # Keep the console polling until escrow creation and the deposit finish.
+        return any(th is not None and th.is_alive()
+                   for th in (self._runs.get(nid), self._runs.get(f"settle-{nid}")))
 
     def await_settlement(self, nid: str, timeout: float = 30.0) -> None:
         """Block until the automatic escrow attempt for this negotiation has finished, for callers that need the

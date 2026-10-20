@@ -1,5 +1,87 @@
 [
   {
+    "file": "0-autonomous-sepolia.mp4",
+    "seconds": 136.333333,
+    "title": "Autonomous AI negotiation to Sepolia escrow and deposit",
+    "scope": "Live Qwen buyer, supplier and checker; isolated fictional cash plan; real Sepolia test transactions; no owner payment confirmation.",
+    "segments": [
+      [
+        "autonomy-sepolia.webm",
+        18,
+        40,
+        "1. Set the mandate once",
+        "Sepolia test funds. Max order: PHP 30,000. Keep PHP 60,000 free. No payment approval after agreement."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        45,
+        55,
+        "1. Start the autonomous negotiation",
+        "Isolated fictional cash plan: PHP 20,000 buffer, no additional planned outflows. Existing plans unchanged."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        138,
+        149,
+        "2. Buyer and supplier AI exchange offers",
+        "Both sides use live Qwen models. The supplier is a test agent hosted on this server; no real supplier messages."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        195,
+        207,
+        "2. TR8DE negotiates the price and deposit",
+        "Owner sets limits; the agents choose terms. Long model and chain waits are cut."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        268,
+        280,
+        "3. Both sides agree; settlement starts automatically",
+        "200 units x PHP 124 = PHP 24,800. Deposit 15% = PHP 3,720. No owner yes or approval click."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        366,
+        377,
+        "4. Agent creates the Sepolia escrow",
+        "Deal 10. Fresh policy and independent AI checks passed. Settlement status was refreshed in the browser."
+      ],
+      [
+        "autonomy-sepolia.webm",
+        380,
+        394,
+        "4. Deposit released automatically",
+        "Both hashes are produced by this run. The balance stays in escrow until owner delivery attestation."
+      ],
+      [
+        "live-payment.webm",
+        3,
+        16,
+        "5. Verify escrow creation on Sepolia Etherscan",
+        "Success. Agent signer: 0xCE2c3A42...13d8A3e1a. Existing test deployment; no new contract deployment."
+      ],
+      [
+        "live-payment.webm",
+        35,
+        44,
+        "6. Verify the deposit on Sepolia Etherscan",
+        "Success. The same scoped agent key signed the deposit transaction."
+      ],
+      [
+        "live-payment.webm",
+        48,
+        62,
+        "6. Supplier received 3,720 tPHP",
+        "Real Sepolia receipt and ERC-20 transfer. No owner confirmation between agreement, escrow and deposit."
+      ]
+    ],
+    "sha256": "a2344502e83ea1999237bcb5138bb6697787d1b1277bc8ecf665cf6bca30c8ff",
+    "bytes": 1599737,
+    "url": "https://github.com/user-attachments/assets/fb32a346-2bb6-456b-adb2-29dbcb794922",
+    "review": "Visual review and full MP4 decode passed."
+  },
+  {
     "file": "0.2-local-demo-setup.mp4",
     "seconds": 27.73,
     "source_segments": [
