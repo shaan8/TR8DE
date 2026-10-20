@@ -61,3 +61,33 @@ It was inspected and left unchanged. Check and adjust demo-only plans before cla
   Deck, roster and final video are still pending; this plan does not mark them complete.
 - Every push requires the user's approval. Immediately before pushing, fetch and rebase onto `origin/main`
   because README edits may have been made in GitHub's web editor. Review any conflict before proceeding.
+
+## Feature and screen guide
+
+| Feature | Where to show it | What the viewer should learn |
+| --- | --- | --- |
+| Wallet and authority | Payments view sidebar | Agent signer and contract wallet differ; limits are owner-set |
+| Autonomous escrow | Payments chat, then Etherscan | A fully stated unflagged instruction can create and deposit without an owner card |
+| Clarification and correction | Payments chat and card | Missing information is surfaced; a changed percent is rechecked rather than silently accepted |
+| Four security areas | Payments chat, then the historical revert tab | Each attempted boundary violation reaches a refusal, owner-only control or exact review; no secret is displayed |
+| Liquidity forecast | Forecast response or card reason | The full purchase total is locked; future commitments can remove autonomy |
+| Negotiation and takeover | Negotiations tab, then supplier console | Structured versioned terms determine agreement; supplier identity and owner authority are distinct |
+| Delivery and refund | Payments `/attest`, monitor output and Etherscan | Owner attests; agent pays the balance or refunds overdue unpaid escrow |
+| Fallback and integrity | Labelled prepared local replay, then `/verify` and evidence | Model failure does not imply permission to pay; every sent tx stays reportable |
+
+## Fallback clip and interaction risk
+
+Reserve ten seconds inside 2:50-3:50 for a labelled local replay of invalid buyer-model output falling back to
+rules. Show the model/rules label and the structured offer; do not disable a provider or network mid-broadcast
+to create drama. If a real live fallback occurs, show its actual outcome instead. Keep the final edit within
+five minutes by shortening the waiting portions of negotiation, not by hiding approval screens.
+
+The reported counter-message mismatch remains open: text said 500 metres at PHP 115 and 15% while proposal v3
+was 450 at PHP 105 and 20%. Record the structured version and acceptance code as authoritative. Do not narrate
+the prose as an agreed offer when it contradicts that version. If this appears during rehearsal, pause the take,
+correct or regenerate the proposal, and check the result before seeking any transaction approval.
+
+The README recording prompt and its live-deploy clip 0.4 remain the user's recording work. The retired
+`docs/demo-runbook.md` has a superseded notice; use this plan and a fresh PO instead of its old PO-106 commands.
+The evidence-regeneration task is already complete for agent source `129a354`; repeat it only after changing
+agent, contract or verification code. These document edits do not require pretending a new test run occurred.

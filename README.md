@@ -17,6 +17,8 @@
 Submission documents: [technical documentation](docs/submission/1-technical-documentation.md),
 [security self-assessment](docs/submission/5-security-self-assessment.md),
 [execution evidence](docs/submission/6-execution-evidence.md), [5-minute demo plan](docs/submission/demo-plan.md).
+The [judging evidence map](docs/submission/1-technical-documentation.md#17-judging-criteria-and-evidence-map)
+connects each criterion to tests, hashes and remaining recording work.
 
 ## What you can do
 

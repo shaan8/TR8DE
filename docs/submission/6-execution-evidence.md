@@ -1,7 +1,7 @@
 # 6. Execution evidence
 
 TR8DE, WeBank FinTechathon 2026, International Track, Topic F (on-chain).
-All evidence below is real Ethereum Sepolia transactions (chain 11155111). Every hash opens on Etherscan.
+The transaction tables below contain real Ethereum Sepolia transactions (chain 11155111). Local test logs and live-model negotiations without a transaction are labelled separately. Every Sepolia transaction link opens on Etherscan.
 Re-check all of them in one command (standard library only):
 
 ```bash
@@ -88,6 +88,13 @@ and the Checker approved the escrow draft. The card was left unconfirmed, so no 
 
 ## 6.5 Scenario evidence on a local chain
 
+Current report: **227/227 scenarios**, with **200,000** seeded policy cases and **zero observed rule violations**.
+The report identifies agent source commit `129a354`; the generated evidence was committed in `329b934`.
+The full local agent suite is 248 tests; the report excludes 21 provider-adapter tests. Foundry reports 40
+results, and 58 Playwright checks passed locally. [CI run 30](https://github.com/shaan8/TR8DE/actions/runs/39366271017)
+is green for contracts and agent scenarios, UI build and the secret scan. CI does not run the Playwright suite.
+
+
 Every scenario also runs on a local anvil chain with the same contracts and scripted models, so a pass shows the
 deterministic controls held whatever the models said. Grouped by task completion, safe execution, attacks blocked,
 and privacy and integrity, with the commit it ran on: [`reports/evidence/SUMMARY.md`](../../reports/evidence/SUMMARY.md).
@@ -106,3 +113,48 @@ python3 scripts/verify_audit.py reports/live/audit.jsonl
 
 Recording plan: [`demo-plan.md`](demo-plan.md). The final video is still pending. Add any new recording
 transactions to 6.2 after verifying their receipts and signer; do not treat planned beats as executed evidence.
+
+## 6.8 What the on-chain evidence proves
+
+Successful receipts establish that the identified signer submitted a call to the deployed contracts and that
+the chain accepted its state transition. Contract events and token transfers establish the recorded deal and
+payment amounts. They do not establish what the owner typed, whether a confirmation card was shown, which
+model ran or whether goods were delivered in the real world. Those claims require the corresponding dialogue,
+audit events or screen recording. Owner approval mode in 6.2 comes from the run record, not the signature alone.
+
+The forced-revert receipt proves the contract refused that specific unattested release. Refused off-chain
+requests correctly have no transaction hash. Screenshots and local Anvil hashes cannot substitute for Sepolia
+receipts when establishing Topic F task execution.
+
+Of the successful agent-signed create examples, deal 2, deal 5 and deal 6 required owner cards. Deals 7 and 8
+were autonomous creations through the pre-fix supplier vulnerability. They must not be presented as clean proof
+of safe autonomous creation. Autonomous release and refund paths have historical transaction examples. The current autonomous-create
+path is supported by local regression; a new post-fix public create hash remains pending.
+
+## 6.9 Verification procedure
+
+1. Open each Etherscan link, confirm Sepolia, inspect receipt status, sender and destination contract. The agent
+   signer is `0xCE2c3A428BEC0F3Ac53b91E57ab079813d8A3e1a`; the owner signer is distinct, as listed in 6.1.
+2. Match the method and decoded input or events to the claimed deal id, total and deposit. For a payment, inspect
+   token transfers as well as receipt success. Only the forced call in row 6 is expected to revert.
+3. Match approval-mode and autonomy claims to the dialogue or audit record. A signer match alone is insufficient.
+4. Run `python3 scripts/check_hashes.py docs/submission/6-execution-evidence.md` to check receipt existence and
+   print method selector, sender prefix, block and status. The last verification found **28/28 distinct hashes**,
+   including the one intended revert. This utility is a receipt-existence check, not a complete semantic audit.
+5. Reproduce the local scenario report and audit-chain verification using 6.5 and 6.6. Scripted models isolate
+   deterministic guards; they do not estimate behaviour across every live-model prompt.
+
+## 6.10 Remaining recording evidence
+
+| Item | Current status | Completion evidence |
+| --- | --- | --- |
+| Post-fix autonomous create | Pending a separately approved Sepolia run | Fresh PO, no card, create and deposit receipts, matching agent signer and recording |
+| Post-fix flagged supplier path | Local regression passes; live recording pending | Agreement remains unsent, explicit escrow request produces `flagged_input` owner card, no automatic payout |
+| Clarification and correction | Tests and earlier transcript available | New video shows missing terms, corrected deposit and a rechecked card |
+| Fallback | Local provider, negotiation and outage tests pass | Clearly labelled local replay or prepared failure clip; no simulated receipt presented as Sepolia |
+| Five-minute demo and README clips | Recording and final links pending | Final video URL, verified new hashes, and any selected README clips |
+| Repository visibility | Owner action still pending unless changed separately | A signed-out judge can open source, tests and evidence |
+
+The video plan specifies where each feature appears and how to label replays. No new transaction or real
+supplier message was sent while preparing these documents. Final evidence should be updated after recording,
+without removing the pre-fix failures or changing their classification.

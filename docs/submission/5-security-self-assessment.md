@@ -9,8 +9,8 @@ real funds. The full audit history is in [`SECURITY.md`](../../SECURITY.md).
 
 | Judging area | Result |
 | --- | --- |
-| Induced transfers | No test, live run, audit or pentest case after the fixes moved money to a payee the owner did not save, or more than the owner stated |
-| Data extraction | No key or secret reaches any model; private constraint fields stay buyer-side, but offers can reveal a ceiling (R15); PII is masked before model calls |
+| Induced transfers | The documented post-fix scripted regressions pass for payee redirection, amount binding and confirmation. This is bounded test evidence, not proof that all attacks fail |
+| Data extraction | Signer keys are excluded from model tools and secret-extraction regressions pass; provider inputs are redacted. Offers can reveal a ceiling (R15), and local text retention remains open (R17) |
 | Privilege escalation | The agent cannot raise its own limits, add a payee, attest delivery or approve its own deal: no tool exists, and the contract refuses the agent key |
 | Prompt injection | Historical owner and chain-note attacks held; the fourth assessment bypassed flagged-supplier confirmation before the fix. Local regressions now require a card; no post-fix live retest recorded |
 | Open serious issues | A fourth external assessment (20 Oct) settled two PHP 1.00 deals on Sepolia from a flagged supplier message (deals 7, 8). Fixed: flagged input now always needs the owner (`test_audit_live.py`). Residual risks are in 5.6 |
@@ -24,7 +24,7 @@ contract checks again.
 | Tier | Who acts | Actions | Enforced in code | Enforced on-chain |
 | --- | --- | --- | --- | --- |
 | 0 Read | Agent | Balances, deals, reputation, forecast | Read tools only; no state change | n/a |
-| 1 Autonomous | Agent alone | A deal the owner stated in full within `approvalThreshold`; the agreed deposit; the balance after attestation; refund of an overdue deal; an agreed negotiation within authority | `agent_authority()` returns no reason; Gate mints a single-use authorization; the executor simulates, then signs with the agent key | `onlyOperator`, payee listed and active, `perDealCap`, `dailyCap`, `maxDownBps`, `approvalThreshold`, status checks |
+| 1 Autonomous | Agent alone | A fully stated deal inside authority; its deposit; an attested balance; overdue refund; an unflagged agreement inside authority | `agent_authority()` plus all policy checks; single-use Gate; simulation then agent signature | Roles, per-deal and deposit caps at create, approval threshold, daily payouts and lifecycle; payee activation at create only; release gaps listed below |
 | 2 Confirm | Agent, after the owner's yes on that exact card | A deal above the threshold, over today's limit, with model-filled terms, flagged (spike, forecast shortfall, low score, changed address), or a negotiation outside authority; a user-requested cancel | A card with an id; only the owner's next message, or a button carrying that card id, confirms it; re-checked on fresh chain state; expires after 10 minutes | Above the threshold the contract also sets `ownerApproved = false`, so the deposit waits for the owner's `approveDeal` |
 | 3 Refuse | Nobody | Unknown or blocklisted payee, intent mismatch, Checker rejection, any cap exceeded, past deadline, insufficient funds, contract-text origin, wrong origin | `Verdict(REFUSE)`; no authorization is minted; 3 suspicious refusals in 10 minutes freeze the agent | Contract enforces its own caps, roles and statuses; intent and Checker rules are off-chain; contract gaps are in 5.6 |
 | Owner only | Owner key, typed command | `/attest`, `/approve`, `/limits`, `/dispute`, `/resolve`, `/freeze`, saving a payee (`yes` plus last 4 address characters) | Parsed in code from typed `/` commands; never routed through a model; no tool exists for them | `onlyOwner` |
@@ -124,7 +124,7 @@ local data-at-rest risk. Its remaining contract and negotiation risks are listed
 | R1 | Agent key stolen | Low | Medium: can create deals and pay deposits to already-saved suppliers | Contract caps (PHP 200,000 per deal, 150,000 per day, deposit cap), only saved payees, `pause`, `setAgent` rotates | Loss bounded, not zero. Cap aggregate unapproved commitments |
 | R2 | Owner and agent keys on one machine in the demo | Medium | High if the host is compromised | Login, local-only console | Owner key on a separate device or hardware wallet |
 | R3 | Owner attests a delivery that did not happen | Medium | Medium | Attestation is explicit and owner-only; disputes freeze a deal | Oracle or receipt-based attestation |
-| R4 | Re-added supplier paid during its new waiting period with a stolen agent key | Low | Low | Agent code refuses; contract checks only `listed` on releases | Redeploy with `activeAt` check in `releaseDownPayment` |
+| R4 | Agent key bypasses renewed cooling or off-chain removal/blocklist checks on releases | Low; requires bypass of the normal executor | Medium | Policy checks every payout. Contract deposit checks `listed`, without renewed cooling; balance relies on attested lifecycle and lacks the same payee checks | Redeploy with explicit payout eligibility checks consistent with the intended removal and cooling rules |
 | R5 | Reputation manufactured by colluding onboarded buyers | Low | Medium | Platform-gated factory, account-hash dedup, buyer-history weighting, contract `maxDownBps` ceiling | Value and age floors per verified buyer |
 | R6 | Seeded reputation history | n/a | Demo scores are synthetic | Labelled as seeded | Real trade history |
 | R7 | No recency decay in reputation | Medium | Low | n/a | Age weighting |
@@ -138,3 +138,51 @@ local data-at-rest risk. Its remaining contract and negotiation risks are listed
 | R15 | Buyer counteroffer equals the private maximum | Observed with live Qwen | Medium commercial disclosure; no transfer in the observed runs | Private constraint fields excluded; note filter blocks explicit limit disclosures | Offers still reveal willingness to pay; concession strategy can reduce inference; injection causality unproven |
 | R16 | Privileged issuer burn leaves wallet underfunded, then compromised agent pays a deposit | Low; needs issuer and agent roles | Medium escrow integrity | Off-chain policy refuses underfunded payouts | `releaseDownPayment` lacks `isUnderfunded` check; redeploy to fix; baseline invariants do not model issuer burns |
 | R17 | Raw supplier text persists in local negotiation JSON and historical logs | Expected when supplied | Low local privacy exposure | Model input redaction; new audit entries mask PII; local-only data | Retention limits, at-rest sanitisation and restricted file permissions; no remote exfiltration demonstrated |
+| R18 | Model-written counter text contradicts its structured proposal | Observed in the supplied live report | Medium interaction and consent risk | Exact structured terms, proposal version, hash and acceptance code govern settlement | Still open: narrative numerical consistency is not guaranteed. Show the structured proposal; production should derive numerical text from the validated terms |
+| R19 | Delivery date is not independently bound to the owner's wording by the intent parser | Not quantified; model or Checker error required | Medium purchase-term mismatch | Coordinator prompts for dates, Checker reviews the draft and policy requires a future deadline | Add deterministic binding for supported date expressions and explicit review for unresolved dates; `agent_authority` excludes deadline from missing-term escalation |
+
+## 5.7 Threat actors and trust boundaries
+
+The protected assets are wallet tokens, escrow commitments, owner signing authority, supplier identities, buyer
+negotiation constraints and the integrity of the decision history. A malicious supplier can control their own
+messages and API notes. An attacker can place text in a PO note or try to manipulate the owner-facing model.
+We also consider a compromised Coordinator and separately a stolen agent key. The last case bypasses the whole
+off-chain pipeline, so only contract checks remain. A compromised owner host can reach both locally configured
+keys; this is materially stronger than a supplier-message attack.
+
+The wallet trusts owner attestations about physical delivery. It trusts the platform's buyer onboarding and
+the token issuer's mint/burn powers. The model provider receives permitted redacted context. RPC availability
+affects freshness and liveness. None of these external assumptions is removed by a passing model-injection test.
+
+The Checker is a separate review call and configurable model, not a guarantee of statistically independent
+failure. The demo can use the same provider on multiple roles. Security relies on deterministic intent, policy,
+Gate and contract checks as well as that review, with their remaining gaps stated here.
+
+## 5.8 Confirmation and refusal semantics
+
+Refusal takes precedence over confirmation. An owner yes cannot override an intent mismatch, unknown payee,
+insufficient funds, a rejected Checker result or a contract revert. A card identifies the exact action and expires
+after ten minutes. Card ids prevent an old button from approving a replacement. Before sending, chain state is
+read again; a negotiated action also rechecks agreement expiry, terms hash and constraints.
+
+A chat confirmation is not a signature from the owner key. The agent remains the transaction signer after a
+Tier 2 yes. Above the on-chain approval threshold, `/approve` is a separate owner-signed transaction required
+before the deposit. Owner-only commands are parsed from authenticated owner input, outside model tools.
+The CLI has no web login; local host access protects it. The owner console must stay bound locally.
+
+## 5.9 Security evidence and its limits
+
+The current [GitHub CI run](https://github.com/shaan8/TR8DE/actions/runs/39366271017) passes. The repository's
+[agent tests](https://github.com/shaan8/TR8DE/tree/main/agent/tests) include the four judging attack areas and the
+fourth-assessment regression file. The 248-test local suite has no expected failures. The independently recorded
+scenario report contains 227 passes and identifies agent source `129a354`; its narrower count excludes 21
+provider-adapter tests. The full Playwright suite passed locally; CI currently runs the UI build, not Playwright.
+
+The two PHP 1.00 attack deals are retained in the evidence record. Fixes block autonomous settlement of flagged
+threads in local regressions. A post-fix live attack retest has not yet been recorded, so this report does not
+claim a measured live attack success rate. Existing invariant tests do not model issuer burns and therefore do
+not close the underfunded-deposit finding. These are material qualifications for assessment of serious failures.
+
+Before a real-funds deployment, address R4 and R16 in a new contract deployment, separate owner signing from the
+agent host, constrain local data retention and commission a review of the resulting version. The present report
+describes a testnet security posture; it is not a regulatory certification or a completed compliance audit.
