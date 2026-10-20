@@ -4,7 +4,7 @@
   "block_hash": "2607814dfe0ddd122233af7b53e4b2610cdbf59d9b276e52aa097757a96c6dcc",
   "wallet": "0x2Fc37E4e02F4d10745875710cd54B52429A28C1a",
   "bytecode_sha256": "d2150a04467ac8cb43d3ae00a09611aea872d15b40a2cfaa1585fbb71c372487",
-  "source_commit": "8afe49d6995c4fba512a9b0665816723bdb30429",
+  "source_commit": "78360b033a0e4d7526d9b16bb0620de7753c8bf9",
   "source_tree_sha256": "75909d46a0c15a5764dd2cdae07464b53775be273ce5aec1a5b1b6cabc3315cf",
   "provider": "qwen",
   "models": {
@@ -29,5 +29,6 @@
     "refusal": 10,
     "owner_card": 1
   },
-  "finished_utc": "2026-10-20T04:46:56Z"
+  "finished_utc": "2026-10-20T04:46:56Z",
+  "source_base_commit": "8afe49d6995c4fba512a9b0665816723bdb30429"
 }

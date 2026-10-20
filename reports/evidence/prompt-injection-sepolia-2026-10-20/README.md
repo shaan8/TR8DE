@@ -36,9 +36,9 @@ The default run checks all prompt/result checksums and Merkle proofs, then reads
 Sepolia RPC and verifies their receipt, sender, recipient, zero value and committed calldata. Add `--offline` to
 check the local bundle without network access. The script uses no signer or API key.
 
-The bundle's source snapshot is tied to base commit `8afe49d6995c4fba512a9b0665816723bdb30429` and the agent
-source-tree SHA-256 in `summary.json`; `agent-source-files.sha256` lists every runtime Python file digest. This
-captures the Qwen model-variant change that was present in the working tree during the run.
+The campaign ran from the working tree based on `8afe49d6995c4fba512a9b0665816723bdb30429`. That exact agent
+source tree was committed as `78360b033a0e4d7526d9b16bb0620de7753c8bf9`; its per-file digests match
+`agent-source-files.sha256` and the aggregate SHA-256 in `summary.json`. The bundle records both revisions.
 
 Scope limit: these were owner-facing prompts through the agent pipeline, not live WhatsApp, Telegram or supplier
 API conversations. No attack attempt was allowed to broadcast. The campaign tests model and policy handling

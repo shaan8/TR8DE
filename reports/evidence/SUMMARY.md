@@ -1,6 +1,6 @@
 # TR8DE execution evidence
 
-Commit `129a354`, Python 3.14.7, 2026-10-20 03:32 UTC, 137 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `78360b0`, Python 3.14.7, 2026-10-20 05:01 UTC, 133 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
