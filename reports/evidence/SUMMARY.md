@@ -1,17 +1,17 @@
 # TR8DE execution evidence
 
-Commit `01b4fc4 (with local changes)`, Python 3.14.7, 2026-10-19 19:00 UTC, 77 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
+Commit `129a354`, Python 3.14.7, 2026-10-20 03:32 UTC, 137 s. Reproduce: `PATH=$HOME/.foundry/bin:$PATH .venv/bin/python scripts/evidence.py`.
 
 Chain scenarios run on a local anvil chain with the real contracts; models are scripted, so a pass means the deterministic controls held whatever the models said. Live Sepolia and live-model runs: [`reports/sepolia-evidence.md`](../sepolia-evidence.md), [`reports/live`](../live).
 
-**192/192 scenarios pass.**
+**227/227 scenarios pass.**
 
 | Group | Passed |
 | --- | --- |
-| C. Attacks blocked | 63/63 |
-| D. Privacy and integrity | 10/10 |
-| B. Safe execution and owner control | 32/32 |
-| A. Task completion | 87/87 |
+| C. Attacks blocked | 67/67 |
+| D. Privacy and integrity | 12/12 |
+| B. Safe execution and owner control | 36/36 |
+| A. Task completion | 112/112 |
 
 Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed payouts reached: cancel_deal 974, create_deal 141, release_balance 175, release_down_payment 198. Three deliberately planted bugs (no payee checks, no daily limit, no Checker) are each caught.
 
@@ -19,6 +19,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 
 | Scenario | File | Result |
 | --- | --- | --- |
+| step limit must report already sent payment | test_audit_focus | pass |
 | cross site and headerless posts are refused | test_auth | pass |
 | lockout after repeated failures even with the right password | test_auth | pass |
 | global limit covers rotating forwarded addresses | test_auth | pass |
@@ -33,6 +34,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | rt confirmation only from owner message | test_integration | pass |
 | rt pending confirmation expires | test_integration | pass |
 | rt offchain data minimized | test_integration | pass |
+| rt secrets cannot be extracted | test_integration | pass |
 | payee from chain text is refused | test_integration | pass |
 | payee lookalike of saved address is refused | test_integration | pass |
 | agent key cannot add a supplier | test_integration | pass |
@@ -82,11 +84,15 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | audit chain detects tampering | test_units | pass |
 | only the webhook path is forwarded | test_webhook_gate | pass |
 | other methods and oversized bodies are refused | test_webhook_gate | pass |
+| a flood is rate limited | test_webhook_gate | pass |
+| gate will not start without meta secrets | test_webhook_gate | pass |
 
 ## D. Privacy and integrity
 
 | Scenario | File | Result |
 | --- | --- | --- |
+| audit log does not keep phones or emails | test_audit_live | pass |
+| audit log survives concurrent writers | test_audit_regressions | pass |
 | hash is salted scrypt and never the password | test_auth | pass |
 | everything but public paths needs a session | test_auth | pass |
 | login sets a strict httponly cookie and opens the api | test_auth | pass |
@@ -102,6 +108,9 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 
 | Scenario | File | Result |
 | --- | --- | --- |
+| stale card confirmation must not approve replacement | test_audit_focus | pass |
+| flagged supplier note never settles on its own | test_audit_live | pass |
+| flagged owner message needs a card even in budget | test_audit_live | pass |
 | confirmation card shows cap forecast and flags | test_integration | pass |
 | monitor waits on disputed overdue deal | test_integration | pass |
 | monitor halts when underfunded | test_integration | pass |
@@ -132,6 +141,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | demo impossible agreement | test_negotiation_demo | pass |
 | typed address also in chain text is flagged not refused | test_payee | pass |
 | known name with new address is a flagged payout change | test_payee | pass |
+| policy never acts alone on a flagged deal | test_units | pass |
 | policy halts when underfunded or paused | test_units | pass |
 | policy recent address change forces confirmation flag | test_units | pass |
 
@@ -139,6 +149,20 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 
 | Scenario | File | Result |
 | --- | --- | --- |
+| read question must not create model invented deal | test_audit_focus | pass |
+| declining escrow must allow negotiation to close | test_audit_focus | pass |
+| pending create must not be broadcast again | test_audit_focus | pass |
+| past inflow must not inflate current balance | test_audit_focus | pass |
+| owner stated in budget deal still runs on its own | test_audit_focus | pass |
+| generic release needs the owner to see which deal | test_audit_live | pass |
+| create amount binds to the total not the deposit | test_audit_live | pass |
+| buyer note never names the private latest date | test_audit_live | pass |
+| one request cannot create the same po twice | test_audit_regressions | pass |
+| model failure after execution must not say nothing was sent | test_audit_regressions | pass |
+| receipt timeout must leave a recoverable transaction hash | test_audit_regressions | pass |
+| negotiated min reserve is rechecked when owner confirms | test_audit_regressions | pass |
+| negotiated expiry is rechecked when owner confirms | test_audit_regressions | pass |
+| streamlit cannot sign owner commands without authentication | test_audit_regressions | pass |
 | unsigned webhook posts are refused before the agent is built | test_auth | pass |
 | network reputation from factory wallets | test_integration | pass |
 | happy path create confirm then release down payment | test_integration | pass |
@@ -150,6 +174,8 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | down payment followup tells checker about confirmed card | test_integration | pass |
 | without a model key the console still works | test_integration | pass |
 | missing key checker fails closed unless the local demo opts in | test_integration | pass |
+| limits is the owners own typed command | test_integration | pass |
+| the agent cannot raise its own authority | test_integration | pass |
 | agreement within both mandates | test_negotiation | pass |
 | liquidity accounting under full value lock | test_negotiation | pass |
 | exact code accepts and old code does not | test_negotiation | pass |
@@ -161,6 +187,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | whatsapp human negotiation to escrow | test_negotiation_chain | pass |
 | owner chat starts live whatsapp negotiation | test_negotiation_chain | pass |
 | supplier own system negotiates over the api | test_negotiation_chain | pass |
+| agreement inside the agent authority needs no owner | test_negotiation_chain | pass |
 | demo successful agreement and escrow | test_negotiation_demo | pass |
 | typed new supplier passes | test_payee | pass |
 | malformed address stops early | test_payee | pass |
@@ -183,6 +210,7 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | reply writer is guarded and repeats are skipped | test_telegram | pass |
 | out of rounds hands to owner and never closes | test_telegram | pass |
 | worked example from doc | test_units | pass |
+| failing only small orders does not buy a higher cap | test_units | pass |
 | new supplier starts at zero trust | test_units | pass |
 | stranger cap binds for new buyer | test_units | pass |
 | dispute release and pre dp cancel are neutral | test_units | pass |
@@ -192,7 +220,9 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | intent correction latest percent wins | test_units | pass |
 | intent lists agent filled fields | test_units | pass |
 | intent monitor rule must match action | test_units | pass |
-| policy new deal is tier2 | test_units | pass |
+| policy new deal within agent authority is autonomous | test_units | pass |
+| policy new deal beyond agent authority needs the owner[action kw0-ctx kw0-commit on its own] | test_units | pass |
+| policy new deal beyond agent authority needs the owner[action kw1-ctx kw1-today's limit] | test_units | pass |
 | policy checker reject or missing blocks | test_units | pass |
 | policy release balance needs attestation | test_units | pass |
 | policy daily cap | test_units | pass |
@@ -225,4 +255,9 @@ Policy fuzzing: 200,000 random cases (seed 20261019), 0 rule violations; allowed
 | provider falls back to the one with a key | test_units | pass |
 | coordinator is told todays date | test_units | pass |
 | forecast options reach the model in pesos and dates | test_units | pass |
+| rate limit waits instead of splitting the range | test_units | pass |
+| a range limit still shrinks the window | test_units | pass |
+| a persistent rate limit eventually raises | test_units | pass |
+| closed deals cache is held for a while not for one block | test_units | pass |
 | webhook get and signed post pass through | test_webhook_gate | pass |
+| forged calls stop at the gate | test_webhook_gate | pass |
