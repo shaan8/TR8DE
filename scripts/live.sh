@@ -11,6 +11,7 @@
 # 12 seconds, the deploy sends about 110 transactions, and two seeded "late" deals must pass their deadline.
 # A second run reuses your deployment. Test tokens only: never put a key that holds real funds in .env.
 set -euo pipefail
+export TIWALA_AUTH_DISABLED=0  # setup always starts with authentication enabled
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${PORT:-8000}"
@@ -132,13 +133,14 @@ fi
 
 say "5/6 Owner login"
 if [ -z "$(envval TIWALA_ADMIN_PASS_HASH)" ]; then
-  echo "  Choose a console password (at least 8 characters)."
+  echo "  Your console username is ${TIWALA_LOGIN_USER:-owner}. Password input is hidden."
+  echo "  Choose a console password (15–256 characters; use a unique passphrase)."
   (cd agent && ../.venv/bin/python -m console.auth set-password "${TIWALA_LOGIN_USER:-owner}") || fail "No password was set."
 fi
 
 say "6/6 Console"
 export RPC_URL="$RPC" TIWALA_DEPLOYMENT="$ROOT/$DEP"
-(cd agent && exec ../.venv/bin/uvicorn console.server:app --host 127.0.0.1 --port "$PORT" --log-level warning) \
+(cd agent && exec ../.venv/bin/uvicorn console.server:app --no-proxy-headers --host 127.0.0.1 --port "$PORT" --log-level warning) \
   >.live-console.log 2>&1 &
 CONSOLE_PID=$!
 trap 'kill $CONSOLE_PID 2>/dev/null || true; echo; echo "Stopped. Your Sepolia contracts stay deployed."' EXIT

@@ -9,6 +9,7 @@
 # Without one, negotiations still run (rule-based buyer, scripted supplier) and the chat says the model is off.
 # Ctrl+C stops everything. Each run starts from a fresh chain.
 set -euo pipefail
+export TIWALA_AUTH_DISABLED=0  # setup always starts with authentication enabled
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEMO="$ROOT/.local-demo"
@@ -96,7 +97,7 @@ export WHATSAPP_LIVE_SEND=0 WHATSAPP_ACCESS_TOKEN="" WHATSAPP_PHONE_NUMBER_ID=""
        WHATSAPP_VERIFY_TOKEN="" WHATSAPP_ALLOWED_RECIPIENTS="" \
        TELEGRAM_BOT_TOKEN="" TELEGRAM_LIVE_SEND=0 TELEGRAM_POLL=0
 if [ "$MODEL_KEY" = 0 ]; then export TIWALA_NEGOTIATOR=rules TIWALA_SUPPLIER_AGENT=scripted TIWALA_CHECKER=rules; fi
-(cd agent && exec ../.venv/bin/uvicorn console.server:app --host 127.0.0.1 --port "$PORT" --log-level warning) \
+(cd agent && exec ../.venv/bin/uvicorn console.server:app --no-proxy-headers --host 127.0.0.1 --port "$PORT" --log-level warning) \
   >"$DEMO/console.log" 2>&1 &
 CONSOLE_PID=$!
 for _ in $(seq 1 100); do curl -fs "http://127.0.0.1:$PORT/api/session" >/dev/null 2>&1 && break; sleep 0.3; done

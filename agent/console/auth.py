@@ -22,6 +22,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -31,7 +32,14 @@ SESSION_TTL_S = 12 * 3600
 IDLE_TTL_S = 2 * 3600
 CLIENT_FAILS, CLIENT_WINDOW_S = 5, 15 * 60  # per client: 5 failures per 15 min, then locked for the window
 GLOBAL_FAILS, GLOBAL_WINDOW_S = 30, 15 * 60  # all clients together, in case the client address is spoofed
-SCRYPT = {"n": 2 ** 15, "r": 8, "p": 1, "maxmem": 64 * 1024 * 1024, "dklen": 32}
+SCRYPT = {"n": 2 ** 17, "r": 8, "p": 1, "maxmem": 256 * 1024 * 1024, "dklen": 32}
+MIN_PASSWORD, MAX_PASSWORD = 15, 256
+
+
+class LoginThrottled(Exception):
+    def __init__(self, seconds: float):
+        self.seconds = max(1, int(seconds) + 1)
+        super().__init__("Too many sign-in attempts. Please wait and try again.")
 
 PUBLIC_EXACT = {"/api/login", "/api/session", "/webhooks/whatsapp"}
 PUBLIC_PREFIX = ("/assets/", "/api/supplier")  # supplier API checks its own per-supplier token
@@ -55,7 +63,7 @@ def check_password(password: str, stored: str) -> bool:
         return False
 
 
-_DUMMY = hash_password(secrets.token_hex(16))  # so an unknown username takes as long as a wrong password
+_DUMMY = hash_password(secrets.token_hex(16))  # fallback when credentials have not been configured
 
 
 class Auth:
@@ -64,6 +72,7 @@ class Auth:
         self.sessions: dict[str, dict] = {}  # sha256(session id) -> {"created", "seen"}
         self.fails: dict[str, list[float]] = {}
         self.lock = threading.Lock()
+        self.login_lock = threading.Lock()  # one memory-hard password check at a time
 
     @staticmethod
     def from_env() -> "Auth":
@@ -90,20 +99,37 @@ class Auth:
         return 0.0
 
     def login(self, client: str, user: str, password: str) -> Optional[str]:
-        """Returns a new session id, or None. Callers check locked_for() first."""
-        ok_user = hmac.compare_digest(user.strip().lower().encode(), self.user.lower().encode())
-        ok = check_password(password, self.pass_hash if ok_user else _DUMMY) and ok_user and self.configured
-        with self.lock:
-            if not ok:
+        """Serialize checks and recheck limits inside the admission lock, before scrypt."""
+        if not self.login_lock.acquire(blocking=False):
+            raise LoginThrottled(1)
+        try:
+            wait = self.locked_for(client)
+            if wait:
+                raise LoginThrottled(wait)
+            ok_user = hmac.compare_digest(user.strip().lower().encode(), self.user.lower().encode())
+            bounded = 0 < len(user) <= 64 and 0 < len(password) <= MAX_PASSWORD
+            ok = check_password(password if bounded else "", self.pass_hash if self.configured else _DUMMY)
+            ok = ok and ok_user and bounded and self.configured
+            with self.lock:
+                self.fails = {k: [t for t in ts if self.clock() - t < GLOBAL_WINDOW_S]
+                              for k, ts in self.fails.items() if ts and self.clock() - ts[-1] < GLOBAL_WINDOW_S}
+                if not ok:
+                    now = self.clock()
+                    self.fails.setdefault(f"c:{client}", []).append(now)
+                    self.fails.setdefault("*", []).append(now)
+                    return None
+                self.fails.pop(f"c:{client}", None)
+                sid = secrets.token_urlsafe(32)
                 now = self.clock()
-                self.fails.setdefault(f"c:{client}", []).append(now)
-                self.fails.setdefault("*", []).append(now)
-                return None
-            self.fails.pop(f"c:{client}", None)
-            sid = secrets.token_urlsafe(32)
-            now = self.clock()
-            self.sessions[_h(sid)] = {"created": now, "seen": now}
-            return sid
+                # Remove expired sessions and cap retained sessions for this single owner.
+                self.sessions = {k: v for k, v in self.sessions.items()
+                                 if now - v["created"] <= SESSION_TTL_S and now - v["seen"] <= IDLE_TTL_S}
+                if len(self.sessions) >= 32:
+                    self.sessions.pop(next(iter(self.sessions)))
+                self.sessions[_h(sid)] = {"created": now, "seen": now}
+                return sid
+        finally:
+            self.login_lock.release()
 
     def valid(self, sid: Optional[str]) -> bool:
         if not sid:
@@ -127,23 +153,37 @@ def _h(sid: str) -> str:
     return hashlib.sha256(sid.encode()).hexdigest()
 
 
+def trusted_proxy(request: Request) -> bool:
+    """Opt in only when a reverse proxy strips and rewrites all forwarded headers."""
+    peers = {p.strip() for p in os.environ.get("TIWALA_TRUSTED_PROXIES", "").split(",") if p.strip()}
+    return request.client is not None and request.client.host in peers
+
+
 def client_of(request: Request) -> str:
-    """The tunnel's forwarded address if present (best effort; the global limit covers spoofing)."""
-    fwd = request.headers.get("x-forwarded-for", "")
-    return (fwd.split(",")[0].strip() if fwd else "") or (request.client.host if request.client else "?")
+    fwd = request.headers.get("x-forwarded-for", "") if trusted_proxy(request) else ""
+    # Use the nearest proxy's appended address, rather than a client-controlled first entry.
+    return (fwd.split(",")[-1].strip() if fwd else "") or (request.client.host if request.client else "?")
 
 
 def is_https(request: Request) -> bool:
-    return request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "") == "https"
+    return request.url.scheme == "https" or (trusted_proxy(request)
+            and request.headers.get("x-forwarded-proto", "") == "https")
 
 
 def same_origin(request: Request) -> bool:
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    host = request.headers.get("host", "")
+    if trusted_proxy(request):
+        host = request.headers.get("x-forwarded-host") or host
     src = request.headers.get("origin") or request.headers.get("referer") or ""
-    if not src or not host:
+    try:
+        origin = urlsplit(src)
+        target = urlsplit(("https" if is_https(request) else "http") + "://" + host)
+        return (origin.scheme in ("http", "https") and origin.username is None
+                and origin.password is None and origin.hostname is not None
+                and (origin.scheme, origin.hostname, origin.port if origin.port is not None else (443 if origin.scheme == "https" else 80))
+                == (target.scheme, target.hostname, target.port if target.port is not None else (443 if target.scheme == "https" else 80)))
+    except ValueError:
         return False
-    rest = src.split("://", 1)[-1]
-    return rest.split("/", 1)[0].lower() == host.lower()
 
 
 def is_public(path: str) -> bool:
@@ -237,9 +277,12 @@ def set_password_cli(argv: list[str]) -> int:
     if len(argv) != 2 or argv[0] != "set-password":
         print(__doc__)
         return 1
+    if not argv[1] or len(argv[1]) > 64 or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-" for c in argv[1]):
+        print("Username must be 1–64 letters, digits, dots, underscores or hyphens. Nothing changed.")
+        return 1
     pw = getpass.getpass("New password: ")
-    if pw != getpass.getpass("Repeat: ") or len(pw) < 8:
-        print("Passwords differ or are shorter than 8 characters. Nothing changed.")
+    if pw != getpass.getpass("Repeat: ") or not MIN_PASSWORD <= len(pw) <= MAX_PASSWORD:
+        print("Passwords differ or are not 15–256 characters long. Nothing changed.")
         return 1
     write_env({"TIWALA_ADMIN_USER": argv[1], "TIWALA_ADMIN_PASS_HASH": hash_password(pw)})
     print(f"Saved a scrypt hash for {argv[1]} in .env. Restart the console.")

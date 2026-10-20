@@ -214,12 +214,20 @@ def run_turn(t: Tiwala, audit: AuditLog, msg: str, card_id: str | None = None) -
     return r.reply, r.events
 
 
+@st.cache_resource
+def owner_auth():
+    return authmod.Auth.from_env()
+
+
 def login_gate() -> None:
     """Same owner login as the console. This page drives the agent and holds the owner key, so nothing
     is built, read or signed until a session has signed in."""
-    if st.session_state.get("signed_in"):
+    a = owner_auth()
+    if a.valid(st.session_state.get("owner_session")):
+        if st.sidebar.button("Sign out"):
+            a.logout(st.session_state.pop("owner_session", None))
+            st.rerun()
         return
-    a = st.session_state.setdefault("auth", authmod.Auth.from_env())
     if not a.configured:
         st.error("No login is set up. Run: cd agent && ../.venv/bin/python -m console.auth set-password <name>")
         st.stop()
@@ -228,14 +236,16 @@ def login_gate() -> None:
         password = st.text_input("Password", type="password")
         sent = st.form_submit_button("Sign in")
     if sent:
-        wait = a.locked_for("streamlit")
-        if wait:
-            st.error(f"Too many failed attempts. Try again in {wait:.0f} s.")
-        elif a.login("streamlit", user[:64], password[:256]):
-            st.session_state.signed_in = True
-            st.rerun()
+        try:
+            sid = a.login("streamlit", user, password)
+        except authmod.LoginThrottled as exc:
+            st.error(f"Too many sign-in attempts. Try again in {exc.seconds} s.")
         else:
-            st.error("Wrong username or password.")
+            if sid:
+                st.session_state.owner_session = sid
+                st.rerun()
+            else:
+                st.error("Wrong username or password.")
     st.stop()
 
 

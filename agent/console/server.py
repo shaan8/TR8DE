@@ -19,7 +19,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import auth as authmod
 from . import fixtures as fx
@@ -46,8 +46,8 @@ class Confirm(BaseModel):
 
 
 class Login(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=authmod.MAX_PASSWORD)
 
 
 def _auth() -> authmod.Auth:
@@ -69,13 +69,14 @@ def login(r: Login, request: Request, response: Response):
     if request.headers.get("x-tiwala") != "1" or not authmod.same_origin(request):
         raise HTTPException(403, "Cross-site request refused.")
     client = authmod.client_of(request)
-    wait = a.locked_for(client)
-    if wait:
-        raise HTTPException(429, f"Too many failed sign-ins. Try again in {int(wait // 60) + 1} min.")
-    sid = a.login(client, r.username[:64], r.password[:256])
+    try:
+        sid = a.login(client, r.username, r.password)
+    except authmod.LoginThrottled as exc:
+        raise HTTPException(429, str(exc), headers={"Retry-After": str(exc.seconds)}) from exc
     if sid is None:
         _live_log("login_failed", client=client)
         raise HTTPException(401, "Wrong username or password.")
+    a.logout(request.cookies.get(authmod.COOKIE))  # retire the prior browser session on re-login
     _live_log("login_ok", client=client)
     response.set_cookie(authmod.COOKIE, sid, max_age=authmod.SESSION_TTL_S, httponly=True, samesite="strict",
                         secure=authmod.is_https(request), path="/")

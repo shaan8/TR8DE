@@ -104,7 +104,16 @@ git clone https://github.com/shaan8/TR8DE.git && cd TR8DE && ./scripts/local-dem
 ```
 
 The script starts a private chain and deploys the same contracts used on Sepolia, with seeded suppliers and trade
-history. It then opens the console with a one-time login it prints. Ctrl+C stops it. Then:
+history. It opens the console at `http://127.0.0.1:8000`. **You do not need an account or the author's password.**
+
+**Sign in to your local demo:**
+
+1. Leave the setup terminal running. Under **6/6 Ready**, find `Sign in username demo, password …`.
+2. Enter **demo** in the browser's Username field and copy that generated password into Password. Press **Sign in**.
+3. If you missed the terminal output, open `.local-demo/login.txt` in your clone. Keep this file private.
+
+Each demo start generates a new password and resets the local chain. The password works for that run; it is not
+consumed by signing in. Ctrl+C stops the demo. After signing in:
 
 1. **Negotiations**: open one with Lumen (simulated supplier agent) or Bayani (WhatsApp simulator, where you type
    as the supplier). When both sides agree, press "Recheck and prepare escrow".
@@ -229,17 +238,33 @@ signature or your verify token.
    It seeds supplier history, asks you to choose a console password and starts the console on
    `http://127.0.0.1:8000`. Allow about 50 minutes the first time. Later runs reuse the deployment and start in
    seconds.
-4. Optional supplier chat: add the Telegram or WhatsApp keys (0.3), restart the console, and for WhatsApp start
+4. **Sign in to your live console:** when setup reaches **5/6 Owner login**, it shows your username (default
+   **owner**) and asks you to choose and repeat a **15–256 character password**. Use a unique passphrase or
+   password-manager-generated password. Typing is hidden: no dots or characters appear. This is expected.
+   When the browser opens, enter **owner** (or your chosen `TIWALA_LOGIN_USER`) and the password you just set.
+   There is no shared live password and no web signup. Later runs reuse your credentials and Sepolia deployment.
+5. Optional supplier chat: add the Telegram or WhatsApp keys (0.3), restart the console, and for WhatsApp start
    the tunnel.
 
 Every payment, attestation and refund is a Sepolia transaction, linked to Etherscan from the console. Restart the
 console after changing `.env`.
 
+Forgot your live password? From the repository root, run the command below, choose a new password twice, then
+restart the console. This resets the login for **your clone**; it does not reset an author's hosted instance.
+
+```bash
+(cd agent && ../.venv/bin/python -m console.auth set-password owner)
+```
+
+The username is saved as `TIWALA_ADMIN_USER` in your local `.env`; the password is stored as a salted hash.
+If you visit someone else's hosted console, get access from that operator. Cloning the repo does not grant access
+to their console, keys or deployment.
+
 ### 0.5 Other ways in
 
 | Entry point | Command (from `agent/`) |
 | --- | --- |
-| Console, FastAPI + React | `cd ../ui && npm install && npm run build && cd ../agent && ../.venv/bin/uvicorn console.server:app --port 8000` |
+| Console, FastAPI + React | `cd ../ui && npm install && npm run build && cd ../agent && ../.venv/bin/uvicorn console.server:app --no-proxy-headers --port 8000` |
 | Console replays, no model or chain | `http://127.0.0.1:8000/?fixture=approval`; any of 21 states can be picked in the header |
 | Streamlit chat, same owner login | `../.venv/bin/streamlit run app.py` |
 | Terminal | `../.venv/bin/python -m tiwala_agent.cli --deployment ../deployments/11155111.json` |
@@ -255,6 +280,7 @@ The monitor runs on its own every `MONITOR_INTERVAL_S` seconds (default 300). De
 | Contracts, limits, escrow, attestation, refunds | Same | Same |
 | Transactions | Throwaway chain; hashes are not public | Sepolia; every hash opens on Etherscan |
 | Keys | Public Anvil test keys | Your own, kept in `.env` |
+| Console login | `demo` + random password printed at startup; new each run | `owner` by default + password you choose during setup; reused |
 | Payees | Local addresses only | Any Sepolia address you save; payable after `PAYEE_DELAY` (10 min in the scripts, 24 h in our deployment) |
 | WhatsApp, Telegram | Off whatever `.env` says; built-in simulator instead | Real messages both ways; WhatsApp replies need the tunnel |
 | No model key | Chat off; payments use a labelled rules-only Checker | Chat off; the Checker fails closed, so no payments |
@@ -267,11 +293,53 @@ The monitor runs on its own every `MONITOR_INTERVAL_S` seconds (default 300). De
 npm install && git clone --depth 1 https://github.com/foundry-rs/forge-std lib/forge-std
 forge test                                                        # 40 contract tests: unit, fuzz, invariant
 python3 -m venv .venv && .venv/bin/pip install -r agent/requirements.txt
-cd agent && PATH=$HOME/.foundry/bin:$PATH ../.venv/bin/python -m pytest -q   # 248 agent tests on anvil
+cd agent && PATH=$HOME/.foundry/bin:$PATH ../.venv/bin/python -m pytest -q   # agent tests on anvil
 cd ../ui && npx playwright test                                   # 58 UI state tests at 1440 and 390 px, with axe
 ```
 
 Contract tests, agent tests and the UI build run in [CI](.github/workflows/ci.yml).
+
+### 0.8 Login security and security testing
+
+The browser login is enforced by the server on owner API routes. A hidden button or a manually opened console
+URL does not bypass it. Demo and live both use the same authentication checks.
+
+- New passwords use salted scrypt (`N=131072, r=8, p=1`). Existing hashes still work; reset an older password
+  with the command in 0.4 to upgrade its hash. New live passwords must be 15–256 characters.
+- Session IDs contain 256 random bits; only their hashes stay on the server. Cookies are HttpOnly and
+  SameSite=Strict, and Secure over HTTPS. Sessions expire after 2 idle hours or 12 total hours. Logout revokes
+  the session; signing in again revokes that browser's previous session.
+- Five failed attempts from one client, or 30 across all clients, trigger a 15-minute-window lockout.
+  Checks admit one password verification at a time, preventing concurrent scrypt memory spikes and lockout races.
+  A throttled request returns HTTP 429 with `Retry-After`.
+- Login and owner writes check the full origin (scheme, hostname and port) plus the application's request header.
+  Oversized login fields are rejected rather than silently shortened. Request bodies are capped at 256 KiB.
+- `.env` and `.local-demo/` are excluded from Git. Demo passwords are saved in an owner-readable file; never
+  commit or share it, `.env`, screenshots of credentials, or private keys.
+
+**Local access:** the setup scripts bind the console to `127.0.0.1`. HTTP is intended for this machine only.
+**Public access:** enforce HTTPS at a reverse proxy, keep the backend private, and have the proxy strip and
+rewrite forwarded headers. Forwarded headers are ignored by default. Set `TIWALA_TRUSTED_PROXIES` to the exact
+comma-separated peer IPs that connect to the backend only after configuring that proxy (for a local proxy,
+usually `127.0.0.1`). Forward scheme, host and client address consistently. Never trust arbitrary peers or expose
+an HTTP backend directly. The WhatsApp webhook tunnel exposes its restricted webhook gate, not the owner console.
+Both setup scripts force `TIWALA_AUTH_DISABLED=0` and disable automatic Uvicorn proxy-header interpretation.
+When starting Uvicorn manually behind that proxy, include `--no-proxy-headers` so the application checks the
+actual connecting peer. Keep `TIWALA_AUTH_DISABLED` unset; it is solely for local screenshot tests.
+
+**Try the controls:** in your own disposable clone, check a wrong password, repeated failures, unsigned owner
+API requests, cross-origin writes, logout and an expired session. Run the regression tests without a model key,
+wallet keys or public transactions:
+
+```bash
+PYTHONPATH=agent .venv/bin/python -m pytest agent/tests/test_auth.py -q
+```
+
+**Limits:** this is a single-owner prototype, without MFA/passkeys. Sessions and lockout counters are held in one
+server process and reset on restart; run one worker. The global lockout can temporarily block legitimate logins
+under attack. Internet production use needs shared throttling/session storage, stronger access controls and an
+independent review. A successful login authorizes the owner console, which may hold the owner signing key;
+contract policy checks still apply, but login is a sensitive security boundary.
 
 # 1. Technical documentation
 

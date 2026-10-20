@@ -25,12 +25,19 @@ export function Login({ onDone }) {
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border border-[#414e36] bg-[#1b2218] p-7 shadow-[0_30px_80px_#0008]">
         <Brand />
         <p className="flex items-center gap-2 text-cap text-ink-2"><Lock size={14} aria-hidden /> Sign in to the owner console.</p>
+        <details className="text-sm text-ink-2">
+          <summary className="cursor-pointer">Where do I get my login?</summary>
+          <p className="mt-2">Local demo: username <strong>demo</strong>. Copy the password from your startup
+            terminal under “6/6 Ready”, or from .local-demo/login.txt. It changes each demo run.</p>
+          <p className="mt-2">Live Sepolia: username <strong>owner</strong> unless changed. Use the password
+            you chose in the terminal during live setup. For a hosted instance, ask its operator for access.</p>
+        </details>
         <label className="block text-cap text-ink-2">Username
           <input className="mt-1.5 w-full rounded-md border border-[#48593a] bg-[#11180e] px-3 py-2.5 text-sm text-ink" autoComplete="username"
-            value={user} onChange={(e) => setUser(e.target.value)} required autoFocus /></label>
+            maxLength={64} value={user} onChange={(e) => setUser(e.target.value)} required autoFocus /></label>
         <label className="block text-cap text-ink-2">Password
           <input type="password" className="mt-1.5 w-full rounded-md border border-[#48593a] bg-[#11180e] px-3 py-2.5 text-sm text-ink"
-            autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
+            autoComplete="current-password" maxLength={256} value={pw} onChange={(e) => setPw(e.target.value)} required /></label>
         {err && <p role="alert" className="text-cap text-bad">{err}</p>}
         <button disabled={busy} className="min-h-[40px] w-full rounded-md bg-accent px-3 text-sm font-semibold text-accent-deep hover:bg-[#d9edbc] disabled:opacity-60">
           {busy ? "Signing in…" : "Sign in"}</button>
